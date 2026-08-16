@@ -2,11 +2,11 @@
 
 {{define "meta"}}
     <title>Get a Quote — James McHugh</title>
-    <meta name="description" content="Configure your web application requirements and get an instant AI-powered cost estimate.">
+    <meta name="description" content="Configure your web application requirements and get a free instant AI-powered cost estimate.">
 {{end}}
 
 {{define "head"}}
-    <script src="https://js.stripe.com/v3/"></script>
+    {{if .PageData.TurnstileSiteKey}}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{{end}}
 {{end}}
 
 {{define "content"}}
@@ -15,29 +15,14 @@
         <div class="container">
             <div class="section-label">Instant Quote</div>
             <h1 class="section-title">Configure your project.</h1>
-            <p class="page-header-intro">Select the features you need, then pay a small fee to receive a detailed AI-powered proposal with exact pricing, timeline, and complexity analysis.<span class="tip tip--below tip--align-right" data-tip="We charge a nominal fee to ensure only genuine enquiries. This filters out tyre-kickers so we can dedicate proper time to your proposal. The fee is fully refunded if you proceed with the project."></span></p>
+            <p class="page-header-intro">Select the features you need and describe your project. Confirm your email and you'll get a free AI-powered estimate with a price range, timeline and complexity notes — no account, no payment.<span class="tip tip--below tip--align-right" data-tip="We ask you to confirm your email so the estimate reaches a real person. One instant quote per email address — for anything further, just reply to it."></span></p>
         </div>
     </div>
 
     <section class="quote-section">
         <div class="container">
 
-            {{if .PageData.Drafts}}
-            <div class="quote-group reveal">
-                <h2 class="quote-group-title">Your Draft Quotes</h2>
-                <p class="quote-group-desc">Continue where you left off:</p>
-                <div class="draft-list">
-                    {{range .PageData.Drafts}}
-                    <a href="/quote?draft={{.ID}}" class="draft-card">
-                        <span class="draft-desc">{{if .Description}}{{.Description}}{{else}}Untitled quote{{end}}</span>
-                        <span class="draft-meta">${{printf "%.0f" .TotalCost}} &middot; {{.CreatedAt.Format "2 Jan 2006"}}</span>
-                    </a>
-                    {{end}}
-                </div>
-            </div>
-            {{end}}
-
-            <form id="quote-form" autocomplete="off">
+            <form id="quote-form" autocomplete="on">
 
                 <!-- Contact Details -->
                 <div class="quote-group reveal">
@@ -45,19 +30,19 @@
                     <div class="quote-fields">
                         <div class="quote-field">
                             <label for="name">Full Name</label>
-                            <input type="text" id="name" name="name" required placeholder="Your name" value="{{.User.Name}}">
+                            <input type="text" id="name" name="name" required placeholder="Your name" autocomplete="name">
                         </div>
                         <div class="quote-field">
                             <label for="email">Email</label>
-                            <input type="email" id="email" name="email" required value="{{.User.Email}}" readonly class="quote-field-readonly">
+                            <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
                         </div>
                         <div class="quote-field">
                             <label for="mobile">Mobile</label>
-                            <input type="tel" id="mobile" name="mobile" placeholder="+61 400 000 000">
+                            <input type="tel" id="mobile" name="mobile" placeholder="+61 400 000 000" autocomplete="tel">
                         </div>
                         <div class="quote-field">
                             <label for="address">Address</label>
-                            <input type="text" id="address" name="address" placeholder="Your address">
+                            <input type="text" id="address" name="address" placeholder="Your address" autocomplete="street-address">
                         </div>
                     </div>
                 </div>
@@ -113,13 +98,17 @@
                             <span class="quote-summary-label">Approximate range</span>
                             <span class="quote-summary-value" id="total-range">$1,500 – $3,000</span>
                         </div>
-                        <p class="quote-range-note">Exact pricing is calculated by AI after payment and tailored to your specific project requirements.<span class="tip" data-tip="Our prices are lower because we do the work ourselves — no subcontractors, no agency overhead. What you see here is close to what you'll pay."></span></p>
+                        <p class="quote-range-note">A tailored estimate is generated by AI once you confirm your email, based on your specific project requirements.<span class="tip" data-tip="Our prices are lower because we do the work ourselves — no subcontractors, no agency overhead. What you see here is close to what you'll pay."></span></p>
 
                         <div class="quote-submit-area">
                             <div class="quote-submit-divider"></div>
-                            <p class="quote-submit-note">Pay <strong>$5 AUD</strong> to receive a detailed AI-generated proposal with exact pricing, timeline, and complexity breakdown.<span class="tip" data-tip="This fee filters out non-serious enquiries so we can give your project the attention it deserves. It is fully refunded when you proceed with the project."></span></p>
+                            <p class="quote-submit-note">We'll email you a confirmation link. Click it and your detailed estimate — price range, timeline and complexity breakdown — is generated instantly and sent to you.<span class="tip" data-tip="Confirming your email keeps the tool free and spam-free. One instant quote per email address."></span></p>
+                            {{if .PageData.TurnstileSiteKey}}
+                            <div class="cf-turnstile quote-turnstile" data-sitekey="{{.PageData.TurnstileSiteKey}}" data-theme="light" data-action="quote"></div>
+                            {{end}}
+                            <p class="quote-submit-error" id="quote-error" role="alert" hidden></p>
                             <button type="button" id="btn-submit" class="btn btn--primary quote-btn">
-                                Get Your Quote — $5
+                                Email me my quote
                             </button>
                         </div>
                     </div>
@@ -129,8 +118,6 @@
         </div>
     </section>
 
-    <div id="stripe-key" data-key="{{.PageData.StripeKey}}" style="display:none;"></div>
     <script>window.__BASE_COST__ = {{.PageData.BaseCost}};</script>
-    {{if .PageData.DraftJSON}}<script>window.__DRAFT__ = {{.PageData.DraftJSON}};</script>{{end}}
     <script src="/static/js/quote.js"></script>
 {{end}}

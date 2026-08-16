@@ -133,31 +133,6 @@ nav {
 }
 .nav-logout-btn:hover { color: var(--brand); }
 
-.btn--google {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    text-decoration: none;
-    transition: all 0.2s;
-    margin-left: 0.5rem;
-}
-.btn--google:hover {
-    border-color: var(--border-accent);
-    color: var(--text-primary);
-    background: var(--bg-elevated);
-}
-.google-icon { flex-shrink: 0; }
-
 /* ── Shared ── */
 section { padding: 6rem 2rem; }
 
@@ -896,6 +871,25 @@ section { padding: 6rem 2rem; }
     color: var(--text-secondary);
 }
 
+.quote-turnstile {
+    display: flex;
+    justify-content: center;
+    margin: 0.75rem 0;
+    min-height: 65px; /* reserve the widget's height so the button doesn't jump */
+}
+
+.quote-submit-error {
+    font-size: 0.85rem;
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid rgba(153, 27, 27, 0.25);
+    border-radius: 6px;
+    padding: 0.6rem 0.9rem;
+    margin: 0 0 0.75rem;
+    text-align: center;
+}
+.quote-submit-error[hidden] { display: none; }
+
 /* Quote responsive */
 @media (max-width: 768px) {
     .quote-fields {
@@ -974,12 +968,11 @@ footer {
 @media (max-width: 768px) {
     nav { padding: 0.75rem 1.25rem; flex-wrap: wrap; row-gap: 0.5rem; }
     .nav-brand { white-space: nowrap; font-size: 1.25rem; }
-    /* Brand + sign-in on row one, links on their own row underneath */
+    /* Brand on row one, links on their own row underneath */
     .nav-links { order: 3; width: 100%; gap: 0.5rem 1rem; flex-wrap: wrap; }
     .nav-links a { font-size: 0.7rem; }
     .nav-user-name { display: none; }
     .nav-user { margin-left: 0; padding-left: 0.5rem; }
-    .btn--google { margin-left: 0; font-size: 0.68rem; padding: 0.4rem 0.75rem; }
     section { padding: 4rem 1.25rem; }
     .hero { min-height: 90vh; padding-top: 8.5rem; }
     .hero-decoration { display: none; }
@@ -1234,13 +1227,15 @@ footer {
     letter-spacing: 0.04em;
 }
 
-.status-badge--paid {
+.status-badge--paid,
+.status-badge--verified {
     background: #dcfce7;
     color: #166534;
     border: 1px solid rgba(22, 101, 52, 0.3);
 }
 
-.status-badge--draft {
+.status-badge--draft,
+.status-badge--pending {
     background: #fef9c3;
     color: #854d0e;
     border: 1px solid rgba(133, 77, 14, 0.3);
@@ -1253,76 +1248,6 @@ footer {
     .admin-table { font-size: 0.7rem; }
     .admin-quotes-table { font-size: 0.75rem; }
     .admin-actions { flex-direction: column; }
-}
-
-/* Draft quotes list */
-.draft-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.draft-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    text-decoration: none;
-    color: var(--text-primary);
-    transition: border-color 0.2s, background 0.2s;
-}
-.draft-card:hover {
-    border-color: var(--brand);
-    background: var(--brand-tint);
-}
-.draft-desc {
-    font-size: 0.9rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 60%;
-}
-.draft-meta {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-/* Readonly field style */
-.quote-field-readonly {
-    opacity: 0.7;
-    cursor: not-allowed;
-    background: rgba(15, 23, 42, 0.04);
-}
-
-/* My Quotes page */
-.my-quote-card {
-    margin-bottom: 2rem;
-}
-.my-quote-header {
-    margin-bottom: 0.75rem;
-}
-.my-quote-title {
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.4rem;
-    color: var(--text-primary);
-    margin: 0 0 0.25rem;
-}
-.my-quote-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    letter-spacing: 0.02em;
-}
-.my-quotes-empty {
-    text-align: center;
-    padding: 4rem 0;
-    color: var(--text-secondary);
-}
-.my-quotes-empty .btn {
-    margin-top: 1.5rem;
 }
 
 /* ── Tooltips ── */

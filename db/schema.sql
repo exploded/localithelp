@@ -18,10 +18,14 @@ CREATE TABLE IF NOT EXISTS quotes (
     total_cost        REAL    NOT NULL DEFAULT 0,
     features          TEXT    NOT NULL DEFAULT '{}',
     ai_estimate       TEXT    NOT NULL DEFAULT '',
-    stripe_session_id TEXT    NOT NULL DEFAULT '',
-    status            TEXT    NOT NULL DEFAULT 'draft',
+    verify_token      TEXT    NOT NULL DEFAULT '',
+    verified_at       TEXT    NOT NULL DEFAULT '',
+    status            TEXT    NOT NULL DEFAULT 'pending',   -- pending (awaiting email verification) | verified
     created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_quotes_email        ON quotes(email);
+CREATE INDEX IF NOT EXISTS idx_quotes_verify_token ON quotes(verify_token);
 
 CREATE TABLE IF NOT EXISTS quote_option_groups (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,

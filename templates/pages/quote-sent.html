@@ -1,0 +1,18 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Check your email — James McHugh</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header" style="min-height: 70vh; display: flex; align-items: center;">
+        <div class="container">
+            <div class="section-label">One more step</div>
+            <h1 class="section-title">Check your email.</h1>
+            <p class="page-header-intro" style="margin-bottom: 1rem;">We've sent a confirmation link{{with .PageData.Email}} to <strong>{{.}}</strong>{{end}}. Click it and your instant estimate will be generated and shown to you straight away — it usually arrives within a minute.</p>
+            <p class="page-header-intro" style="margin-bottom: 2rem; font-size: 0.95em; opacity: 0.85;">Nothing there? Check your junk folder. The link is valid for 48 hours; if it's missing or expired, just <a href="/quote">submit the form again</a> and a fresh link will be sent.</p>
+            <a href="/" class="btn btn--primary">Back to Home</a>
+        </div>
+    </div>
+{{end}}

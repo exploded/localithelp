@@ -337,7 +337,7 @@ var guides = []Guide{
 		Kicker:  "Printing",
 		Level:   "Easy",
 		Time:    "20–30 minutes",
-		Summary: "The trick with a new printer is to get it onto your Wi-Fi <em>before</em> you touch the computer. Do it in this order and it usually just works.",
+		Summary: "The trick with a new printer is to get it onto your Wi-Fi before you touch the computer. Do it in this order and it usually just works.",
 		Before:  "Have your Wi-Fi name and password handy (they're on the sticker on the modem unless you changed them).",
 		Steps: []template.HTML{
 			"Unbox it, remove <strong>all</strong> the blue tape and orange plastic (there's always one more piece inside), fit the ink or toner, load paper, and turn it on. Let it finish its first-time set-up on its own screen.",

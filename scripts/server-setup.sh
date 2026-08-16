@@ -44,9 +44,10 @@ BLOCK_RATE=30
 ADMIN_EMAIL=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
 ANTHROPIC_API_KEY=
+# Cloudflare Turnstile (bot check on the quote form). Widget: dashboard → Turnstile → add site.
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
 
 # Email notifications via Amazon SES (scripts/ses-setup.sh prints these). Empty = disabled.
 AWS_REGION=ap-southeast-2
@@ -102,7 +103,7 @@ cat <<EOF
 Setup complete.
 
 Next steps:
-  1. Edit $APP_DIR/.env (PHONE, ADMIN_EMAIL, Google/Stripe/Anthropic keys).
+  1. Edit $APP_DIR/.env (PHONE, ADMIN_EMAIL, Google/Turnstile/Anthropic keys).
   2. Add this to /etc/caddy/Caddyfile and run: sudo systemctl reload caddy
 
      mchugh.com.au, www.mchugh.com.au {

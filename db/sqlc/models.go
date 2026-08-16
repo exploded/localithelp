@@ -20,19 +20,20 @@ type Booking struct {
 }
 
 type Quote struct {
-	ID              int64   `json:"id"`
-	UserID          int64   `json:"user_id"`
-	Name            string  `json:"name"`
-	Email           string  `json:"email"`
-	Mobile          string  `json:"mobile"`
-	Address         string  `json:"address"`
-	Description     string  `json:"description"`
-	TotalCost       float64 `json:"total_cost"`
-	Features        string  `json:"features"`
-	AiEstimate      string  `json:"ai_estimate"`
-	StripeSessionID string  `json:"stripe_session_id"`
-	Status          string  `json:"status"`
-	CreatedAt       string  `json:"created_at"`
+	ID          int64   `json:"id"`
+	UserID      int64   `json:"user_id"`
+	Name        string  `json:"name"`
+	Email       string  `json:"email"`
+	Mobile      string  `json:"mobile"`
+	Address     string  `json:"address"`
+	Description string  `json:"description"`
+	TotalCost   float64 `json:"total_cost"`
+	Features    string  `json:"features"`
+	AiEstimate  string  `json:"ai_estimate"`
+	VerifyToken string  `json:"verify_token"`
+	VerifiedAt  string  `json:"verified_at"`
+	Status      string  `json:"status"`
+	CreatedAt   string  `json:"created_at"`
 }
 
 type QuoteOption struct {

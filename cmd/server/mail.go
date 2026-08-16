@@ -96,18 +96,40 @@ const mailTmplSrc = `
 <p>— James</p>
 {{end}}
 
-{{define "quote-paid"}}
-<h2 style="margin:0 0 4px">Quote #{{.Q.ID}} paid — proposal due</h2>
+{{define "quote-verify"}}
+<h2 style="margin:0 0 12px">Confirm your email to get your quote</h2>
+<p>Hi {{.Q.Name}} — thanks for describing your project. Click the button below to confirm this address and I'll generate your instant estimate straight away.</p>
+<p style="margin:24px 0"><a href="{{.Link}}" style="display:inline-block;background:#1c1c1c;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600">Confirm email &amp; get my quote</a></p>
+<p style="color:#666;font-size:13px">Or paste this link into your browser:<br><a href="{{.Link}}" style="color:#666;word-break:break-all">{{.Link}}</a></p>
+<p style="color:#666;font-size:13px">The link is valid for 48 hours. If you didn't request a quote from {{site.BaseURL}}, you can ignore this email — nothing will be generated.</p>
+<p>— James</p>
+{{end}}
+
+{{define "quote-ready-admin"}}
+<h2 style="margin:0 0 4px">Quote #{{.Q.ID}} — email verified, estimate generated</h2>
 <table style="border-collapse:collapse;margin:12px 0 20px">
 {{template "row" (kv "Name" .Q.Name)}}
 {{template "row" (kv "Email" .Q.Email)}}
 {{template "row" (kv "Mobile" .Q.Mobile)}}
 {{template "row" (kv "Address" .Q.Address)}}
-{{template "row" (kv "Total" (printf "$%.2f" .Q.TotalCost))}}
+{{template "row" (kv "Configured total" (printf "$%.0f" .Q.TotalCost))}}
 </table>
 <p style="margin:0 0 6px;color:#666">Description:</p>
 <blockquote style="margin:0 0 20px;padding:12px 16px;border-left:3px solid #d9d5cc;background:#faf9f6;white-space:pre-wrap">{{.Q.Description}}</blockquote>
-<p><a href="{{site.BaseURL}}/admin" style="display:inline-block;background:#1c1c1c;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px">Open admin</a></p>
+<p style="margin:0 0 6px;color:#666">AI estimate sent to the customer:</p>
+<div style="margin:0 0 20px;padding:12px 16px;border:1px solid #e6e3dc;border-radius:6px;background:#fff">{{.Estimate}}</div>
+<p><a href="{{.Link}}" style="display:inline-block;background:#1c1c1c;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px">View quote</a>
+&nbsp; <a href="{{site.BaseURL}}/admin" style="color:#666">Open admin</a></p>
+{{end}}
+
+{{define "quote-ready-customer"}}
+<h2 style="margin:0 0 12px">Your quote{{if .Q.Name}}, {{.Q.Name}}{{end}}</h2>
+<p>Thanks for confirming your email. Here's the instant estimate based on what you told me. I'll also review your requirements personally and follow up with a detailed proposal within 2 business days.</p>
+<div style="margin:20px 0;padding:16px 20px;border:1px solid #e6e3dc;border-radius:6px;background:#faf9f6">{{.Estimate}}</div>
+<p style="margin:0 0 6px;color:#666">What you described:</p>
+<blockquote style="margin:0 0 20px;padding:12px 16px;border-left:3px solid #d9d5cc;background:#fff;white-space:pre-wrap">{{.Q.Description}}</blockquote>
+<p>You can view this quote any time at <a href="{{.Link}}" style="color:#1c1c1c">{{.Link}}</a>. Questions? Just reply to this email{{if site.Phone}} or call {{site.Phone}}{{end}}.</p>
+<p>— James</p>
 {{end}}
 `
 
@@ -172,17 +194,45 @@ func notifyBooking(id int64, b *db.Booking, suspicious bool) {
 	send(b.Email, "Got your booking request — James McHugh", html, text, site.Email)
 }
 
-// notifyQuotePaid emails the admin when a software-quote proposal fee is paid.
-func notifyQuotePaid(q *db.Quote) {
+// sendQuoteVerification emails the customer the link that confirms their
+// address and triggers estimate generation.
+func sendQuoteVerification(q *db.Quote, link string) {
 	if !mail.Enabled() || q == nil {
 		return
 	}
-	html, err := renderMail("quote-paid", map[string]any{"Q": q})
+	html, err := renderMail("quote-verify", map[string]any{"Q": q, "Link": link})
 	if err != nil {
-		log.Printf("email: render quote-paid: %v", err)
+		log.Printf("email: render quote-verify: %v", err)
 		return
 	}
-	text := fmt.Sprintf("Quote #%d paid by %s <%s> (%s) — $%.2f\n\n%s\n\n%s/admin\n",
-		q.ID, q.Name, q.Email, q.Mobile, q.TotalCost, q.Description, site.BaseURL)
-	send(notifyEmail, fmt.Sprintf("Quote #%d paid: %s", q.ID, q.Name), html, text, q.Email)
+	text := fmt.Sprintf("Hi %s — confirm your email to get your instant quote:\n\n%s\n\nThe link is valid for 48 hours. If you didn't request a quote from %s you can ignore this email.\n\n— James\n",
+		q.Name, link, site.BaseURL)
+	send(q.Email, "Confirm your email to get your quote — James McHugh", html, text, site.Email)
+}
+
+// notifyQuoteVerified runs once a quote's email is verified and the estimate
+// exists: it emails James (reply-to the customer) and sends the customer a copy.
+func notifyQuoteVerified(q *db.Quote, link string) {
+	if !mail.Enabled() || q == nil {
+		return
+	}
+	data := map[string]any{"Q": q, "Link": link, "Estimate": template.HTML(q.AIEstimate)}
+
+	html, err := renderMail("quote-ready-admin", data)
+	if err != nil {
+		log.Printf("email: render quote-ready-admin: %v", err)
+	} else {
+		text := fmt.Sprintf("Quote #%d verified — %s <%s> (%s) — configured total $%.0f\n\n%s\n\n%s\n%s/admin\n",
+			q.ID, q.Name, q.Email, q.Mobile, q.TotalCost, q.Description, link, site.BaseURL)
+		send(notifyEmail, fmt.Sprintf("Quote #%d: %s", q.ID, q.Name), html, text, q.Email)
+	}
+
+	html, err = renderMail("quote-ready-customer", data)
+	if err != nil {
+		log.Printf("email: render quote-ready-customer: %v", err)
+		return
+	}
+	text := fmt.Sprintf("Thanks for confirming your email, %s. Your instant quote is ready — view it here:\n\n%s\n\nI'll review your requirements personally and follow up with a detailed proposal within 2 business days.\n\n— James\n",
+		q.Name, link)
+	send(q.Email, "Your quote is ready — James McHugh", html, text, site.Email)
 }

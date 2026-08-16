@@ -29,22 +29,6 @@
         return total;
     }
 
-    // Load draft data if present
-    if (window.__DRAFT__) {
-        var d = window.__DRAFT__;
-        ['name', 'mobile', 'address', 'description'].forEach(function(f) {
-            var el = document.getElementById(f);
-            if (el && d[f]) el.value = d[f];
-        });
-        // Restore feature radio selections
-        if (d.features) {
-            Object.keys(d.features).forEach(function(key) {
-                var radio = form.querySelector('input[name="' + key + '"][value="' + d.features[key] + '"]');
-                if (radio) radio.checked = true;
-            });
-        }
-    }
-
     // Format the base cost display with proper currency formatting
     var baseCostDisplay = document.getElementById('base-cost-display');
     if (baseCostDisplay) baseCostDisplay.textContent = formatCurrency(BASE_COST);
@@ -70,41 +54,50 @@
         return data;
     }
 
-    // Submit Quote via Stripe
+    // Submit: server checks Turnstile, stores the request and emails a confirmation link.
+    var errorEl = document.getElementById('quote-error');
+    var IDLE_LABEL = 'Email me my quote';
+
+    function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.hidden = false;
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = IDLE_LABEL;
+        // Turnstile tokens are single-use — get a fresh one for the retry.
+        if (window.turnstile) { try { window.turnstile.reset(); } catch (e) {} }
+    }
+
     btnSubmit.addEventListener('click', function() {
-        // Validate required fields
         var name = document.getElementById('name');
         var email = document.getElementById('email');
         var desc = document.getElementById('description');
         if (!name.value.trim()) { name.focus(); name.reportValidity(); return; }
-        if (!email.value.trim()) { email.focus(); email.reportValidity(); return; }
+        if (!email.value.trim() || !email.checkValidity()) { email.focus(); email.reportValidity(); return; }
         if (!desc.value.trim()) { desc.focus(); desc.reportValidity(); return; }
 
-        btnSubmit.disabled = true;
-        btnSubmit.textContent = 'Redirecting to payment...';
+        var data = getFormData();
+        var tsInput = form.querySelector('input[name="cf-turnstile-response"]');
+        if (tsInput) {
+            if (!tsInput.value) { showError('Please complete the verification check above.'); return; }
+            data['cf-turnstile-response'] = tsInput.value;
+        }
 
-        fetch('/api/create-checkout', {
+        errorEl.hidden = true;
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'Sending...';
+
+        fetch('/api/quote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(getFormData())
+            body: JSON.stringify(data)
         })
         .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.error) {
-                alert('Error: ' + data.error);
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = 'Get Your Quote &mdash; $5';
-                return;
-            }
-            // Redirect to Stripe Checkout
-            var stripeKey = document.getElementById('stripe-key').dataset.key;
-            var stripe = Stripe(stripeKey);
-            stripe.redirectToCheckout({ sessionId: data.session_id });
+        .then(function(res) {
+            if (res.error) { showError(res.error); return; }
+            window.location.href = '/quote/sent?e=' + encodeURIComponent(res.email || data.email);
         })
-        .catch(function(err) {
-            alert('Failed to create checkout session. Please try again.');
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = 'Get Your Quote &mdash; $5';
+        .catch(function() {
+            showError('Could not send your request. Please check your connection and try again.');
         });
     });
 })();

@@ -55,9 +55,13 @@ func TestTemplatesRender(t *testing.T) {
 			G      *Guide
 			Others []*Guide
 		}{&guides[0], []*Guide{&guides[1]}},
-		"portfolio":     nil,
-		"quote-success": map[string]any{"AIEstimate": template.HTML("<p>x</p>"), "Name": "A"},
-		"my-quotes":     []db.Quote{{ID: 1, Name: "A", CreatedAt: time.Now()}},
+		"portfolio": nil,
+		"quote": quotePageData{TurnstileSiteKey: "1x00000000000000000000AA", BaseCost: 2000, Groups: []db.OptionGroup{{
+			Name: "feature_email", Label: "Email", Hint: "h",
+			Options: []db.Option{{Value: "none", Name: "None", Cost: 0, CostLabel: "Free", IsDefault: true}},
+		}}},
+		"quote-sent":   map[string]any{"Email": "a@b.co"},
+		"quote-result": map[string]any{"AIEstimate": template.HTML("<p>x</p>"), "Name": "A"},
 		"admin": struct {
 			GroupsJSON template.JS
 			BaseCost   int

@@ -1,33 +1,30 @@
 -- Quotes
 
--- name: InsertQuote :exec
-INSERT INTO quotes (user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-
--- name: GetLastQuote :one
-SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
-FROM quotes WHERE id = (SELECT MAX(id) FROM quotes);
+-- name: InsertQuote :one
+INSERT INTO quotes (name, email, mobile, address, description, total_cost, features, verify_token, status)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+RETURNING id;
 
 -- name: GetQuote :one
-SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
+SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, verify_token, verified_at, status, created_at
 FROM quotes WHERE id = ?;
 
--- name: ListDraftsByUser :many
-SELECT id, user_id, name, email, description, total_cost, status, created_at
-FROM quotes WHERE user_id = ? AND status = 'draft'
-ORDER BY created_at DESC;
+-- name: GetQuoteByVerifyToken :one
+SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, verify_token, verified_at, status, created_at
+FROM quotes WHERE verify_token = ? AND verify_token <> '';
 
--- name: ListPaidByUser :many
-SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
-FROM quotes WHERE user_id = ? AND status = 'paid'
-ORDER BY created_at DESC;
+-- name: CountVerifiedByEmail :one
+SELECT COUNT(*) FROM quotes WHERE email = ? AND status IN ('verified', 'paid');
 
--- name: UpdateQuoteStatus :exec
-UPDATE quotes SET status = ?, stripe_session_id = ?, ai_estimate = ?
-WHERE id = ?;
+-- name: DeletePendingByEmail :exec
+DELETE FROM quotes WHERE email = ? AND status = 'pending';
+
+-- name: MarkQuoteVerified :execrows
+UPDATE quotes SET status = 'verified', ai_estimate = ?, verified_at = datetime('now')
+WHERE id = ? AND status = 'pending';
 
 -- name: ListQuotes :many
-SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
+SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, verify_token, verified_at, status, created_at
 FROM quotes ORDER BY created_at DESC;
 
 -- Users

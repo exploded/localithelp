@@ -11,11 +11,12 @@ that is a separate static landing page (repo `exploded/mchugh-au`, served from
 
 ## Structure
 
-- `cmd/server/main.go` — server, routes, auth (Google), Stripe quote flow, admin, site config
+- `cmd/server/main.go` — server, routes, Google sign-in for `/admin` only, site config
+- `cmd/server/quote.go` — software quote flow (public, no login/payment): Turnstile → email verification → AI estimate; `turnstile.go` — Cloudflare Turnstile check
 - `cmd/server/services.go` — **the service catalogue** (titles, copy, prices, suburbs, software packages). Edit this to change what the site offers.
 - `cmd/server/pages.go` — service pages + booking form handlers
 - `templates/layouts/base.html` — nav/footer/meta; `partials.html` — pricing, guarantees, areas, service card, book CTA
-- `templates/pages/*.html` — one file per page (`home`, `services`, `service`, `software-development`, `book`, `book-thanks`, `portfolio`, `quote*`, `my-quotes`, `admin`)
+- `templates/pages/*.html` — one file per page (`home`, `services`, `service`, `software-development`, `book`, `book-thanks`, `portfolio`, `quote*`, `admin`)
 - `db/schema.sql` (embedded), `db/queries.sql` → `sqlc generate` → `db/sqlc/`; wrappers in `db/db.go`
 
 ## Run locally
@@ -32,24 +33,27 @@ go run ./cmd/server          # http://localhost:8080
 |---|---|---|
 | `PORT` | `8080` | listen port |
 | `PROD` | – | set in production (affects BASE_URL default) |
-| `BASE_URL` | `https://mchugh.com.au` if PROD else `http://localhost:PORT` | canonical origin; OAuth redirect + Stripe return URLs |
+| `BASE_URL` | `https://mchugh.com.au` if PROD else `http://localhost:PORT` | canonical origin; OAuth redirect + quote verification links |
 | `PHONE` | empty | display phone; empty hides all phone UI |
-| `CONTACT_EMAIL` | `james@mchugh.au` | contact email |
+| `CONTACT_EMAIL` | `james@mchugh.com.au` | contact email |
 | `ONSITE_FEE` / `BLOCK_RATE` | `80` / `30` | published pricing (AUD) |
 | `ADMIN_EMAIL` | – | Google account allowed into `/admin` |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | – | Google sign-in (quote tool, admin) |
-| `STRIPE_PUBLISHABLE_KEY` / `STRIPE_SECRET_KEY` | – | quote-proposal fee |
-| `ANTHROPIC_API_KEY` | – | AI estimate in quote flow |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | – | Google sign-in — admin only; customers never sign in |
+| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | – | Cloudflare Turnstile on the quote form (empty = check skipped, logged at startup; dev test pair `1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) |
+| `ANTHROPIC_API_KEY` | – | AI estimate in quote flow (generated only after the email is verified) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | – | Amazon SES credentials (IAM user `mchugh-au-mailer`); unset = email disabled |
 | `AWS_REGION` | `ap-southeast-2` | SES region |
 | `MAIL_FROM` | `James McHugh <james@mchugh.com.au>` | sender (must be a verified SES identity) |
-| `NOTIFY_EMAIL` | `CONTACT_EMAIL` | where booking / quote-paid notifications go |
+| `NOTIFY_EMAIL` | `CONTACT_EMAIL` | where booking / verified-quote notifications go |
 
 Booking requests are stored in the `bookings` table and listed at `/admin`.
 When SES is configured, each booking emails `NOTIFY_EMAIL` (reply-to set to the
-customer) and sends the customer a confirmation; a paid quote also emails
-`NOTIFY_EMAIL`. Sends run in the background and failures are only logged — the
-booking is already saved. See `cmd/server/mail.go` and `mailer/`.
+customer) and sends the customer a confirmation. The quote flow *requires* SES in
+production: the customer is emailed a verification link, and once they click it the
+estimate is generated, emailed to them, and `NOTIFY_EMAIL` is notified. One verified
+quote per email address; a resubmission replaces an unconfirmed one. Without SES
+the verification link is printed to the log (handy locally). Sends run in the
+background and failures are only logged — the request is already saved. See `cmd/server/mail.go` and `mailer/`.
 
 ### Email (Amazon SES) setup
 
@@ -75,7 +79,7 @@ this repo: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`.
    (creates `/var/www/mchugh.com.au`, `.env` template, systemd unit on port 8181,
    sudoers, prints the Caddy block). It refuses to touch `/var/www/mchugh.au`.
 3. **Server `.env`** — `sudo nano /var/www/mchugh.com.au/.env`: `PHONE=…`, `ADMIN_EMAIL`,
-   Google/Stripe/Anthropic keys, SES creds, pricing if different.
+   Google/Turnstile/Anthropic keys, SES creds, pricing if different.
 4. **Caddy** — add the printed block to `/etc/caddy/Caddyfile` (uses the box's shared
    `access_log` / `go_proxy` snippets; leave the existing `mchugh.au` block alone),
    `sudo systemctl reload caddy`.

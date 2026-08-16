@@ -1,0 +1,34 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Your Quote — James McHugh</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header" style="min-height: 70vh; display: flex; align-items: center;">
+        <div class="container">
+            {{with .PageData}}
+            {{if .Error}}
+                <div class="section-label">Quote</div>
+                <h1 class="section-title">That didn't work.</h1>
+                <p class="page-header-intro" style="margin-bottom: 2rem;">{{.Error}}</p>
+                <a href="/quote" class="btn btn--primary">Request a quote</a>
+            {{else}}
+                <div class="section-label">{{if .Returning}}Your Quote{{else}}Email Confirmed{{end}}</div>
+                <h1 class="section-title">{{if .Returning}}Here's your quote{{else}}Thank you{{end}}{{if .Name}}, {{.Name}}{{end}}.</h1>
+                <p class="page-header-intro" style="margin-bottom: 2rem;">{{if .Returning}}This is the instant estimate generated for your project.{{else}}Your email is confirmed and your instant estimate is below — a copy is on its way to your inbox.{{end}} I'll also review your requirements personally and follow up with a detailed proposal within 2 business days.</p>
+
+                {{if .AIEstimate}}
+                <div class="quote-estimate" style="margin-bottom: 2rem;">
+                    <div class="quote-estimate-header">Your instant estimate</div>
+                    <div class="quote-estimate-body">{{.AIEstimate}}</div>
+                </div>
+                {{end}}
+
+                <a href="/" class="btn btn--primary">Back to Home</a>
+            {{end}}
+            {{end}}
+        </div>
+    </div>
+{{end}}

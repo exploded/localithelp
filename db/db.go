@@ -24,20 +24,26 @@ var (
 
 // ── Domain types (preserve existing API for main.go / templates) ──
 
+// Quote is a software-quote request. Lifecycle:
+//
+//	pending  — submitted, awaiting the customer clicking the email verification link
+//	verified — email confirmed, AI estimate generated, admin notified
+//
+// (Legacy rows from the old Stripe flow may carry "draft" / "paid".)
 type Quote struct {
-	ID              int64
-	UserID          int64
-	Name            string
-	Email           string
-	Mobile          string
-	Address         string
-	Description     string
-	TotalCost       float64
-	Features        map[string]any
-	AIEstimate      string
-	StripeSessionID string
-	Status          string // "draft" or "paid"
-	CreatedAt       time.Time
+	ID          int64
+	Name        string
+	Email       string // stored lower-cased; one verified quote per email
+	Mobile      string
+	Address     string
+	Description string
+	TotalCost   float64
+	Features    map[string]any
+	AIEstimate  string
+	VerifyToken string    // random token in the verification link; also acts as the view-quote permalink
+	VerifiedAt  time.Time // zero until verified
+	Status      string
+	CreatedAt   time.Time
 }
 
 type User struct {
@@ -90,6 +96,8 @@ func Open(path string) error {
 	for _, stmt := range []string{
 		"ALTER TABLE quotes ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0",
 		"ALTER TABLE quotes ADD COLUMN status TEXT NOT NULL DEFAULT 'paid'",
+		"ALTER TABLE quotes ADD COLUMN verify_token TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE quotes ADD COLUMN verified_at TEXT NOT NULL DEFAULT ''",
 	} {
 		conn.Exec(stmt) // ignore "duplicate column" errors
 	}
@@ -115,40 +123,26 @@ func Close() error {
 
 // ── Quotes ──
 
+// InsertQuote stores a new pending quote and returns its id.
 func InsertQuote(quote *Quote) (int64, error) {
-	ctx := context.Background()
-
 	featJSON, err := json.Marshal(quote.Features)
 	if err != nil {
 		return 0, fmt.Errorf("marshal features: %w", err)
 	}
-
-	status := quote.Status
-	if status == "" {
-		status = "draft"
-	}
-
-	if err := q.InsertQuote(ctx, sqlc.InsertQuoteParams{
-		UserID:          quote.UserID,
-		Name:            quote.Name,
-		Email:           quote.Email,
-		Mobile:          quote.Mobile,
-		Address:         quote.Address,
-		Description:     quote.Description,
-		TotalCost:       quote.TotalCost,
-		Features:        string(featJSON),
-		AiEstimate:      quote.AIEstimate,
-		StripeSessionID: quote.StripeSessionID,
-		Status:          status,
-	}); err != nil {
+	id, err := q.InsertQuote(context.Background(), sqlc.InsertQuoteParams{
+		Name:        quote.Name,
+		Email:       quote.Email,
+		Mobile:      quote.Mobile,
+		Address:     quote.Address,
+		Description: quote.Description,
+		TotalCost:   quote.TotalCost,
+		Features:    string(featJSON),
+		VerifyToken: quote.VerifyToken,
+	})
+	if err != nil {
 		return 0, fmt.Errorf("insert quote: %w", err)
 	}
-
-	row, err := q.GetLastQuote(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("get last quote: %w", err)
-	}
-	return row.ID, nil
+	return id, nil
 }
 
 func GetQuote(id int64) (*Quote, error) {
@@ -159,54 +153,37 @@ func GetQuote(id int64) (*Quote, error) {
 	return sqlcQuoteToQuote(row), nil
 }
 
-func ListDraftsByUser(userID int64) ([]Quote, error) {
-	rows, err := q.ListDraftsByUser(context.Background(), userID)
+// GetQuoteByVerifyToken returns the quote carrying the given verification token,
+// or sql.ErrNoRows.
+func GetQuoteByVerifyToken(token string) (*Quote, error) {
+	row, err := q.GetQuoteByVerifyToken(context.Background(), token)
 	if err != nil {
 		return nil, err
 	}
-	quotes := make([]Quote, len(rows))
-	for i, r := range rows {
-		quotes[i] = Quote{
-			ID:          r.ID,
-			UserID:      r.UserID,
-			Name:        r.Name,
-			Email:       r.Email,
-			Description: r.Description,
-			TotalCost:   r.TotalCost,
-			Status:      r.Status,
-		}
-		quotes[i].CreatedAt, _ = time.Parse("2006-01-02 15:04:05", r.CreatedAt)
-	}
-	return quotes, nil
+	return sqlcQuoteToQuote(row), nil
 }
 
-func UpdateQuoteStatus(id int64, status, stripeSessionID, aiEstimate string) error {
-	return q.UpdateQuoteStatus(context.Background(), sqlc.UpdateQuoteStatusParams{
-		ID:              id,
-		Status:          status,
-		StripeSessionID: stripeSessionID,
-		AiEstimate:      aiEstimate,
+// HasVerifiedQuote reports whether a verified quote already exists for email.
+func HasVerifiedQuote(email string) (bool, error) {
+	n, err := q.CountVerifiedByEmail(context.Background(), email)
+	return n > 0, err
+}
+
+// DeletePendingQuotes removes unverified quotes for email (a resubmission
+// supersedes any earlier attempt that was never confirmed).
+func DeletePendingQuotes(email string) error {
+	return q.DeletePendingByEmail(context.Background(), email)
+}
+
+// MarkQuoteVerified flips a pending quote to verified and stores the estimate.
+// It returns false if the quote was not pending (already verified, or missing),
+// so concurrent clicks on the same link only generate one notification.
+func MarkQuoteVerified(id int64, aiEstimate string) (bool, error) {
+	n, err := q.MarkQuoteVerified(context.Background(), sqlc.MarkQuoteVerifiedParams{
+		ID:         id,
+		AiEstimate: aiEstimate,
 	})
-}
-
-func ListPaidByUser(userID int64) ([]Quote, error) {
-	rows, err := conn.QueryContext(context.Background(),
-		`SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
-		 FROM quotes WHERE user_id = ? AND status = 'paid'
-		 ORDER BY created_at DESC`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var quotes []Quote
-	for rows.Next() {
-		var q sqlc.Quote
-		if err := rows.Scan(&q.ID, &q.UserID, &q.Name, &q.Email, &q.Mobile, &q.Address, &q.Description, &q.TotalCost, &q.Features, &q.AiEstimate, &q.StripeSessionID, &q.Status, &q.CreatedAt); err != nil {
-			return nil, err
-		}
-		quotes = append(quotes, *sqlcQuoteToQuote(q))
-	}
-	return quotes, rows.Err()
+	return n == 1, err
 }
 
 func ListQuotes() ([]Quote, error) {
@@ -223,20 +200,22 @@ func ListQuotes() ([]Quote, error) {
 
 func sqlcQuoteToQuote(r sqlc.Quote) *Quote {
 	quote := &Quote{
-		ID:              r.ID,
-		UserID:          r.UserID,
-		Name:            r.Name,
-		Email:           r.Email,
-		Mobile:          r.Mobile,
-		Address:         r.Address,
-		Description:     r.Description,
-		TotalCost:       r.TotalCost,
-		AIEstimate:      r.AiEstimate,
-		StripeSessionID: r.StripeSessionID,
-		Status:          r.Status,
+		ID:          r.ID,
+		Name:        r.Name,
+		Email:       r.Email,
+		Mobile:      r.Mobile,
+		Address:     r.Address,
+		Description: r.Description,
+		TotalCost:   r.TotalCost,
+		AIEstimate:  r.AiEstimate,
+		VerifyToken: r.VerifyToken,
+		Status:      r.Status,
 	}
 	json.Unmarshal([]byte(r.Features), &quote.Features)
 	quote.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", r.CreatedAt)
+	if r.VerifiedAt != "" {
+		quote.VerifiedAt, _ = time.Parse("2006-01-02 15:04:05", r.VerifiedAt)
+	}
 	return quote
 }
 

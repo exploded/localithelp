@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -25,9 +24,6 @@ import (
 )
 
 var pages map[string]*template.Template
-
-// pendingQuotes stores form data keyed by Stripe session ID
-var pendingQuotes sync.Map
 
 // userSessions stores active user session tokens mapped to the logged-in user.
 var userSessions sync.Map // token -> *userSession
@@ -56,6 +52,7 @@ func main() {
 	}
 	initSiteConfig(port)
 	initMail()
+	initTurnstile()
 
 	if err := db.Open(filepath.Join(dir, "quotes.db")); err != nil {
 		log.Fatalf("database: %v", err)
@@ -99,12 +96,11 @@ func main() {
 	mux.HandleFunc("GET /book/thanks", handleBookThanks)
 	mux.HandleFunc("GET /portfolio", handlePortfolio)
 	mux.HandleFunc("GET /quote", handleQuote)
-	mux.HandleFunc("GET /quote/success", handleQuoteSuccess)
-	mux.HandleFunc("GET /quote/cancel", handleQuoteCancel)
-	mux.HandleFunc("GET /my-quotes", handleMyQuotes)
-	mux.HandleFunc("POST /api/create-checkout", handleCreateCheckout)
+	mux.HandleFunc("POST /api/quote", handleQuoteSubmit)
+	mux.HandleFunc("GET /quote/sent", handleQuoteSent)
+	mux.HandleFunc("GET /quote/verify", handleQuoteVerify)
 
-	// Google auth routes
+	// Google auth routes — only used to gate /admin; customers never sign in.
 	mux.HandleFunc("GET /auth/google", handleGoogleLogin)
 	mux.HandleFunc("GET /auth/google/callback", handleGoogleCallback)
 	mux.HandleFunc("POST /auth/logout", handleUserLogout)
@@ -149,9 +145,8 @@ func loadTemplates(dir string) (map[string]*template.Template, error) {
 
 // pageData is the base template data passed to every page.
 type pageData struct {
-	User     *db.User   // nil if not logged in
+	User     *db.User   // nil if not logged in (only the admin ever signs in)
 	IsAdmin  bool       // true if logged-in user's email matches ADMIN_EMAIL
-	LoginURL string     // "/auth/google" or empty if OAuth not configured
 	Site     siteConfig // global site settings (phone, pricing, base URL, suburbs)
 	Path     string     // current request path (for nav active state + canonical)
 	PageData any        // page-specific data
@@ -170,9 +165,6 @@ func render(w http.ResponseWriter, r *http.Request, page string, data any) {
 		Site:     site,
 		Path:     r.URL.Path,
 		PageData: data,
-	}
-	if googleOAuth != nil {
-		pd.LoginURL = "/auth/google"
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "base", pd); err != nil {
@@ -210,387 +202,6 @@ func handlePortfolio(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "portfolio", nil)
 }
 
-func handleMyQuotes(w http.ResponseWriter, r *http.Request) {
-	user := getLoggedInUser(r)
-	if user == nil {
-		http.Redirect(w, r, "/auth/google?redirect=/my-quotes", http.StatusSeeOther)
-		return
-	}
-
-	quotes, err := db.ListPaidByUser(user.ID)
-	if err != nil {
-		log.Printf("load paid quotes: %v", err)
-		http.Error(w, "failed to load quotes", http.StatusInternalServerError)
-		return
-	}
-
-	render(w, r, "my-quotes", quotes)
-}
-
-func handleQuote(w http.ResponseWriter, r *http.Request) {
-	user := getLoggedInUser(r)
-	if user == nil {
-		http.Redirect(w, r, "/auth/google?redirect=/quote", http.StatusSeeOther)
-		return
-	}
-
-	groups, err := db.ListOptionGroups()
-	if err != nil {
-		log.Printf("load options: %v", err)
-		http.Error(w, "failed to load options", http.StatusInternalServerError)
-		return
-	}
-	baseCost, err := db.GetBaseCost()
-	if err != nil {
-		log.Printf("load base cost: %v", err)
-	}
-
-	drafts, err := db.ListDraftsByUser(user.ID)
-	if err != nil {
-		log.Printf("load drafts: %v", err)
-	}
-
-	// If loading a specific draft, fetch its full data
-	var draftJSON template.JS
-	if draftID := r.URL.Query().Get("draft"); draftID != "" {
-		var id int64
-		fmt.Sscanf(draftID, "%d", &id)
-		if id > 0 {
-			draft, err := db.GetQuote(id)
-			if err == nil && draft.UserID == user.ID && draft.Status == "draft" {
-				dj, _ := json.Marshal(draft.Features)
-				draftData := map[string]any{
-					"name":        draft.Name,
-					"mobile":      draft.Mobile,
-					"address":     draft.Address,
-					"description": draft.Description,
-					"features":    json.RawMessage(dj),
-					"id":          draft.ID,
-				}
-				djBytes, _ := json.Marshal(draftData)
-				draftJSON = template.JS(djBytes)
-			}
-		}
-	}
-
-	render(w, r, "quote", struct {
-		StripeKey string
-		Groups    []db.OptionGroup
-		BaseCost  int
-		Drafts    []db.Quote
-		DraftJSON template.JS
-	}{
-		StripeKey: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
-		Groups:    groups,
-		BaseCost:  baseCost,
-		Drafts:    drafts,
-		DraftJSON: draftJSON,
-	})
-}
-
-func handleQuoteSuccess(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.URL.Query().Get("session_id")
-	if sessionID == "" {
-		render(w, r, "quote-success", map[string]any{"Error": "Missing session information."})
-		return
-	}
-
-	// Verify payment with Stripe
-	secretKey := os.Getenv("STRIPE_SECRET_KEY")
-	paid, err := verifyStripePayment(secretKey, sessionID)
-	if err != nil {
-		log.Printf("stripe verification error: %v", err)
-		render(w, r, "quote-success", map[string]any{"Error": "Could not verify payment. Please contact support."})
-		return
-	}
-	if !paid {
-		render(w, r, "quote-success", map[string]any{"Error": "Payment has not been completed. Please try again."})
-		return
-	}
-
-	// Retrieve pending quote ID
-	val, ok := pendingQuotes.LoadAndDelete(sessionID)
-	if !ok {
-		// Already processed or expired — show generic success
-		render(w, r, "quote-success", map[string]any{"AlreadyProcessed": true})
-		return
-	}
-	quoteID := val.(int64)
-
-	quote, err := db.GetQuote(quoteID)
-	if err != nil {
-		log.Printf("failed to load quote #%d: %v", quoteID, err)
-		render(w, r, "quote-success", map[string]any{"Error": "Could not load quote data."})
-		return
-	}
-
-	// Build form data map for the estimate prompt
-	formData := map[string]any{
-		"name":        quote.Name,
-		"email":       quote.Email,
-		"description": quote.Description,
-		"total_cost":  quote.TotalCost,
-	}
-	for k, v := range quote.Features {
-		formData[k] = v
-	}
-
-	// Run AI estimate now that payment is confirmed
-	var aiEstimate string
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey != "" {
-		prompt := buildEstimatePrompt(formData)
-		aiEstimate, err = callClaude(apiKey, prompt)
-		if err != nil {
-			log.Printf("claude API error after payment: %v", err)
-			aiEstimate = "<p>AI estimate could not be generated at this time. James will review your requirements manually and include pricing in your proposal.</p>"
-		}
-	}
-
-	// Update quote status to paid
-	if err := db.UpdateQuoteStatus(quoteID, "paid", sessionID, aiEstimate); err != nil {
-		log.Printf("failed to update quote #%d: %v", quoteID, err)
-	} else {
-		log.Printf("quote #%d marked as paid for %s", quoteID, quote.Email)
-		notifyQuotePaid(quote)
-	}
-
-	render(w, r, "quote-success", map[string]any{
-		"AIEstimate": template.HTML(aiEstimate),
-		"Name":       quote.Name,
-	})
-}
-
-func handleQuoteCancel(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/quote", http.StatusSeeOther)
-}
-
-func buildEstimatePrompt(data map[string]any) string {
-	var b strings.Builder
-	b.WriteString("You are a project estimation assistant for an Australian web development business (James McHugh, ABN 14 723 053 435). ")
-	b.WriteString("Based on the following project requirements, provide a concise estimate including:\n")
-	b.WriteString("1. A recommended total cost range (in AUD)\n")
-	b.WriteString("2. Estimated turnaround time\n")
-	b.WriteString("3. Brief notes on complexity factors\n\n")
-	b.WriteString("Format your response as clean HTML (use <p>, <strong>, <ul>, <li> tags only). Keep it concise — max 200 words.\n\n")
-	b.WriteString("Project Requirements:\n")
-
-	desc, _ := data["description"].(string)
-	if desc != "" {
-		b.WriteString(fmt.Sprintf("Description: %s\n", desc))
-	}
-
-	totalCost, _ := data["total_cost"].(float64)
-	b.WriteString(fmt.Sprintf("Configured base estimate: $%.0f AUD\n\n", totalCost))
-
-	// Load feature labels dynamically from database
-	groups, err := db.ListOptionGroups()
-	if err != nil {
-		log.Printf("buildEstimatePrompt: failed to load groups: %v", err)
-	}
-
-	b.WriteString("Selected features:\n")
-	for _, g := range groups {
-		val, _ := data[g.Name].(string)
-		cost, _ := data[g.Name+"_cost"].(float64)
-		if val != "" {
-			b.WriteString(fmt.Sprintf("- %s: %s ($%.0f)\n", g.Label, val, cost))
-		}
-	}
-
-	return b.String()
-}
-
-func callClaude(apiKey, prompt string) (string, error) {
-	reqBody := map[string]any{
-		"model":      "claude-sonnet-4-20250514",
-		"max_tokens": 1024,
-		"messages": []map[string]string{
-			{"role": "user", "content": prompt},
-		},
-	}
-
-	body, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", err
-	}
-
-	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var result struct {
-		Content []struct {
-			Text string `json:"text"`
-		} `json:"content"`
-		Error struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
-	}
-
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("API error %d: %s", resp.StatusCode, result.Error.Message)
-	}
-
-	if len(result.Content) == 0 {
-		return "", fmt.Errorf("empty response from Claude")
-	}
-
-	return result.Content[0].Text, nil
-}
-
-// handleCreateCheckout creates a Stripe Checkout session
-func handleCreateCheckout(w http.ResponseWriter, r *http.Request) {
-	user := getLoggedInUser(r)
-	if user == nil {
-		jsonError(w, "login required", http.StatusUnauthorized)
-		return
-	}
-
-	secretKey := os.Getenv("STRIPE_SECRET_KEY")
-	if secretKey == "" {
-		jsonError(w, "Payment is not configured", http.StatusServiceUnavailable)
-		return
-	}
-
-	var formData map[string]any
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&formData); err != nil {
-		jsonError(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-
-	customerEmail := user.Email
-
-	baseURL := site.BaseURL
-
-	params := fmt.Sprintf(
-		"mode=payment"+
-			"&success_url=%s/quote/success?session_id={CHECKOUT_SESSION_ID}"+
-			"&cancel_url=%s/quote/cancel"+
-			"&customer_email=%s"+
-			"&line_items[0][price_data][currency]=aud"+
-			"&line_items[0][price_data][unit_amount]=500"+
-			"&line_items[0][price_data][product_data][name]=Web+App+Quote+-+Detailed+Proposal"+
-			"&line_items[0][quantity]=1",
-		baseURL, baseURL, customerEmail,
-	)
-
-	req, err := http.NewRequest("POST", "https://api.stripe.com/v1/checkout/sessions", strings.NewReader(params))
-	if err != nil {
-		jsonError(w, "failed to create session", http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(secretKey, "")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		jsonError(w, "failed to reach payment provider", http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	var stripeResp struct {
-		ID    string `json:"id"`
-		Error struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&stripeResp); err != nil {
-		jsonError(w, "invalid payment response", http.StatusInternalServerError)
-		return
-	}
-
-	if resp.StatusCode != 200 {
-		log.Printf("stripe error: %s", stripeResp.Error.Message)
-		jsonError(w, "Payment error: "+stripeResp.Error.Message, http.StatusBadRequest)
-		return
-	}
-
-	// Save as draft quote in DB
-	name, _ := formData["name"].(string)
-	mobile, _ := formData["mobile"].(string)
-	address, _ := formData["address"].(string)
-	description, _ := formData["description"].(string)
-	totalCost, _ := formData["total_cost"].(float64)
-
-	features := make(map[string]any)
-	for k, v := range formData {
-		if strings.HasPrefix(k, "feature_") {
-			features[k] = v
-		}
-	}
-
-	quoteID, err := db.InsertQuote(&db.Quote{
-		UserID:          user.ID,
-		Name:            name,
-		Email:           customerEmail,
-		Mobile:          mobile,
-		Address:         address,
-		Description:     description,
-		TotalCost:       totalCost,
-		Features:        features,
-		StripeSessionID: stripeResp.ID,
-		Status:          "draft",
-	})
-	if err != nil {
-		log.Printf("failed to save draft quote: %v", err)
-	}
-
-	pendingQuotes.Store(stripeResp.ID, quoteID)
-	log.Printf("checkout session %s created for %s (draft #%d)", stripeResp.ID, customerEmail, quoteID)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"session_id": stripeResp.ID})
-}
-
-// verifyStripePayment checks whether a Stripe checkout session has been paid.
-func verifyStripePayment(secretKey, sessionID string) (bool, error) {
-	req, err := http.NewRequest("GET", "https://api.stripe.com/v1/checkout/sessions/"+sessionID, nil)
-	if err != nil {
-		return false, err
-	}
-	req.SetBasicAuth(secretKey, "")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	var session struct {
-		PaymentStatus string `json:"payment_status"`
-		Error         struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
-		return false, err
-	}
-
-	if resp.StatusCode != 200 {
-		return false, fmt.Errorf("stripe API error %d: %s", resp.StatusCode, session.Error.Message)
-	}
-
-	return session.PaymentStatus == "paid", nil
-}
-
 // ── Google OAuth ──
 
 // oauthRedirects stores the post-login redirect URL for each OAuth state token.
@@ -603,15 +214,16 @@ func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	state := generateSessionToken()
 	oauthStates.Store(state, time.Now().Add(10*time.Minute))
-	if redir := r.URL.Query().Get("redirect"); redir != "" {
+	// Only allow same-site relative redirects (no open redirect).
+	if redir := r.URL.Query().Get("redirect"); strings.HasPrefix(redir, "/") && !strings.HasPrefix(redir, "//") {
 		oauthRedirects.Store(state, redir)
 	}
 	opts := []oauth2.AuthCodeOption{oauth2.AccessTypeOffline}
 	if r.URL.Query().Get("prompt") == "select_account" {
 		opts = append(opts, oauth2.SetAuthURLParam("prompt", "select_account"))
 	}
-	url := googleOAuth.AuthCodeURL(state, opts...)
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+	authURL := googleOAuth.AuthCodeURL(state, opts...)
+	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
 }
 
 func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
@@ -731,8 +343,8 @@ func isAdmin(user *db.User) bool {
 func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	user := getLoggedInUser(r)
 	if user == nil {
-		// Not signed in — redirect to Google sign-in
-		http.Redirect(w, r, "/auth/google", http.StatusSeeOther)
+		// Not signed in — redirect to Google sign-in, then back here
+		http.Redirect(w, r, "/auth/google?redirect=/admin", http.StatusSeeOther)
 		return
 	}
 	if !isAdmin(user) {
@@ -835,7 +447,7 @@ func initSiteConfig(port string) {
 	}
 	email := os.Getenv("CONTACT_EMAIL")
 	if email == "" {
-		email = "james@mchugh.au"
+		email = "james@mchugh.com.au"
 	}
 	site = siteConfig{
 		BaseURL:   base,

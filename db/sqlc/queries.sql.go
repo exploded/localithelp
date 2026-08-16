@@ -31,6 +31,17 @@ func (q *Queries) CountSettingByKey(ctx context.Context, key string) (int64, err
 	return count, err
 }
 
+const countVerifiedByEmail = `-- name: CountVerifiedByEmail :one
+SELECT COUNT(*) FROM quotes WHERE email = ? AND status IN ('verified', 'paid')
+`
+
+func (q *Queries) CountVerifiedByEmail(ctx context.Context, email string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countVerifiedByEmail, email)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteAllOptionGroups = `-- name: DeleteAllOptionGroups :exec
 DELETE FROM quote_option_groups
 `
@@ -46,6 +57,15 @@ DELETE FROM quote_options
 
 func (q *Queries) DeleteAllOptions(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteAllOptions)
+	return err
+}
+
+const deletePendingByEmail = `-- name: DeletePendingByEmail :exec
+DELETE FROM quotes WHERE email = ? AND status = 'pending'
+`
+
+func (q *Queries) DeletePendingByEmail(ctx context.Context, email string) error {
+	_, err := q.db.ExecContext(ctx, deletePendingByEmail, email)
 	return err
 }
 
@@ -92,34 +112,8 @@ func (q *Queries) GetLastOptionGroup(ctx context.Context) (QuoteOptionGroup, err
 	return i, err
 }
 
-const getLastQuote = `-- name: GetLastQuote :one
-SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
-FROM quotes WHERE id = (SELECT MAX(id) FROM quotes)
-`
-
-func (q *Queries) GetLastQuote(ctx context.Context) (Quote, error) {
-	row := q.db.QueryRowContext(ctx, getLastQuote)
-	var i Quote
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Name,
-		&i.Email,
-		&i.Mobile,
-		&i.Address,
-		&i.Description,
-		&i.TotalCost,
-		&i.Features,
-		&i.AiEstimate,
-		&i.StripeSessionID,
-		&i.Status,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const getQuote = `-- name: GetQuote :one
-SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
+SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, verify_token, verified_at, status, created_at
 FROM quotes WHERE id = ?
 `
 
@@ -137,7 +131,35 @@ func (q *Queries) GetQuote(ctx context.Context, id int64) (Quote, error) {
 		&i.TotalCost,
 		&i.Features,
 		&i.AiEstimate,
-		&i.StripeSessionID,
+		&i.VerifyToken,
+		&i.VerifiedAt,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getQuoteByVerifyToken = `-- name: GetQuoteByVerifyToken :one
+SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, verify_token, verified_at, status, created_at
+FROM quotes WHERE verify_token = ? AND verify_token <> ''
+`
+
+func (q *Queries) GetQuoteByVerifyToken(ctx context.Context, verifyToken string) (Quote, error) {
+	row := q.db.QueryRowContext(ctx, getQuoteByVerifyToken, verifyToken)
+	var i Quote
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Email,
+		&i.Mobile,
+		&i.Address,
+		&i.Description,
+		&i.TotalCost,
+		&i.Features,
+		&i.AiEstimate,
+		&i.VerifyToken,
+		&i.VerifiedAt,
 		&i.Status,
 		&i.CreatedAt,
 	)
@@ -258,30 +280,27 @@ func (q *Queries) InsertOptionGroup(ctx context.Context, arg InsertOptionGroupPa
 	return err
 }
 
-const insertQuote = `-- name: InsertQuote :exec
+const insertQuote = `-- name: InsertQuote :one
 
-INSERT INTO quotes (user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO quotes (name, email, mobile, address, description, total_cost, features, verify_token, status)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+RETURNING id
 `
 
 type InsertQuoteParams struct {
-	UserID          int64   `json:"user_id"`
-	Name            string  `json:"name"`
-	Email           string  `json:"email"`
-	Mobile          string  `json:"mobile"`
-	Address         string  `json:"address"`
-	Description     string  `json:"description"`
-	TotalCost       float64 `json:"total_cost"`
-	Features        string  `json:"features"`
-	AiEstimate      string  `json:"ai_estimate"`
-	StripeSessionID string  `json:"stripe_session_id"`
-	Status          string  `json:"status"`
+	Name        string  `json:"name"`
+	Email       string  `json:"email"`
+	Mobile      string  `json:"mobile"`
+	Address     string  `json:"address"`
+	Description string  `json:"description"`
+	TotalCost   float64 `json:"total_cost"`
+	Features    string  `json:"features"`
+	VerifyToken string  `json:"verify_token"`
 }
 
 // Quotes
-func (q *Queries) InsertQuote(ctx context.Context, arg InsertQuoteParams) error {
-	_, err := q.db.ExecContext(ctx, insertQuote,
-		arg.UserID,
+func (q *Queries) InsertQuote(ctx context.Context, arg InsertQuoteParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertQuote,
 		arg.Name,
 		arg.Email,
 		arg.Mobile,
@@ -289,11 +308,11 @@ func (q *Queries) InsertQuote(ctx context.Context, arg InsertQuoteParams) error 
 		arg.Description,
 		arg.TotalCost,
 		arg.Features,
-		arg.AiEstimate,
-		arg.StripeSessionID,
-		arg.Status,
+		arg.VerifyToken,
 	)
-	return err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const listBookings = `-- name: ListBookings :many
@@ -322,55 +341,6 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 			&i.PreferredTime,
 			&i.Status,
 			&i.Ip,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listDraftsByUser = `-- name: ListDraftsByUser :many
-SELECT id, user_id, name, email, description, total_cost, status, created_at
-FROM quotes WHERE user_id = ? AND status = 'draft'
-ORDER BY created_at DESC
-`
-
-type ListDraftsByUserRow struct {
-	ID          int64   `json:"id"`
-	UserID      int64   `json:"user_id"`
-	Name        string  `json:"name"`
-	Email       string  `json:"email"`
-	Description string  `json:"description"`
-	TotalCost   float64 `json:"total_cost"`
-	Status      string  `json:"status"`
-	CreatedAt   string  `json:"created_at"`
-}
-
-func (q *Queries) ListDraftsByUser(ctx context.Context, userID int64) ([]ListDraftsByUserRow, error) {
-	rows, err := q.db.QueryContext(ctx, listDraftsByUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListDraftsByUserRow
-	for rows.Next() {
-		var i ListDraftsByUserRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Name,
-			&i.Email,
-			&i.Description,
-			&i.TotalCost,
-			&i.Status,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -459,51 +429,8 @@ func (q *Queries) ListOptionsByGroupID(ctx context.Context, groupID int64) ([]Qu
 	return items, nil
 }
 
-const listPaidByUser = `-- name: ListPaidByUser :many
-SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
-FROM quotes WHERE user_id = ? AND status = 'paid'
-ORDER BY created_at DESC
-`
-
-func (q *Queries) ListPaidByUser(ctx context.Context, userID int64) ([]Quote, error) {
-	rows, err := q.db.QueryContext(ctx, listPaidByUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Quote
-	for rows.Next() {
-		var i Quote
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Name,
-			&i.Email,
-			&i.Mobile,
-			&i.Address,
-			&i.Description,
-			&i.TotalCost,
-			&i.Features,
-			&i.AiEstimate,
-			&i.StripeSessionID,
-			&i.Status,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listQuotes = `-- name: ListQuotes :many
-SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, stripe_session_id, status, created_at
+SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, verify_token, verified_at, status, created_at
 FROM quotes ORDER BY created_at DESC
 `
 
@@ -527,7 +454,8 @@ func (q *Queries) ListQuotes(ctx context.Context) ([]Quote, error) {
 			&i.TotalCost,
 			&i.Features,
 			&i.AiEstimate,
-			&i.StripeSessionID,
+			&i.VerifyToken,
+			&i.VerifiedAt,
 			&i.Status,
 			&i.CreatedAt,
 		); err != nil {
@@ -544,6 +472,24 @@ func (q *Queries) ListQuotes(ctx context.Context) ([]Quote, error) {
 	return items, nil
 }
 
+const markQuoteVerified = `-- name: MarkQuoteVerified :execrows
+UPDATE quotes SET status = 'verified', ai_estimate = ?, verified_at = datetime('now')
+WHERE id = ? AND status = 'pending'
+`
+
+type MarkQuoteVerifiedParams struct {
+	AiEstimate string `json:"ai_estimate"`
+	ID         int64  `json:"id"`
+}
+
+func (q *Queries) MarkQuoteVerified(ctx context.Context, arg MarkQuoteVerifiedParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markQuoteVerified, arg.AiEstimate, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateBookingStatus = `-- name: UpdateBookingStatus :exec
 UPDATE bookings SET status = ? WHERE id = ?
 `
@@ -555,28 +501,6 @@ type UpdateBookingStatusParams struct {
 
 func (q *Queries) UpdateBookingStatus(ctx context.Context, arg UpdateBookingStatusParams) error {
 	_, err := q.db.ExecContext(ctx, updateBookingStatus, arg.Status, arg.ID)
-	return err
-}
-
-const updateQuoteStatus = `-- name: UpdateQuoteStatus :exec
-UPDATE quotes SET status = ?, stripe_session_id = ?, ai_estimate = ?
-WHERE id = ?
-`
-
-type UpdateQuoteStatusParams struct {
-	Status          string `json:"status"`
-	StripeSessionID string `json:"stripe_session_id"`
-	AiEstimate      string `json:"ai_estimate"`
-	ID              int64  `json:"id"`
-}
-
-func (q *Queries) UpdateQuoteStatus(ctx context.Context, arg UpdateQuoteStatusParams) error {
-	_, err := q.db.ExecContext(ctx, updateQuoteStatus,
-		arg.Status,
-		arg.StripeSessionID,
-		arg.AiEstimate,
-		arg.ID,
-	)
 	return err
 }
 

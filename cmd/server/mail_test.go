@@ -1,6 +1,7 @@
 package main
 
 import (
+	"html/template"
 	"strings"
 	"testing"
 
@@ -23,12 +24,43 @@ func TestMailTemplatesRender(t *testing.T) {
 			t.Errorf("%s: missing expected content:\n%s", name, out)
 		}
 	}
-	q := &db.Quote{ID: 3, Name: "Bob", Email: "bob@example.test", TotalCost: 199.5, Description: "An app"}
-	if _, err := renderMail("quote-paid", map[string]any{"Q": q}); err != nil {
-		t.Fatalf("quote-paid: %v", err)
+	q := &db.Quote{ID: 3, Name: "Bob <i>x</i>", Email: "bob@example.test", TotalCost: 199.5, Description: "An app",
+		AIEstimate: "<p><strong>$2,000–$3,000</strong></p>", VerifyToken: "tok"}
+	link := "https://example.test/quote/verify?t=tok"
+	data := map[string]any{"Q": q, "Link": link, "Estimate": template.HTML(q.AIEstimate)}
+	for _, name := range []string{"quote-verify", "quote-ready-admin", "quote-ready-customer"} {
+		out, err := renderMail(name, data)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if strings.Contains(out, "<i>x</i>") {
+			t.Errorf("%s: user input not escaped", name)
+		}
+		if !strings.Contains(out, link) {
+			t.Errorf("%s: missing link", name)
+		}
+		if name != "quote-verify" && !strings.Contains(out, "<strong>$2,000") {
+			t.Errorf("%s: estimate HTML should be rendered, not escaped:\n%s", name, out)
+		}
 	}
 	// nil mailer is a no-op everywhere
 	mail = nil
 	notifyBooking(1, b, false)
-	notifyQuotePaid(q)
+	sendQuoteVerification(q, link)
+	notifyQuoteVerified(q, link)
+}
+
+func TestValidEmail(t *testing.T) {
+	for in, want := range map[string]bool{
+		"":                       false,
+		"bob":                    false,
+		"bob@example.test":       true,
+		"Bob <bob@example.test>": false, // display-name form is not a plain address
+		"a@b":                    true,
+		"x@example.test\n":       false,
+	} {
+		if got := validEmail(in); got != want {
+			t.Errorf("validEmail(%q) = %v, want %v", in, got, want)
+		}
+	}
 }
