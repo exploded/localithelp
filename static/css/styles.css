@@ -1,18 +1,25 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-    --bg-deep: #060a14;
-    --bg-primary: #0a0e1a;
-    --bg-surface: #111827;
-    --bg-elevated: #1a2236;
-    --accent: #e8a020;
-    --accent-glow: rgba(232, 160, 32, 0.15);
-    --accent-dim: #b07818;
-    --text-primary: #eaedf2;
-    --text-secondary: #8892a4;
-    --text-muted: #4a5568;
-    --border: rgba(255,255,255,0.06);
-    --border-accent: rgba(232, 160, 32, 0.2);
+    /* Light, blue-led palette. Blue = brand/trust (labels, links, focus);
+       amber = action/warmth (CTA buttons, ticks, highlights). */
+    --bg-deep: #f4f6fa;        /* page ground / alternating sections */
+    --bg-primary: #ffffff;     /* main sections */
+    --bg-surface: #ffffff;     /* cards */
+    --bg-elevated: #eef2f7;    /* inputs, chips, code */
+    --brand: #1d4ed8;          /* blue-700, 6.3:1 on white */
+    --brand-dim: #1e40af;
+    --brand-tint: rgba(29, 78, 216, 0.07);
+    --border-brand: rgba(29, 78, 216, 0.35);
+    --accent: #b45309;         /* amber-700, 5.0:1 on white — safe as text */
+    --accent-glow: rgba(180, 83, 9, 0.22);
+    --accent-dim: #92400e;
+    --text-primary: #0f172a;
+    --text-secondary: #475569; /* 7.6:1 on white */
+    --text-muted: #5b6b82;     /* 5.3:1 on white, 4.8:1 on --bg-deep */
+    --border: rgba(15, 23, 42, 0.1);
+    --border-accent: rgba(180, 83, 9, 0.35);
+    color-scheme: light;
 }
 
 html { scroll-behavior: smooth; }
@@ -31,7 +38,7 @@ body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-image: radial-gradient(circle, rgba(15,23,42,0.07) 1px, transparent 1px);
     background-size: 32px 32px;
     pointer-events: none;
     z-index: 0;
@@ -44,12 +51,12 @@ body::before {
     height: 600px;
     border-radius: 50%;
     filter: blur(120px);
-    opacity: 0.07;
+    opacity: 0.12;
     pointer-events: none;
     z-index: 0;
 }
-.glow-orb--amber { background: var(--accent); top: -200px; right: -100px; }
-.glow-orb--blue { background: #2563eb; bottom: -200px; left: -100px; }
+.glow-orb--amber { background: #f59e0b; top: -200px; right: -100px; }
+.glow-orb--blue { background: #3b82f6; bottom: -200px; left: -100px; }
 
 .page-wrapper { position: relative; z-index: 1; }
 
@@ -64,7 +71,7 @@ nav {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(6, 10, 20, 0.8);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
@@ -77,19 +84,19 @@ nav {
     text-decoration: none;
     letter-spacing: -0.01em;
 }
-.nav-brand span { color: var(--accent); }
+.nav-brand span { color: var(--brand); }
 .nav-links { display: flex; gap: 2rem; align-items: center; }
 .nav-links a {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    font-weight: 400;
-    letter-spacing: 0.1em;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-secondary);
     text-decoration: none;
     transition: color 0.2s;
 }
-.nav-links a:hover, .nav-links a.active { color: var(--accent); }
+.nav-links a:hover, .nav-links a.active { color: var(--brand); }
 
 /* Nav user / Google login */
 .nav-user {
@@ -117,14 +124,14 @@ nav {
     background: none;
     border: none;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-muted);
     cursor: pointer;
     transition: color 0.2s;
 }
-.nav-logout-btn:hover { color: var(--accent); }
+.nav-logout-btn:hover { color: var(--brand); }
 
 .btn--google {
     display: inline-flex;
@@ -135,7 +142,7 @@ nav {
     border: 1px solid var(--border);
     border-radius: 4px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -161,11 +168,11 @@ section { padding: 6rem 2rem; }
 
 .section-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     font-weight: 500;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--brand);
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
@@ -175,7 +182,7 @@ section { padding: 6rem 2rem; }
     content: '';
     width: 24px;
     height: 1px;
-    background: var(--accent);
+    background: var(--brand);
 }
 
 .section-title {
@@ -193,8 +200,8 @@ section { padding: 6rem 2rem; }
     gap: 0.5rem;
     padding: 0.85rem 1.75rem;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.72rem;
-    font-weight: 500;
+    font-size: 0.78rem;
+    font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     text-decoration: none;
@@ -205,21 +212,22 @@ section { padding: 6rem 2rem; }
 }
 .btn--primary {
     background: var(--accent);
-    color: var(--bg-deep);
+    color: #ffffff;
 }
 .btn--primary:hover {
-    background: #f0b040;
-    box-shadow: 0 0 30px var(--accent-glow);
+    background: var(--accent-dim);
+    box-shadow: 0 6px 20px var(--accent-glow);
     transform: translateY(-1px);
 }
 .btn--ghost {
-    background: transparent;
-    color: var(--text-secondary);
-    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid rgba(15, 23, 42, 0.18);
 }
 .btn--ghost:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-tint);
 }
 
 /* ── Hero ── */
@@ -233,10 +241,10 @@ section { padding: 6rem 2rem; }
 .hero-content { max-width: 800px; }
 .hero-overline {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.78rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--brand);
     margin-bottom: 1.5rem;
     opacity: 0;
     animation: fadeUp 0.8s 0.2s forwards;
@@ -253,7 +261,7 @@ section { padding: 6rem 2rem; }
 }
 .hero h1 em {
     font-style: italic;
-    color: var(--accent);
+    color: var(--brand);
 }
 .hero-desc {
     font-size: 1.15rem;
@@ -313,6 +321,7 @@ section { padding: 6rem 2rem; }
     transition: all 0.3s;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04);
 }
 .service-card::before {
     content: '';
@@ -328,13 +337,13 @@ section { padding: 6rem 2rem; }
 .service-card:hover {
     border-color: var(--border-accent);
     transform: translateY(-3px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    box-shadow: 0 12px 32px rgba(15,23,42,0.1);
 }
 .service-card:hover::before { opacity: 1; }
 .service-icon {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--accent);
+    font-size: 0.72rem;
+    color: var(--brand);
     letter-spacing: 0.15em;
     margin-bottom: 1.25rem;
     display: flex;
@@ -345,7 +354,7 @@ section { padding: 6rem 2rem; }
     content: '';
     width: 8px;
     height: 8px;
-    border: 1.5px solid var(--accent);
+    border: 1.5px solid var(--brand);
     border-radius: 2px;
     display: inline-block;
 }
@@ -357,7 +366,7 @@ section { padding: 6rem 2rem; }
 }
 .service-card p {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     line-height: 1.7;
 }
 
@@ -406,7 +415,7 @@ section { padding: 6rem 2rem; }
 .contact-email {
     font-family: 'JetBrains Mono', monospace;
     font-size: 1rem;
-    color: var(--accent);
+    color: var(--brand);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -426,7 +435,7 @@ section { padding: 6rem 2rem; }
 }
 .contact-detail-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--text-muted);
@@ -441,7 +450,7 @@ section { padding: 6rem 2rem; }
     text-decoration: none;
     transition: color 0.2s;
 }
-.contact-detail-value a:hover { color: var(--accent); }
+.contact-detail-value a:hover { color: var(--brand); }
 
 /* ── Portfolio page ── */
 .page-header {
@@ -478,7 +487,7 @@ section { padding: 6rem 2rem; }
     border-color: var(--border-accent);
     background: var(--bg-elevated);
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    box-shadow: 0 8px 24px rgba(15,23,42,0.08);
 }
 .project-card-header {
     display: flex;
@@ -498,12 +507,12 @@ section { padding: 6rem 2rem; }
     font-size: 1.1rem;
 }
 .project-card:hover .arrow {
-    color: var(--accent);
+    color: var(--brand);
     transform: translate(3px, -3px);
 }
 .project-card .domain {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--accent-dim);
     letter-spacing: 0.03em;
     margin-bottom: 0.6rem;
@@ -516,11 +525,11 @@ section { padding: 6rem 2rem; }
 .project-tag {
     display: inline-block;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
+    font-size: 0.68rem;
     letter-spacing: 0.05em;
     padding: 0.2rem 0.5rem;
-    background: rgba(232, 160, 32, 0.08);
-    border: 1px solid rgba(232, 160, 32, 0.12);
+    background: rgba(180, 83, 9, 0.08);
+    border: 1px solid rgba(180, 83, 9, 0.2);
     border-radius: 3px;
     color: var(--accent-dim);
     margin-top: 0.75rem;
@@ -561,7 +570,7 @@ section { padding: 6rem 2rem; }
     transition: all 0.2s;
 }
 .domain-chip:hover .chip-arrow {
-    color: var(--accent);
+    color: var(--brand);
     transform: translate(2px, -2px);
 }
 
@@ -602,7 +611,7 @@ section { padding: 6rem 2rem; }
 .quote-field label {
     display: block;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.74rem;
     font-weight: 500;
     letter-spacing: 0.15em;
     text-transform: uppercase;
@@ -620,15 +629,16 @@ section { padding: 6rem 2rem; }
     border-radius: 4px;
     color: var(--text-primary);
     font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
-    transition: border-color 0.2s;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .quote-field input:focus,
 .quote-field select:focus,
 .quote-field textarea:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-tint);
 }
 
 .quote-field input::placeholder,
@@ -648,7 +658,7 @@ section { padding: 6rem 2rem; }
 .quote-field select {
     appearance: none;
     -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238892a4' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23475569' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 1rem center;
     padding-right: 2.5rem;
@@ -661,15 +671,15 @@ section { padding: 6rem 2rem; }
 .field-error {
     display: block;
     margin-top: 0.4rem;
-    font-size: 0.78rem;
-    color: #fca5a5;
+    font-size: 0.82rem;
+    color: #b91c1c;
 }
 .form-alert {
     padding: 0.85rem 1.1rem;
     border-radius: 6px;
-    background: rgba(220, 38, 38, 0.1);
-    border: 1px solid rgba(220, 38, 38, 0.3);
-    color: #fca5a5;
+    background: #fef2f2;
+    border: 1px solid rgba(185, 28, 28, 0.35);
+    color: #991b1b;
     font-size: 0.9rem;
     margin-bottom: 1.5rem;
 }
@@ -692,7 +702,7 @@ section { padding: 6rem 2rem; }
 
 .quote-option-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.76rem;
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -735,8 +745,9 @@ section { padding: 6rem 2rem; }
 }
 
 .quote-option input:checked + .quote-option-card {
-    border-color: var(--accent);
-    background: rgba(232, 160, 32, 0.06);
+    border-color: var(--brand);
+    background: var(--brand-tint);
+    box-shadow: inset 0 0 0 1px var(--brand);
 }
 
 .quote-option-card:hover {
@@ -744,14 +755,14 @@ section { padding: 6rem 2rem; }
 }
 
 .quote-option-name {
-    font-size: 0.85rem;
+    font-size: 0.92rem;
     color: var(--text-primary);
     white-space: nowrap;
 }
 
 .quote-option-cost {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.76rem;
     color: var(--accent-dim);
 }
 
@@ -823,13 +834,13 @@ section { padding: 6rem 2rem; }
 
 .quote-estimate-header {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     font-weight: 500;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--accent);
     padding: 0.75rem 1.25rem;
-    background: rgba(232, 160, 32, 0.04);
+    background: rgba(180, 83, 9, 0.05);
     border-bottom: 1px solid var(--border);
 }
 
@@ -920,7 +931,7 @@ footer {
     gap: 1rem;
 }
 .footer-copy {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--text-muted);
 }
 .footer-links {
@@ -930,13 +941,13 @@ footer {
 }
 .footer-links a {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.74rem;
     letter-spacing: 0.05em;
     color: var(--text-muted);
     text-decoration: none;
     transition: color 0.2s;
 }
-.footer-links a:hover { color: var(--accent); }
+.footer-links a:hover { color: var(--brand); }
 
 /* ── Animations ── */
 @keyframes fadeUp {
@@ -961,14 +972,16 @@ footer {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-    nav { padding: 1rem 1.25rem; }
-    .nav-links { gap: 1.25rem; flex-wrap: wrap; }
-    .nav-links a { font-size: 0.6rem; }
+    nav { padding: 0.75rem 1.25rem; flex-wrap: wrap; row-gap: 0.5rem; }
+    .nav-brand { white-space: nowrap; font-size: 1.25rem; }
+    /* Brand + sign-in on row one, links on their own row underneath */
+    .nav-links { order: 3; width: 100%; gap: 0.5rem 1rem; flex-wrap: wrap; }
+    .nav-links a { font-size: 0.7rem; }
     .nav-user-name { display: none; }
     .nav-user { margin-left: 0; padding-left: 0.5rem; }
-    .btn--google { margin-left: 0; font-size: 0.6rem; padding: 0.4rem 0.75rem; }
+    .btn--google { margin-left: 0; font-size: 0.68rem; padding: 0.4rem 0.75rem; }
     section { padding: 4rem 1.25rem; }
-    .hero { min-height: 90vh; padding-top: 6rem; }
+    .hero { min-height: 90vh; padding-top: 8.5rem; }
     .hero-decoration { display: none; }
     .portfolio-cta { flex-direction: column; align-items: flex-start; padding: 2rem; }
     .contact-inner {
@@ -976,7 +989,7 @@ footer {
         gap: 2.5rem;
     }
     .services-grid { grid-template-columns: 1fr; }
-    .page-header { padding: 6rem 1.25rem 3rem; }
+    .page-header { padding: 8.5rem 1.25rem 3rem; }
     .portfolio-section { padding: 3rem 1.25rem 4rem; }
     .domains-section { padding: 2rem 1.25rem 4rem; }
     .portfolio-grid { grid-template-columns: 1fr; }
@@ -1008,9 +1021,9 @@ footer {
     margin-bottom: 1.25rem;
 }
 .admin-alert--error {
-    background: rgba(220, 38, 38, 0.1);
-    border: 1px solid rgba(220, 38, 38, 0.25);
-    color: #fca5a5;
+    background: #fef2f2;
+    border: 1px solid rgba(185, 28, 28, 0.35);
+    color: #991b1b;
 }
 
 .admin-group {
@@ -1046,7 +1059,7 @@ footer {
 
 .admin-field label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.55rem;
+    font-size: 0.65rem;
     font-weight: 500;
     letter-spacing: 0.15em;
     text-transform: uppercase;
@@ -1066,7 +1079,7 @@ footer {
 }
 .admin-input:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: var(--brand);
 }
 
 .admin-table {
@@ -1077,7 +1090,7 @@ footer {
 
 .admin-table th {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.55rem;
+    font-size: 0.65rem;
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -1108,11 +1121,11 @@ footer {
 .admin-table input[type="text"]:focus,
 .admin-table input[type="number"]:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: var(--brand);
 }
 
 .admin-table input[type="radio"] {
-    accent-color: var(--accent);
+    accent-color: var(--brand);
     width: 14px;
     height: 14px;
     cursor: pointer;
@@ -1135,8 +1148,8 @@ footer {
 }
 .btn-icon:hover {
     border-color: #dc2626;
-    color: #fca5a5;
-    background: rgba(220, 38, 38, 0.1);
+    color: #b91c1c;
+    background: #fef2f2;
 }
 
 .admin-actions {
@@ -1157,14 +1170,14 @@ footer {
     text-align: center;
 }
 .admin-status--success {
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid rgba(34, 197, 94, 0.25);
-    color: #86efac;
+    background: #dcfce7;
+    border: 1px solid rgba(22, 101, 52, 0.3);
+    color: #166534;
 }
 .admin-status--error {
-    background: rgba(220, 38, 38, 0.1);
-    border: 1px solid rgba(220, 38, 38, 0.25);
-    color: #fca5a5;
+    background: #fef2f2;
+    border: 1px solid rgba(185, 28, 28, 0.35);
+    color: #991b1b;
 }
 
 .admin-heading {
@@ -1203,12 +1216,12 @@ footer {
 .admin-quotes-table td {
     padding: 0.6rem 0.75rem;
     font-size: 0.85rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
     color: var(--text-primary);
 }
 
 .admin-quotes-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(15, 23, 42, 0.03);
 }
 
 .status-badge {
@@ -1222,15 +1235,15 @@ footer {
 }
 
 .status-badge--paid {
-    background: rgba(34, 197, 94, 0.15);
-    color: #86efac;
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid rgba(22, 101, 52, 0.3);
 }
 
 .status-badge--draft {
-    background: rgba(234, 179, 8, 0.15);
-    color: #fde047;
-    border: 1px solid rgba(234, 179, 8, 0.3);
+    background: #fef9c3;
+    color: #854d0e;
+    border: 1px solid rgba(133, 77, 14, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -1261,8 +1274,8 @@ footer {
     transition: border-color 0.2s, background 0.2s;
 }
 .draft-card:hover {
-    border-color: var(--accent);
-    background: rgba(232, 160, 32, 0.05);
+    border-color: var(--brand);
+    background: var(--brand-tint);
 }
 .draft-desc {
     font-size: 0.9rem;
@@ -1281,7 +1294,7 @@ footer {
 .quote-field-readonly {
     opacity: 0.7;
     cursor: not-allowed;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(15, 23, 42, 0.04);
 }
 
 /* My Quotes page */
@@ -1321,11 +1334,11 @@ footer {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: 1px solid var(--accent-dim);
+    border: 1px solid var(--brand);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.55rem;
+    font-size: 0.6rem;
     font-weight: 600;
-    color: var(--accent-dim);
+    color: var(--brand);
     cursor: help;
     vertical-align: middle;
     margin-left: 0.4rem;
@@ -1334,9 +1347,9 @@ footer {
 }
 .tip::before { content: '?'; }
 .tip:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(232, 160, 32, 0.1);
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-tint);
 }
 .tip::after {
     content: attr(data-tip);
@@ -1360,7 +1373,7 @@ footer {
     opacity: 0;
     transition: opacity 0.2s;
     z-index: 200;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    box-shadow: 0 8px 24px rgba(15,23,42,0.15);
 }
 .tip:hover::after {
     opacity: 1;
@@ -1385,11 +1398,11 @@ footer {
 /* ── Nav extras ── */
 .nav-links a.nav-cta {
     padding: 0.5rem 1rem;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     margin-left: 0.25rem;
-    color: var(--bg-deep);
+    color: #ffffff;
 }
-.nav-links a.nav-cta:hover { color: var(--bg-deep); }
+.nav-links a.nav-cta:hover { color: #ffffff; }
 .nav-phone {
     color: var(--accent) !important;
     font-weight: 500;
@@ -1406,7 +1419,7 @@ footer {
 }
 .hero-points li {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.78rem;
     letter-spacing: 0.06em;
     color: var(--text-secondary);
     display: flex;
@@ -1429,7 +1442,7 @@ footer {
     max-width: 640px;
     margin-bottom: 1rem;
 }
-.section-intro a { color: var(--accent); }
+.section-intro a { color: var(--brand); }
 .crumb { color: inherit; text-decoration: none; }
 .crumb:hover { text-decoration: underline; }
 
@@ -1445,15 +1458,15 @@ a.service-card {
     display: inline-block;
     margin-top: 1.25rem;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--brand);
 }
 .service-card--featured {
     grid-column: 1 / -1;
     border-color: var(--border-accent);
-    background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(232, 160, 32, 0.07) 100%);
+    background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(180, 83, 9, 0.06) 100%);
 }
 .service-card--featured::before { opacity: 1; }
 .service-card--featured h3 { font-size: 1.85rem; }
@@ -1484,9 +1497,9 @@ a.service-card {
 }
 .step-num {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     letter-spacing: 0.2em;
-    color: var(--accent);
+    color: var(--brand);
     margin-bottom: 0.75rem;
 }
 .step h3 {
@@ -1495,7 +1508,7 @@ a.service-card {
     font-weight: 400;
     margin-bottom: 0.5rem;
 }
-.step p { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; }
+.step p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.7; }
 
 /* ── Pricing ── */
 .pricing-section { background: var(--bg-deep); border-top: 1px solid var(--border); }
@@ -1510,14 +1523,15 @@ a.service-card {
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1.75rem 2rem;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04);
 }
 .price-card--highlight { border-color: var(--border-accent); }
 .price-card-kicker {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--brand);
     margin-bottom: 0.75rem;
 }
 .price-card-amount {
@@ -1589,7 +1603,7 @@ a.service-card {
 }
 .package-from {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-muted);
@@ -1613,7 +1627,7 @@ a.service-card {
 }
 .payment-label, .payment-note {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--text-muted);
@@ -1663,7 +1677,7 @@ a.service-card {
     color: var(--text-secondary);
     background: var(--bg-surface);
 }
-.area-chip:first-child { border-color: var(--accent); color: var(--accent); }
+.area-chip:first-child { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
 .area-note {
     margin-top: 1.5rem;
     color: var(--text-secondary);
@@ -1739,7 +1753,7 @@ a.service-card {
 }
 .aside-guarantees li {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.68rem;
+    font-size: 0.74rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-secondary);
@@ -1759,7 +1773,7 @@ a.service-card {
     line-height: 1.6;
     padding: 0 0.25rem;
 }
-.aside-area a { color: var(--text-secondary); }
+.aside-area a { color: var(--brand); }
 .aside-steps {
     padding-left: 1.2rem;
     color: var(--text-secondary);
@@ -1801,7 +1815,7 @@ a.service-card {
     text-decoration: none;
     text-align: center;
 }
-.book-cta-email:hover { color: var(--accent); }
+.book-cta-email:hover { color: var(--brand); }
 
 /* ── Book page ── */
 .book-layout {
@@ -1819,15 +1833,15 @@ a.service-card {
 
 .td-wrap { white-space: normal; min-width: 260px; max-width: 420px; }
 .status-badge--new {
-    background: rgba(59, 130, 246, 0.15);
-    color: #93c5fd;
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid rgba(30, 64, 175, 0.3);
 }
 .status-badge--spam,
 .status-badge--contacted,
 .status-badge--booked,
 .status-badge--done {
-    background: rgba(255,255,255,0.05);
+    background: rgba(15,23,42,0.05);
     color: var(--text-secondary);
     border: 1px solid var(--border);
 }
@@ -1861,7 +1875,7 @@ a.service-card {
     gap: 1.5rem;
     padding: 1.25rem 1.5rem;
     margin-bottom: 2.5rem;
-    background: linear-gradient(135deg, rgba(232, 160, 32, 0.12), rgba(232, 160, 32, 0.04));
+    background: linear-gradient(135deg, rgba(180, 83, 9, 0.1), rgba(180, 83, 9, 0.03));
     border: 1px solid var(--border-accent);
     border-radius: 10px;
     color: var(--text-secondary);
@@ -1869,7 +1883,7 @@ a.service-card {
     line-height: 1.6;
 }
 .help-banner strong { color: var(--text-primary); }
-.help-banner a:not(.btn) { color: var(--accent); }
+.help-banner a:not(.btn) { color: var(--brand); }
 .help-banner-actions { display: flex; gap: 0.75rem; flex-shrink: 0; }
 .help-banner--slim { padding: 0.9rem 1.25rem; margin-bottom: 2rem; font-size: 0.9rem; }
 .guide-group + .guide-group { margin-top: 3rem; }
@@ -1890,7 +1904,7 @@ a.service-card {
     color: inherit;
     transition: all 0.3s;
 }
-.guide-card:hover { border-color: var(--border-accent); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+.guide-card:hover { border-color: var(--border-accent); transform: translateY(-3px); box-shadow: 0 12px 32px rgba(15,23,42,0.1); }
 .guide-card h3 {
     font-family: 'Instrument Serif', serif;
     font-size: 1.35rem;
@@ -1906,12 +1920,12 @@ a.service-card {
     gap: 0.5rem;
     margin-bottom: 0.9rem;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.62rem;
+    font-size: 0.7rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
 }
 .guide-card-meta--header { margin: 1rem 0 0; }
-.guide-kicker { color: var(--accent); }
+.guide-kicker { color: var(--brand); }
 .guide-time { color: var(--text-muted); }
 .guide-level {
     padding: 0.15rem 0.5rem;
@@ -1919,8 +1933,8 @@ a.service-card {
     border: 1px solid var(--border);
     color: var(--text-secondary);
 }
-.guide-level--easy { color: #86efac; border-color: rgba(34,197,94,0.3); }
-.guide-level--fiddly { color: #fde047; border-color: rgba(234,179,8,0.3); }
+.guide-level--easy { color: #166534; border-color: rgba(22,101,52,0.35); background: #dcfce7; }
+.guide-level--fiddly { color: #854d0e; border-color: rgba(133,77,14,0.35); background: #fef9c3; }
 .guide-title { max-width: 820px; }
 .guide-before {
     padding: 1rem 1.25rem;
@@ -1961,8 +1975,8 @@ a.service-card {
     width: 1.7rem;
     height: 1.7rem;
     border-radius: 50%;
-    background: var(--accent);
-    color: var(--bg-deep);
+    background: var(--brand);
+    color: #ffffff;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.8rem;
     font-weight: 600;
@@ -1970,7 +1984,7 @@ a.service-card {
     align-items: center;
     justify-content: center;
 }
-.guide-steps a, .checklist a, .guide-stop a:not(.btn) { color: var(--accent); }
+.guide-steps a, .checklist a, .guide-stop a:not(.btn) { color: var(--brand); }
 .guide-steps code, .guide-steps kbd {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.85em;
@@ -1998,7 +2012,7 @@ a.service-card {
 .aside-service-title { font-family: 'Instrument Serif', serif; font-size: 1.3rem; margin-bottom: 0.4rem; }
 .aside-links ul { list-style: none; padding: 0.25rem; margin: 0; display: grid; gap: 0.5rem; }
 .aside-links a { color: var(--text-secondary); font-size: 0.88rem; text-decoration: none; line-height: 1.4; }
-.aside-links a:hover { color: var(--accent); }
+.aside-links a:hover { color: var(--brand); }
 @media (max-width: 768px) {
     .help-banner { flex-direction: column; align-items: flex-start; }
     .guides-section { padding: 2rem 1.25rem 4rem; }
