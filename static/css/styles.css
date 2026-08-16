@@ -1621,6 +1621,43 @@ a.service-card {
     font-size: 0.9rem;
     max-width: 640px;
 }
+.areas-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2.5rem;
+    margin-top: 2rem;
+    align-items: start;
+}
+.areas-grid .area-list { margin-top: 0; }
+.area-map {
+    height: 380px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    overflow: hidden;
+    isolation: isolate; /* keep Leaflet panes under the sticky nav */
+}
+.area-map.leaflet-container { font-family: inherit; }
+.area-map-caption {
+    margin-top: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+.area-map-label { background: none; border: 0; pointer-events: none; }
+.area-map-label span {
+    position: absolute;
+    left: 0; top: 0;
+    transform: translate(-50%, -50%);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--brand);
+    white-space: nowrap;
+    text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff;
+}
+@media (max-width: 900px) {
+    .areas-grid { grid-template-columns: 1fr; gap: 1.75rem; }
+    .area-map { height: 300px; }
+}
 
 /* ── Service detail page ── */
 .service-section { padding: 4rem 2rem; }

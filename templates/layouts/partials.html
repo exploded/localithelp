@@ -61,10 +61,18 @@
 
 {{/* areas: takes .Site */}}
 {{define "areas"}}
-<div class="area-list">
-    {{range .Suburbs}}<span class="area-chip">{{.}}</span>{{end}}
+<div class="areas-grid">
+    <div class="area-map-wrap">
+        <div id="area-map" class="area-map" role="img" aria-label="Map of Melbourne's eastern suburbs with a shaded circle showing the approximate service area around Donvale"></div>
+        <p class="area-map-caption">Approximate service area — roughly 30 minutes' drive from Donvale.</p>
+    </div>
+    <div>
+        <div class="area-list">
+            {{range .Suburbs}}<span class="area-chip">{{.}}</span>{{end}}
+        </div>
+        <p class="area-note">A bit further out? Ask — I can usually make it work.</p>
+    </div>
 </div>
-<p class="area-note">Roughly 30 minutes' drive from Donvale. A bit further out? Ask — I can usually make it work.</p>
 {{end}}
 
 {{/* book-cta: takes .Site */}}
