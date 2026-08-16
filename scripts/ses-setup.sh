@@ -3,7 +3,9 @@
 #
 # What it does (idempotent — safe to re-run):
 #   1. Creates IAM user `mchugh-au-mailer` with a send-only policy limited to
-#      the mchugh.com.au SES identities, and an access key for it.
+#      the mchugh.com.au SES identities (plus any configuration set, since a
+#      default set attached to an identity is also authorised on send), and an
+#      access key for it.
 #   2. Ensures the SES domain identity `mchugh.com.au` exists (Easy DKIM).
 #   3. If CF_TOKEN is set (Cloudflare API token with Zone:DNS:Edit on
 #      mchugh.com.au), adds the 3 DKIM CNAME records; otherwise prints them.
@@ -40,7 +42,8 @@ POLICY_DOC=$(cat <<JSON
     "Action": ["ses:SendEmail", "ses:SendRawEmail"],
     "Resource": [
       "arn:aws:ses:${REGION}:${ACCOUNT}:identity/${FROM_ADDR}",
-      "arn:aws:ses:${REGION}:${ACCOUNT}:identity/${DOMAIN}"
+      "arn:aws:ses:${REGION}:${ACCOUNT}:identity/${DOMAIN}",
+      "arn:aws:ses:${REGION}:${ACCOUNT}:configuration-set/*"
     ]
   }]
 }
