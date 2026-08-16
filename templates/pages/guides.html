@@ -1,0 +1,55 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Fix It Yourself — Free Step-by-Step Computer Help Guides | James McHugh, Donvale</title>
+    <meta name="description" content="Plain-English guides for the problems I get called out for most: scam calls, fake pop-ups, no internet, printers offline, email, Windows 11, slow PCs, lockouts and backups. If it's too hard, book a visit.">
+    <meta property="og:title" content="Fix it yourself — free computer help guides">
+    <meta property="og:description" content="Safe, plain-English steps for the most common computer problems. And if it's too hard, I'll come to you.">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Fix it yourself</div>
+            <h1 class="section-title">Try these first — no charge.</h1>
+            <p class="page-header-intro">Plain-English steps for the problems I get called out for most. Nothing here will make things worse if you follow it, and every guide says when to stop.</p>
+        </div>
+    </div>
+
+    <section class="guides-section">
+        <div class="container">
+            <div class="help-banner reveal">
+                <div>
+                    <strong>Too hard, or not working?</strong> That's fine — that's what I'm for. Book a visit and I'll sort it at your place, usually same or next day.
+                </div>
+                <div class="help-banner-actions">
+                    <a href="/book" class="btn btn--primary">Book a visit &#8594;</a>
+                    {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost">Call {{.Site.Phone}}</a>{{end}}
+                </div>
+            </div>
+
+            {{range .PageData.Groups}}
+            <div class="guide-group">
+                <div class="section-label reveal">{{.Kicker}}</div>
+                <div class="guides-grid">
+                    {{range .Guides}}
+                    <a href="/fix-it-yourself/{{.Slug}}" class="guide-card reveal">
+                        <div class="guide-card-meta">
+                            <span class="guide-level guide-level--{{if eq .Level "Easy"}}easy{{else}}fiddly{{end}}">{{.Level}}</span>
+                            <span class="guide-time">{{.Time}}</span>
+                        </div>
+                        <h3>{{.Title}}</h3>
+                        <p>{{.Summary}}</p>
+                        <span class="service-card-more">Read the steps &#8594;</span>
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">{{template "book-cta" .Site}}</div>
+    </section>
+{{end}}

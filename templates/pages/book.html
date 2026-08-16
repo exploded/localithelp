@@ -1,0 +1,114 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Book a Visit — James McHugh, Donvale VIC</title>
+    <meta name="description" content="Book at-home computer help around Donvale and Melbourne's east. Tell me what's wrong and when suits.">
+    <meta property="og:title" content="Book computer help — Donvale &amp; Melbourne's east">
+    <meta property="og:description" content="At your place, same or next day where possible. No fix, no fee.">
+{{end}}
+
+{{define "content"}}
+    {{$f := .PageData.Form}}
+    {{$e := .PageData.Errors}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Book</div>
+            <h1 class="section-title">Book a visit.</h1>
+            <p class="page-header-intro">A sentence or two about the problem is plenty. I'll get back to you{{if .Site.Phone}} by phone or email{{end}} to confirm a time — usually the same or next day.</p>
+        </div>
+    </div>
+
+    <section class="quote-section book-section">
+        <div class="container">
+            <div class="book-layout">
+                <form method="POST" action="/book" class="book-form" novalidate>
+                    <input type="hidden" name="ts" value="{{.PageData.TS}}">
+                    <div class="hp-field" aria-hidden="true">
+                        <label for="website">Website</label>
+                        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                    </div>
+
+                    {{if $e}}
+                    <div class="form-alert" role="alert">
+                        Please check the highlighted fields below.
+                        {{with $e.contact}}<div>{{.}}</div>{{end}}
+                    </div>
+                    {{end}}
+
+                    <div class="quote-group">
+                        <h2 class="quote-group-title">Your details</h2>
+                        <div class="quote-fields">
+                            <div class="quote-field{{if $e.name}} quote-field--error{{end}}">
+                                <label for="name">Name</label>
+                                <input type="text" id="name" name="name" required maxlength="100" autocomplete="name" value="{{$f.Name}}">
+                                {{with $e.name}}<span class="field-error">{{.}}</span>{{end}}
+                            </div>
+                            <div class="quote-field{{if or $e.phone $e.contact}} quote-field--error{{end}}">
+                                <label for="phone">Phone</label>
+                                <input type="tel" id="phone" name="phone" maxlength="40" autocomplete="tel" placeholder="04xx xxx xxx" value="{{$f.Phone}}">
+                                {{with $e.phone}}<span class="field-error">{{.}}</span>{{end}}
+                            </div>
+                            <div class="quote-field{{if or $e.email $e.contact}} quote-field--error{{end}}">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" maxlength="120" autocomplete="email" placeholder="you@example.com" value="{{$f.Email}}">
+                                {{with $e.email}}<span class="field-error">{{.}}</span>{{end}}
+                            </div>
+                            <div class="quote-field{{if $e.suburb}} quote-field--error{{end}}">
+                                <label for="suburb">Suburb</label>
+                                <input type="text" id="suburb" name="suburb" maxlength="80" autocomplete="address-level2" placeholder="e.g. Donvale" value="{{$f.Suburb}}">
+                                {{with $e.suburb}}<span class="field-error">{{.}}</span>{{end}}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="quote-group">
+                        <h2 class="quote-group-title">The problem</h2>
+                        <div class="quote-fields">
+                            <div class="quote-field">
+                                <label for="service">What's it about?</label>
+                                <select id="service" name="service">
+                                    <option value=""{{if not $f.Service}} selected{{end}}>Not sure / something else</option>
+                                    {{range .PageData.Services}}
+                                    <option value="{{.Slug}}"{{if eq .Slug $f.Service}} selected{{end}}>{{.Title}}</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                            <div class="quote-field">
+                                <label for="preferred_time">When suits you?</label>
+                                <input type="text" id="preferred_time" name="preferred_time" maxlength="200" placeholder="e.g. Tue or Wed morning, or ASAP" value="{{$f.PreferredTime}}">
+                            </div>
+                        </div>
+                        <div class="quote-field quote-field--full{{if $e.issue}} quote-field--error{{end}}">
+                            <label for="issue">What's going wrong?</label>
+                            <textarea id="issue" name="issue" rows="5" required maxlength="2000" placeholder="e.g. Outlook stopped sending emails yesterday on my Windows 11 desktop; the printer is fine.">{{$f.Issue}}</textarea>
+                            {{with $e.issue}}<span class="field-error">{{.}}</span>{{end}}
+                        </div>
+                    </div>
+
+                    <div class="book-submit">
+                        <button type="submit" class="btn btn--primary quote-btn">Send booking request &#8594;</button>
+                        <p class="quote-submit-note">No payment now. I'll confirm a time and the expected cost before anything is booked in.</p>
+                    </div>
+                </form>
+
+                <aside class="service-aside book-aside">
+                    <div class="price-card">
+                        <div class="price-card-kicker">What happens next</div>
+                        <ol class="aside-steps">
+                            <li>I read your request and get back to you, usually within a couple of hours during the day.</li>
+                            <li>We agree a fixed time — same or next day where possible.</li>
+                            <li>I fix it, explain what happened, and you tap your card at the end of the visit.</li>
+                        </ol>
+                    </div>
+                    <ul class="aside-guarantees">
+                        <li>No fix, no fee</li>
+                        <li>14-day work guarantee</li>
+                        <li>No call-out fee in the service area</li>
+                    </ul>
+                    {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost aside-btn">Prefer to call? {{.Site.Phone}}</a>{{end}}
+                    <p class="aside-area">Or email <a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a></p>
+                </aside>
+            </div>
+        </div>
+    </section>
+{{end}}

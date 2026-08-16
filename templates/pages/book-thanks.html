@@ -1,0 +1,32 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Thanks — Booking Request Received | James McHugh</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Booking request sent</div>
+            <h1 class="section-title">Thanks — I'll be in touch shortly.</h1>
+            <p class="page-header-intro">I usually reply within a couple of hours during the day to confirm a time and the expected cost. If it's urgent{{if .Site.Phone}}, call <a href="{{.Site.PhoneHref}}">{{.Site.Phone}}</a>{{else}}, email <a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a>{{end}}.</p>
+        </div>
+    </div>
+    <section class="quote-section">
+        <div class="container">
+            <div class="quote-group">
+                <h2 class="quote-group-title">In the meantime</h2>
+                <ul class="checklist">
+                    <li>If the computer is on and something looks suspicious, disconnect it from the internet and leave it — don't try more fixes.</li>
+                    <li>Have any passwords you might need handy (email, Microsoft, Wi-Fi) — I'll never ask you to read them out over the phone.</li>
+                    <li>If it's a printer or Wi-Fi job, know where the modem/router lives.</li>
+                </ul>
+                <div class="hero-actions" style="margin-top:2rem">
+                    <a href="/" class="btn btn--ghost">Back to home</a>
+                    <a href="/services" class="btn btn--ghost">Browse services</a>
+                </div>
+            </div>
+        </div>
+    </section>
+{{end}}

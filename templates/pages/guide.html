@@ -1,0 +1,89 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>{{.PageData.G.Title}} — Fix It Yourself | James McHugh</title>
+    <meta name="description" content="{{.PageData.G.MetaDesc}}">
+    <meta property="og:title" content="{{.PageData.G.Title}}">
+    <meta property="og:description" content="{{.PageData.G.MetaDesc}}">
+{{end}}
+
+{{define "content"}}
+    {{$g := .PageData.G}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label"><a href="/fix-it-yourself" class="crumb">Fix it yourself</a> &middot; {{$g.Kicker}}</div>
+            <h1 class="section-title guide-title">{{$g.Title}}</h1>
+            <p class="page-header-intro">{{$g.Summary}}</p>
+            <div class="guide-card-meta guide-card-meta--header">
+                <span class="guide-level guide-level--{{if eq $g.Level "Easy"}}easy{{else}}fiddly{{end}}">{{$g.Level}}</span>
+                <span class="guide-time">About {{$g.Time}}</span>
+            </div>
+        </div>
+    </div>
+
+    <section class="service-section">
+        <div class="container">
+            <div class="help-banner help-banner--slim reveal">
+                <div><strong>Too hard?</strong> No problem — <a href="/book{{with $g.RelatedService}}?service={{.Slug}}{{end}}">book a visit</a>{{if $.Site.Phone}} or call <a href="{{$.Site.PhoneHref}}">{{$.Site.Phone}}</a>{{end}} and I'll do it with you.</div>
+            </div>
+
+            <div class="service-layout">
+                <div class="service-body guide-body">
+                    {{if $g.Before}}
+                    <div class="guide-before">
+                        <strong>Before you start:</strong> {{safeHTML $g.Before}}
+                    </div>
+                    {{end}}
+
+                    <h2>Steps</h2>
+                    <ol class="guide-steps">
+                        {{range $g.Steps}}<li>{{.}}</li>{{end}}
+                    </ol>
+
+                    {{if $g.IfNot}}
+                    <h2>If that didn't work</h2>
+                    <ul class="checklist checklist--plain">
+                        {{range $g.IfNot}}<li>{{.}}</li>{{end}}
+                    </ul>
+                    {{end}}
+
+                    <div class="guide-stop">
+                        <div class="guide-stop-title">When to stop and call</div>
+                        <p>{{$g.StopWhen}}</p>
+                        <a href="/book{{with $g.RelatedService}}?service={{.Slug}}{{end}}" class="btn btn--primary">Book a visit &#8594;</a>
+                    </div>
+                </div>
+
+                <aside class="service-aside">
+                    {{with $g.RelatedService}}
+                    <div class="price-card">
+                        <div class="price-card-kicker">Related service</div>
+                        <div class="aside-service-title">{{.Title}}</div>
+                        <p class="price-card-note">{{.Short}}</p>
+                        <a href="{{.URL}}" class="btn btn--ghost aside-btn">About this service &#8594;</a>
+                    </div>
+                    {{end}}
+                    <div class="price-card price-card--highlight">
+                        <div class="price-card-kicker">If you'd rather I did it</div>
+                        <div class="price-card-amount">${{$.Site.OnsiteFee}} <span class="price-card-plus">+ ${{$.Site.BlockRate}} / 15 min</span></div>
+                        <p class="price-card-note">At your place, no call-out fee in the service area, and no fix, no fee.</p>
+                        <a href="/book{{with $g.RelatedService}}?service={{.Slug}}{{end}}" class="btn btn--primary aside-btn">Book a visit &#8594;</a>
+                        {{if $.Site.Phone}}<a href="{{$.Site.PhoneHref}}" class="btn btn--ghost aside-btn">Call {{$.Site.Phone}}</a>{{end}}
+                    </div>
+                    {{if .PageData.Others}}
+                    <div class="aside-links">
+                        <div class="price-card-kicker">More {{$g.Kicker}} guides</div>
+                        <ul>
+                            {{range .PageData.Others}}<li><a href="/fix-it-yourself/{{.Slug}}">{{.Title}}</a></li>{{end}}
+                        </ul>
+                    </div>
+                    {{end}}
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">{{template "book-cta" .Site}}</div>
+    </section>
+{{end}}

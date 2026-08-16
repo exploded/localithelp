@@ -1,0 +1,47 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Services — Computer Help &amp; Software in Donvale &amp; Melbourne's East | James McHugh</title>
+    <meta name="description" content="Email and Outlook, printers, scams and viruses, Wi-Fi, repairs, new-computer setup, data recovery, phones and TVs, one-on-one help, small business IT and software development — around Donvale VIC.">
+    <meta property="og:title" content="Services — computer help &amp; software, Donvale VIC">
+    <meta property="og:description" content="Everything I fix and build, with prices published up front. No fix, no fee.">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Services</div>
+            <h1 class="section-title">What I can help with.</h1>
+            <p class="page-header-intro">At your home or office around Donvale and Melbourne's east. From everyday fixes — email, printers, Wi-Fi, slow or dead computers — to setting up new gear, keeping you safe online, and building software when off-the-shelf won't do.</p>
+        </div>
+    </div>
+
+    <section class="services-section">
+        <div class="container">
+            <div class="services-grid">
+                {{range .PageData.Services}}{{template "service-card" .}}{{end}}
+            </div>
+        </div>
+    </section>
+
+    <section class="pricing-section" id="pricing">
+        <div class="container">
+            <div class="section-label reveal">Pricing</div>
+            <h2 class="section-title reveal">Simple rates, published up front.</h2>
+            <div class="reveal">{{template "pricing" .Site}}</div>
+            <div class="reveal">{{template "payment-methods" .}}</div>
+        </div>
+    </section>
+
+    <section class="guarantee-section">
+        <div class="container">
+            <div class="section-label reveal">The promise</div>
+            <h2 class="section-title reveal">Three things you can hold me to.</h2>
+            <div class="reveal">{{template "guarantees" .}}</div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">{{template "book-cta" .Site}}</div>
+    </section>
+{{end}}

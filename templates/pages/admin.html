@@ -1,0 +1,113 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — Bookings &amp; Quotes</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Administration</div>
+            <h1 class="section-title">Admin Dashboard</h1>
+            <p class="page-header-intro">Booking requests, quotes and pricing options.</p>
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            <h2 class="admin-heading">Booking Requests</h2>
+            {{if .PageData.Bookings}}
+            <div class="admin-quotes-table-wrap">
+                <table class="admin-quotes-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Name</th>
+                            <th>Contact</th>
+                            <th>Suburb</th>
+                            <th>Service</th>
+                            <th>Preferred</th>
+                            <th>Issue</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .PageData.Bookings}}
+                        <tr>
+                            <td>{{.ID}}</td>
+                            <td>{{.CreatedAt.Format "02 Jan 15:04"}}</td>
+                            <td>{{.Name}}</td>
+                            <td>{{if .Phone}}<a href="tel:{{.Phone}}">{{.Phone}}</a>{{end}}{{if and .Phone .Email}}<br>{{end}}{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
+                            <td>{{.Suburb}}</td>
+                            <td>{{.ServiceSlug}}</td>
+                            <td>{{.PreferredTime}}</td>
+                            <td class="td-wrap">{{.Issue}}</td>
+                            <td><span class="status-badge status-badge--{{.Status}}">{{.Status}}</span></td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="admin-empty">No booking requests yet.</p>
+            {{end}}
+        </div>
+    </section>
+
+    <section class="admin-section">
+        <div class="container">
+            <h2 class="admin-heading">All Quotes</h2>
+            {{if .PageData.Quotes}}
+            <div class="admin-quotes-table-wrap">
+                <table class="admin-quotes-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Cost</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .PageData.Quotes}}
+                        <tr>
+                            <td>{{.ID}}</td>
+                            <td>{{.CreatedAt.Format "02 Jan 2006"}}</td>
+                            <td>{{.Name}}</td>
+                            <td>{{.Email}}</td>
+                            <td>${{printf "%.0f" .TotalCost}}</td>
+                            <td>
+                                <span class="status-badge status-badge--{{.Status}}">{{.Status}}</span>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="admin-empty">No quotes yet.</p>
+            {{end}}
+        </div>
+    </section>
+
+    <section class="admin-section">
+        <div class="container">
+            <h2 class="admin-heading">Quote Options</h2>
+            <div id="admin-app"></div>
+
+            <div class="admin-actions">
+                <button type="button" id="btn-add-group" class="btn btn--ghost">+ Add Group</button>
+                <button type="button" id="btn-save" class="btn btn--primary">Save All Changes</button>
+            </div>
+
+            <div id="admin-status" class="admin-status" style="display:none;"></div>
+        </div>
+    </section>
+
+    <script>window.__GROUPS__ = {{.PageData.GroupsJSON}};window.__BASE_COST__ = {{.PageData.BaseCost}};</script>
+    <script src="/static/js/admin.js"></script>
+{{end}}

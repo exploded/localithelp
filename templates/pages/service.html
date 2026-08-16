@@ -1,0 +1,86 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>{{.PageData.S.MetaTitle}}</title>
+    <meta name="description" content="{{.PageData.S.MetaDesc}}">
+    <meta property="og:title" content="{{.PageData.S.Title}} — James McHugh, Donvale VIC">
+    <meta property="og:description" content="{{.PageData.S.MetaDesc}}">
+{{end}}
+
+{{define "content"}}
+    {{$s := .PageData.S}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label"><a href="/services" class="crumb">Services</a> &middot; {{$s.Number}} &middot; {{$s.Kicker}}</div>
+            <h1 class="section-title">{{$s.Title}}</h1>
+            <p class="page-header-intro">{{$s.Intro}}</p>
+        </div>
+    </div>
+
+    <section class="service-section">
+        <div class="container">
+            <div class="service-layout">
+                <div class="service-body">
+                    {{range $s.Body}}<p>{{.}}</p>{{end}}
+
+                    <h2>Common problems I fix</h2>
+                    <ul class="checklist">
+                        {{range $s.Problems}}<li>{{.}}</li>{{end}}
+                    </ul>
+
+                    <h2>How a visit works</h2>
+                    <div class="steps steps--compact">
+                        <div class="step">
+                            <div class="step-num">01</div>
+                            <h3>Book</h3>
+                            <p>Online{{if $.Site.Phone}}, by phone{{end}} or email. Tell me the symptoms; I'll ask the rest.</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">02</div>
+                            <h3>Fixed appointment</h3>
+                            <p>Same or next day where possible, at your home or office.</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">03</div>
+                            <h3>Fixed &amp; explained</h3>
+                            <p>You'll know the price before I start; tap your card at the end. If it comes back within 14 days, I come back free.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="service-aside">
+                    <div class="price-card price-card--highlight">
+                        <div class="price-card-kicker">Home or office visit</div>
+                        <div class="price-card-amount">${{$.Site.OnsiteFee}} <span class="price-card-plus">+ ${{$.Site.BlockRate}} / 15 min</span></div>
+                        <p class="price-card-note">Billed in 15-minute blocks. No call-out fee in the service area.</p>
+                    </div>
+                    {{if $s.PriceNote}}<p class="aside-note">{{$s.PriceNote}}</p>{{end}}
+                    <ul class="aside-guarantees">
+                        <li>No fix, no fee</li>
+                        <li>14-day work guarantee</li>
+                        <li>Fixed appointment times</li>
+                    </ul>
+                    <a href="/book?service={{$s.Slug}}" class="btn btn--primary aside-btn">Book this service &#8594;</a>
+                    {{if $.Site.Phone}}<a href="{{$.Site.PhoneHref}}" class="btn btn--ghost aside-btn">Call {{$.Site.Phone}}</a>{{end}}
+                    <p class="aside-area">Donvale, Doncaster, Templestowe, Ringwood, Box Hill, Eltham and <a href="/#areas">surrounding suburbs</a>.</p>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    {{if .PageData.Related}}
+    <section class="related-section">
+        <div class="container">
+            <div class="section-label reveal">Related</div>
+            <h2 class="section-title reveal">You might also need</h2>
+            <div class="services-grid services-grid--related">
+                {{range .PageData.Related}}{{template "service-card" .}}{{end}}
+            </div>
+        </div>
+    </section>
+    {{end}}
+
+    <section class="cta-section">
+        <div class="container">{{template "book-cta" .Site}}</div>
+    </section>
+{{end}}

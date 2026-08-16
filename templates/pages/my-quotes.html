@@ -1,0 +1,45 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>My Quotes — James McHugh</title>
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Your Quotes</div>
+            <h1 class="section-title">Past proposals.</h1>
+            <p class="page-header-intro">View all your completed quotes and AI-generated proposals.</p>
+        </div>
+    </div>
+
+    <section class="quote-section">
+        <div class="container">
+            {{if .PageData}}
+                {{range .PageData}}
+                <div class="my-quote-card reveal">
+                    <div class="my-quote-header">
+                        <div>
+                            <h2 class="my-quote-title">{{if .Description}}{{.Description}}{{else}}Untitled quote{{end}}</h2>
+                            <div class="my-quote-meta">
+                                {{.CreatedAt.Format "2 January 2006"}} · ${{printf "%.0f" .TotalCost}} AUD estimate
+                            </div>
+                        </div>
+                    </div>
+                    {{if .AIEstimate}}
+                    <div class="quote-estimate">
+                        <div class="quote-estimate-header">AI Proposal</div>
+                        <div class="quote-estimate-body">{{safeHTML .AIEstimate}}</div>
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            {{else}}
+                <div class="my-quotes-empty reveal">
+                    <p>You don't have any completed quotes yet.</p>
+                    <a href="/quote" class="btn btn--primary">Get a Quote</a>
+                </div>
+            {{end}}
+        </div>
+    </section>
+{{end}}

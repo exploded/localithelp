@@ -1,0 +1,38 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Quote Submitted — James McHugh</title>
+{{end}}
+
+{{define "content"}}
+    <div class="page-header" style="min-height: 70vh; display: flex; align-items: center;">
+        <div class="container">
+            {{with .PageData}}
+            {{if .Error}}
+                <div class="section-label">Error</div>
+                <h1 class="section-title">Something went wrong.</h1>
+                <p class="page-header-intro" style="margin-bottom: 2rem;">{{.Error}}</p>
+                <a href="/quote" class="btn btn--primary">Back to Quote</a>
+            {{else if .AlreadyProcessed}}
+                <div class="section-label">Quote Submitted</div>
+                <h1 class="section-title">Thank you.</h1>
+                <p class="page-header-intro" style="margin-bottom: 2rem;">Your quote has already been processed. I'll review your requirements and send a detailed proposal to your email within 2 business days.</p>
+                <a href="/" class="btn btn--primary">Back to Home</a>
+            {{else}}
+                <div class="section-label">Payment Successful</div>
+                <h1 class="section-title">Thank you{{if .Name}}, {{.Name}}{{end}}.</h1>
+                <p class="page-header-intro" style="margin-bottom: 2rem;">Your payment has been received and your AI-powered quote is below. I'll also review your requirements personally and send a detailed proposal to your email within 2 business days.</p>
+
+                {{if .AIEstimate}}
+                <div class="quote-estimate" style="margin-bottom: 2rem;">
+                    <div class="quote-estimate-header">Your AI Quote</div>
+                    <div class="quote-estimate-body">{{.AIEstimate}}</div>
+                </div>
+                {{end}}
+
+                <a href="/" class="btn btn--primary">Back to Home</a>
+            {{end}}
+            {{end}}
+        </div>
+    </div>
+{{end}}

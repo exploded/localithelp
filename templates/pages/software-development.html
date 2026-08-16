@@ -1,0 +1,92 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>{{.PageData.S.MetaTitle}}</title>
+    <meta name="description" content="{{.PageData.S.MetaDesc}}">
+    <meta property="og:title" content="Software Development — Shopify, websites &amp; custom web apps | James McHugh">
+    <meta property="og:description" content="{{.PageData.S.MetaDesc}}">
+{{end}}
+
+{{define "content"}}
+    {{$s := .PageData.S}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label"><a href="/services" class="crumb">Services</a> &middot; Featured</div>
+            <h1 class="section-title">Software development.</h1>
+            <p class="page-header-intro">{{$s.Intro}}</p>
+        </div>
+    </div>
+
+    <section class="service-section">
+        <div class="container">
+            <div class="service-layout">
+                <div class="service-body">
+                    {{range $s.Body}}<p>{{.}}</p>{{end}}
+                    <h2>What I build</h2>
+                    <ul class="checklist">
+                        {{range $s.Problems}}<li>{{.}}</li>{{end}}
+                    </ul>
+                </div>
+                <aside class="service-aside">
+                    <div class="price-card price-card--highlight">
+                        <div class="price-card-kicker">Updates, fixes &amp; rewrites</div>
+                        <div class="price-card-amount">{{.PageData.Hourly}}</div>
+                        <p class="price-card-note">One-hour minimum, then 15-minute blocks. Estimates given up front; you approve before I start.</p>
+                    </div>
+                    <div class="price-card">
+                        <div class="price-card-kicker">Bigger project?</div>
+                        <p class="price-card-note">Use the quote tool to describe what you need. For $5 you get a written, AI-assisted proposal with a price range and timeline — refunded if you go ahead.</p>
+                        <a href="/quote" class="btn btn--ghost aside-btn">Get a written proposal &#8594;</a>
+                    </div>
+                    <a href="/book?service={{$s.Slug}}" class="btn btn--primary aside-btn">Book a chat &#8594;</a>
+                    <a href="/portfolio" class="btn btn--ghost aside-btn">See live projects</a>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <section class="pricing-section">
+        <div class="container">
+            <div class="section-label reveal">Packages</div>
+            <h2 class="section-title reveal">Fixed-price starting points.</h2>
+            <p class="section-intro reveal">"From" prices for well-defined jobs. Every quote is written down before work starts, and hosting is on infrastructure I run.</p>
+            <div class="package-grid">
+                {{range .PageData.Packages}}
+                <div class="package-card reveal">
+                    <div class="package-name">{{.Name}}</div>
+                    <div class="package-from">from <strong>{{.From}}</strong></div>
+                    <p class="package-blurb">{{.Blurb}}</p>
+                    <ul class="checklist checklist--small">
+                        {{range .Includes}}<li>{{.}}</li>{{end}}
+                    </ul>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </section>
+
+    <section class="portfolio-cta-section">
+        <div class="container">
+            <div class="portfolio-cta reveal">
+                <div class="portfolio-cta-text">
+                    <div class="section-label">Portfolio</div>
+                    <h2 class="section-title">See what I've built.</h2>
+                    <p class="portfolio-cta-desc">Live applications you can click on — from AI-powered learning tools to real estate platforms and a stock market game — each designed, built and hosted end to end.</p>
+                </div>
+                <a href="/portfolio" class="btn btn--primary">View all projects &#8594;</a>
+            </div>
+        </div>
+    </section>
+
+    {{if .PageData.Related}}
+    <section class="related-section">
+        <div class="container">
+            <div class="section-label reveal">Related</div>
+            <h2 class="section-title reveal">Also for businesses</h2>
+            <div class="services-grid services-grid--related">
+                {{range .PageData.Related}}{{template "service-card" .}}{{end}}
+            </div>
+        </div>
+    </section>
+    {{end}}
+{{end}}

@@ -1,0 +1,9 @@
+.DS_Store
+Thumbs.db
+.vscode/
+.env
+mchugh-com-au
+mchugh-com-au.exe
+*.db
+.local/
+*.exe

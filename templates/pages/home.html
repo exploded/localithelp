@@ -1,0 +1,201 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Computer Help &amp; Software Development — Donvale, Doncaster &amp; Melbourne's East | James McHugh</title>
+    <meta name="description" content="Friendly at-home computer help around Donvale VIC — email, printers, Wi-Fi, scams, slow PCs, new-computer setups — plus Shopify, websites and custom software. No fix, no fee.">
+    <meta property="og:title" content="Computer help at your place — Donvale &amp; Melbourne's east">
+    <meta property="og:description" content="Email, printers, Wi-Fi, viruses, slow PCs and new-computer setups fixed at your place, usually same or next day. Plus software development. No fix, no fee.">
+{{end}}
+
+{{define "head"}}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "James McHugh — Computer Help & Software Development",
+      "url": "{{.Site.BaseURL}}",
+      "email": "{{.Site.Email}}",{{if .Site.Phone}}
+      "telephone": "{{.Site.Phone}}",{{end}}
+      "priceRange": "$$",
+      "address": {"@type": "PostalAddress", "addressLocality": "Donvale", "addressRegion": "VIC", "postalCode": "3111", "addressCountry": "AU"},
+      "areaServed": [{{range $i, $s := .Site.Suburbs}}{{if $i}}, {{end}}"{{$s}}"{{end}}],
+      "paymentAccepted": "Visa, Mastercard, Amex, PayID, Apple Pay, Google Pay",
+      "openingHours": "Mo-Fr 09:00-17:00"
+    }
+    </script>
+{{end}}
+
+{{define "content"}}
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <p class="hero-overline">Computer Help &middot; Donvale &amp; Melbourne's East</p>
+                <h1>Friendly computer help,<br><em>at your place.</em></h1>
+                <p class="hero-desc">
+                    Email, printers, Wi-Fi, scams, slow or dead PCs, new-computer setups —
+                    fixed at your place around Donvale, usually same or next day.
+                    No fix, no fee. And when you need something built, I do software too.
+                </p>
+                <div class="hero-actions">
+                    <a href="/book" class="btn btn--primary">Book a visit</a>
+                    {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost">Call {{.Site.Phone}}</a>{{end}}
+                    <a href="/software-development" class="btn btn--ghost">Software development &#8594;</a>
+                </div>
+                <ul class="hero-points">
+                    <li>${{.Site.OnsiteFee}} service fee + ${{.Site.BlockRate}} per 15 min</li>
+                    <li>No call-out fee in the service area</li>
+                    <li>14-day work guarantee</li>
+                </ul>
+            </div>
+        </div>
+        <div class="hero-decoration" aria-hidden="true">
+            <div class="line"></div>
+            <div class="dot"></div>
+            <div class="line"></div>
+            <div class="dot"></div>
+            <div class="line"></div>
+        </div>
+    </section>
+
+    <!-- Services -->
+    <section class="services-section" id="services">
+        <div class="container">
+            <div class="section-label reveal">What I can help with</div>
+            <h2 class="section-title reveal">One local person for the whole lot —<br>from a printer that won't print to the app you wish existed.</h2>
+            <p class="section-intro reveal">These are the jobs I actually get called out for, most often first. Don't see yours? <a href="/book">Ask anyway</a> — if I can't help I'll tell you who can.</p>
+            <div class="services-grid">
+                {{range .PageData.Services}}{{template "service-card" .}}{{end}}
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured: software development -->
+    {{with .PageData.Featured}}
+    <section class="featured-section">
+        <div class="container">
+            <div class="portfolio-cta reveal">
+                <div class="portfolio-cta-text">
+                    <div class="section-label">Featured &middot; Software Development</div>
+                    <h2 class="section-title">Need something built, not just fixed?</h2>
+                    <p class="portfolio-cta-desc">{{.Short}} Fixed-price packages from $600, or hourly for updates and rewrites — and a portfolio of live apps you can click on.</p>
+                </div>
+                <div class="portfolio-cta-actions">
+                    <a href="{{.URL}}" class="btn btn--primary">Packages &amp; pricing &#8594;</a>
+                    <a href="/portfolio" class="btn btn--ghost">See the portfolio</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    {{end}}
+
+    <!-- How it works -->
+    <section class="how-section">
+        <div class="container">
+            <div class="section-label reveal">How it works</div>
+            <h2 class="section-title reveal">Three steps, no runaround.</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">01</div>
+                    <h3>Tell me what's wrong</h3>
+                    <p>Book online{{if .Site.Phone}}, call{{end}} or email. A sentence or two is plenty — I'll ask the rest.</p>
+                </div>
+                <div class="step">
+                    <div class="step-num">02</div>
+                    <h3>I come to you</h3>
+                    <p>A fixed appointment time, usually the same or next day — at your home or office, anywhere in the service area.</p>
+                </div>
+                <div class="step">
+                    <div class="step-num">03</div>
+                    <h3>Fixed, explained, paid on the spot</h3>
+                    <p>I fix it, show you what happened, and leave notes. Tap your card at the end of the visit — and if it comes back within 14 days, I come back for free.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Fix it yourself -->
+    <section class="diy-section">
+        <div class="container">
+            <div class="portfolio-cta reveal">
+                <div class="portfolio-cta-text">
+                    <div class="section-label">Fix it yourself</div>
+                    <h2 class="section-title">Some things you can sort in ten minutes.</h2>
+                    <p class="portfolio-cta-desc">Free, plain-English guides for the most common calls I get — a scam pop-up, no internet, printer offline, email stopped. Try them first; if it's too hard, book and I'll come to you.</p>
+                </div>
+                <div class="portfolio-cta-actions">
+                    <a href="/fix-it-yourself" class="btn btn--primary">See the guides &#8594;</a>
+                    <a href="/book" class="btn btn--ghost">Or just book</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="pricing-section" id="pricing">
+        <div class="container">
+            <div class="section-label reveal">Pricing</div>
+            <h2 class="section-title reveal">Simple rates, published up front.</h2>
+            <p class="section-intro reveal">Most computer-help outfits won't tell you the price until they're at your door. Here's mine.</p>
+            <div class="reveal">{{template "pricing" .Site}}</div>
+            <div class="reveal">{{template "payment-methods" .}}</div>
+        </div>
+    </section>
+
+    <!-- Guarantees -->
+    <section class="guarantee-section">
+        <div class="container">
+            <div class="section-label reveal">The promise</div>
+            <h2 class="section-title reveal">Three things you can hold me to.</h2>
+            <div class="reveal">{{template "guarantees" .}}</div>
+        </div>
+    </section>
+
+    <!-- Service areas -->
+    <section class="areas-section" id="areas">
+        <div class="container">
+            <div class="section-label reveal">Service area</div>
+            <h2 class="section-title reveal">Based in Donvale, covering Melbourne's east.</h2>
+            <div class="reveal">{{template "areas" .Site}}</div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="contact-section" id="contact">
+        <div class="container">
+            <div class="contact-inner">
+                <div class="contact-text">
+                    <div class="section-label reveal">Contact</div>
+                    <h2 class="section-title reveal">Let's get it sorted.</h2>
+                    <p class="contact-desc reveal">
+                        Book a visit online, or get in touch directly. For software projects, the
+                        <a href="/quote">quote tool</a> gives you a written proposal.
+                    </p>
+                    <div class="hero-actions reveal">
+                        <a href="/book" class="btn btn--primary">Book now</a>
+                        {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost">Call {{.Site.Phone}}</a>{{end}}
+                    </div>
+                    <p class="reveal" style="margin-top:1.5rem"><a href="mailto:{{.Site.Email}}" class="contact-email">{{.Site.Email}} &#8594;</a></p>
+                </div>
+                <div class="contact-details reveal">
+                    <div class="contact-detail-item">
+                        <div class="contact-detail-label">Business</div>
+                        <div class="contact-detail-value">James McHugh — Computer Help &amp; Software Development</div>
+                    </div>
+                    <div class="contact-detail-item">
+                        <div class="contact-detail-label">ABN</div>
+                        <div class="contact-detail-value">14 723 053 435</div>
+                    </div>
+                    <div class="contact-detail-item">
+                        <div class="contact-detail-label">Based in</div>
+                        <div class="contact-detail-value">Donvale VIC 3111 — servicing Melbourne's eastern suburbs</div>
+                    </div>
+                    <div class="contact-detail-item">
+                        <div class="contact-detail-label">Hours</div>
+                        <div class="contact-detail-value">Monday to Friday, 9am–5pm.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+{{end}}

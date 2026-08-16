@@ -1,0 +1,84 @@
+{{/* Shared fragments. Parsed into every page template. */}}
+
+{{/* service-card: takes a Service */}}
+{{define "service-card"}}
+<a href="{{.URL}}" class="service-card{{if .Featured}} service-card--featured{{end}} reveal">
+    <div class="service-icon">{{.Number}} &mdash; {{.Kicker}}</div>
+    <h3>{{.Title}}</h3>
+    <p>{{.Short}}</p>
+    <span class="service-card-more">{{if .Featured}}Packages &amp; pricing{{else}}Learn more{{end}} &#8594;</span>
+</a>
+{{end}}
+
+{{/* pricing: takes .Site */}}
+{{define "pricing"}}
+<div class="pricing-grid pricing-grid--single">
+    <div class="price-card price-card--highlight">
+        <div class="price-card-kicker">Home or office visit</div>
+        <div class="price-card-amount">${{.OnsiteFee}} <span class="price-card-plus">+ ${{.BlockRate}} per 15 min</span></div>
+        <p class="price-card-note">The service fee covers travel anywhere in the service area. Time is billed in 15-minute blocks, so you only pay for what the job actually takes — many are done well inside the hour.</p>
+    </div>
+    <ul class="price-points">
+        <li>No call-out or travel fee anywhere in the service area</li>
+        <li>You'll know the price before I start — and no fix, no fee</li>
+        <li>Parts (if any) at cost + GST, always agreed with you first</li>
+        <li>Pay by tapping your card at the end of the visit</li>
+    </ul>
+</div>
+{{end}}
+
+{{/* guarantees: no data */}}
+{{define "guarantees"}}
+<div class="guarantee-grid">
+    <div class="guarantee-badge">
+        <div class="guarantee-title">No fix, no fee</div>
+        <p>If I can't fix the problem you booked me for, you don't pay for the labour. Simple.</p>
+    </div>
+    <div class="guarantee-badge">
+        <div class="guarantee-title">14-day work guarantee</div>
+        <p>If the same problem comes back within 14 days, I return and sort it at no charge.</p>
+    </div>
+    <div class="guarantee-badge">
+        <div class="guarantee-title">Fixed appointment times</div>
+        <p>Same or next day where possible, and I turn up when I say I will — not "sometime between 8 and 5".</p>
+    </div>
+</div>
+{{end}}
+
+{{/* payment-methods: no data */}}
+{{define "payment-methods"}}
+<div class="payment-methods">
+    <span class="payment-label">Pay by</span>
+    <span class="payment-chip">Visa</span>
+    <span class="payment-chip">Mastercard</span>
+    <span class="payment-chip">Amex</span>
+    <span class="payment-chip">PayID</span>
+    <span class="payment-chip">Apple Pay</span>
+    <span class="payment-chip">Google Pay</span>
+    <span class="payment-note">Tap-to-pay on the spot, or an invoice you can pay online.</span>
+</div>
+{{end}}
+
+{{/* areas: takes .Site */}}
+{{define "areas"}}
+<div class="area-list">
+    {{range .Suburbs}}<span class="area-chip">{{.}}</span>{{end}}
+</div>
+<p class="area-note">Roughly 30 minutes' drive from Donvale. A bit further out? Ask — I can usually make it work.</p>
+{{end}}
+
+{{/* book-cta: takes .Site */}}
+{{define "book-cta"}}
+<div class="book-cta reveal">
+    <div class="book-cta-text">
+        <div class="section-label">Ready when you are</div>
+        <h2 class="section-title">Book a visit.</h2>
+        <p>Tell me what's going wrong and when suits — I'll confirm a time, usually the same or next day.</p>
+    </div>
+    <div class="book-cta-actions">
+        <a href="/book" class="btn btn--primary">Book now &#8594;</a>
+        {{if .Phone}}<a href="{{.PhoneHref}}" class="btn btn--ghost">Call {{.Phone}}</a>{{end}}
+        <a href="mailto:{{.Email}}" class="book-cta-email">{{.Email}}</a>
+    </div>
+</div>
+{{end}}
