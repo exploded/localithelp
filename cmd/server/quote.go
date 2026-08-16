@@ -89,15 +89,19 @@ func handleQuoteSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dup, err := db.HasVerifiedQuote(email)
-	if err != nil {
-		log.Printf("quote: check email %s: %v", email, err)
-		jsonError(w, "Something went wrong, please try again", http.StatusInternalServerError)
-		return
-	}
-	if dup {
-		jsonError(w, "A quote has already been generated for this email address. Check your inbox for it, or email "+site.Email+" if you'd like to discuss a new project.", http.StatusConflict)
-		return
+	// One verified quote per customer (each one costs an AI call). The owner's
+	// own addresses are exempt so the flow can be tested repeatedly.
+	if !isOwnerEmail(email) {
+		dup, err := db.HasVerifiedQuote(email)
+		if err != nil {
+			log.Printf("quote: check email %s: %v", email, err)
+			jsonError(w, "Something went wrong, please try again", http.StatusInternalServerError)
+			return
+		}
+		if dup {
+			jsonError(w, "You already have a quote from us for this email address, and we generate one per customer. Check your inbox for it, or email "+site.Email+" to discuss a new project.", http.StatusConflict)
+			return
+		}
 	}
 	// A fresh submission supersedes any earlier unconfirmed attempt.
 	if err := db.DeletePendingQuotes(email); err != nil {

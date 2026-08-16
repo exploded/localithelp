@@ -35,22 +35,20 @@ go run ./cmd/server          # http://localhost:8080
 | `PROD` | – | set in production (affects BASE_URL default) |
 | `BASE_URL` | `https://mchugh.com.au` if PROD else `http://localhost:PORT` | canonical origin; OAuth redirect + quote verification links |
 | `PHONE` | empty | display phone; empty hides all phone UI |
-| `CONTACT_EMAIL` | `james@mchugh.com.au` | contact email |
+| `CONTACT_EMAIL` | `james@mchugh.com.au` | contact email; also the SES sender (must be a verified identity) and where booking / verified-quote notifications go |
 | `ONSITE_FEE` / `BLOCK_RATE` | `80` / `30` | published pricing (AUD) |
-| `ADMIN_EMAIL` | – | Google account allowed into `/admin` |
+| `ADMIN_EMAIL` | `james67@gmail.com` | Google account allowed into `/admin` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | – | Google sign-in — admin only; customers never sign in |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | – | Cloudflare Turnstile on the quote form (empty = check skipped, logged at startup; dev test pair `1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) |
 | `ANTHROPIC_API_KEY` | – | AI estimate in quote flow (generated only after the email is verified) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | – | Amazon SES credentials (IAM user `mchugh-au-mailer`); unset = email disabled |
 | `AWS_REGION` | `ap-southeast-2` | SES region |
-| `MAIL_FROM` | `James McHugh <james@mchugh.com.au>` | sender (must be a verified SES identity) |
-| `NOTIFY_EMAIL` | `CONTACT_EMAIL` | where booking / verified-quote notifications go |
 
 Booking requests are stored in the `bookings` table and listed at `/admin`.
-When SES is configured, each booking emails `NOTIFY_EMAIL` (reply-to set to the
+When SES is configured, each booking emails `CONTACT_EMAIL` (reply-to set to the
 customer) and sends the customer a confirmation. The quote flow *requires* SES in
 production: the customer is emailed a verification link, and once they click it the
-estimate is generated, emailed to them, and `NOTIFY_EMAIL` is notified. One verified
+estimate is generated, emailed to them, and `CONTACT_EMAIL` is notified. One verified
 quote per email address; a resubmission replaces an unconfirmed one. Without SES
 the verification link is printed to the log (handy locally). Sends run in the
 background and failures are only logged — the request is already saved. See `cmd/server/mail.go` and `mailer/`.

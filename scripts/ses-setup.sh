@@ -109,6 +109,5 @@ Append to /var/www/mchugh.com.au/.env on the server, then: sudo systemctl restar
 AWS_REGION=$REGION
 AWS_ACCESS_KEY_ID=$AKID
 AWS_SECRET_ACCESS_KEY=$SECRET
-MAIL_FROM=James McHugh <$FROM_ADDR>
-NOTIFY_EMAIL=$FROM_ADDR
+# Sender + notifications use CONTACT_EMAIL (default $FROM_ADDR)
 ENV

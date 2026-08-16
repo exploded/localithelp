@@ -331,13 +331,28 @@ func generateSessionToken() string {
 	return hex.EncodeToString(b)
 }
 
-// isAdmin returns true if the user is logged in and their email matches ADMIN_EMAIL.
+// isAdmin returns true if the user is logged in and their email matches ADMIN_EMAIL
+// (the Google account allowed into /admin; defaults to the owner's Gmail).
 func isAdmin(user *db.User) bool {
 	if user == nil {
 		return false
 	}
 	adminEmail := os.Getenv("ADMIN_EMAIL")
-	return adminEmail != "" && strings.EqualFold(user.Email, adminEmail)
+	if adminEmail == "" {
+		adminEmail = "james67@gmail.com"
+	}
+	return strings.EqualFold(user.Email, adminEmail)
+}
+
+// isOwnerEmail reports whether email is one of the site owner's configured
+// addresses (CONTACT_EMAIL or ADMIN_EMAIL) — used to exempt the owner from
+// customer-facing limits like one-quote-per-email so flows can be tested.
+func isOwnerEmail(email string) bool {
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail == "" {
+		adminEmail = "james67@gmail.com"
+	}
+	return strings.EqualFold(email, site.Email) || strings.EqualFold(email, adminEmail)
 }
 
 func handleAdmin(w http.ResponseWriter, r *http.Request) {

@@ -59,12 +59,32 @@
     var IDLE_LABEL = 'Email me my quote';
 
     function showError(msg) {
+        errorEl.className = 'quote-submit-error';
         errorEl.textContent = msg;
         errorEl.hidden = false;
         btnSubmit.disabled = false;
         btnSubmit.textContent = IDLE_LABEL;
         // Turnstile tokens are single-use — get a fresh one for the retry.
         if (window.turnstile) { try { window.turnstile.reset(); } catch (e) {} }
+    }
+
+    // 409: this email already has a quote. Not an error to retry — hide the
+    // submit button so it's clear nothing more can be requested here. If they
+    // change the email (typo, different address) the form comes back.
+    var emailEl = document.getElementById('email');
+    function showAlreadyQuoted(msg) {
+        errorEl.className = 'quote-submit-notice';
+        errorEl.textContent = 'Nothing new was sent. ' + msg;
+        errorEl.hidden = false;
+        btnSubmit.hidden = true;
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = IDLE_LABEL;
+        if (window.turnstile) { try { window.turnstile.reset(); } catch (e) {} }
+        emailEl.addEventListener('input', function restore() {
+            emailEl.removeEventListener('input', restore);
+            errorEl.hidden = true;
+            btnSubmit.hidden = false;
+        });
     }
 
     btnSubmit.addEventListener('click', function() {
@@ -91,8 +111,9 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         })
-        .then(function(r) { return r.json(); })
+        .then(function(r) { return r.json().then(function(res) { res._status = r.status; return res; }); })
         .then(function(res) {
+            if (res._status === 409) { showAlreadyQuoted(res.error); return; }
             if (res.error) { showError(res.error); return; }
             window.location.href = '/quote/sent?e=' + encodeURIComponent(res.email || data.email);
         })

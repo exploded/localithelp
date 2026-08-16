@@ -13,8 +13,8 @@ import (
 
 // ── Email notifications (Amazon SES) ──
 //
-// Configured by AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION and
-// MAIL_FROM. When the keys are absent the mailer is nil and every notify*
+// Configured by AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION; the
+// sender and notification address are CONTACT_EMAIL. When the keys are absent the mailer is nil and every notify*
 // call is a silent no-op, so local dev works without any AWS setup.
 
 var (
@@ -27,14 +27,10 @@ func initMail() {
 	if region == "" {
 		region = "ap-southeast-2"
 	}
-	from := os.Getenv("MAIL_FROM")
-	if from == "" {
-		from = "James McHugh <james@mchugh.com.au>"
-	}
-	notifyEmail = os.Getenv("NOTIFY_EMAIL")
-	if notifyEmail == "" {
-		notifyEmail = site.Email
-	}
+	// Sender and notification target both derive from CONTACT_EMAIL; the
+	// address must be a verified SES identity.
+	from := "James McHugh <" + site.Email + ">"
+	notifyEmail = site.Email
 	mail = mailer.New(region, os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), from)
 	if mail.Enabled() {
 		log.Printf("email: SES enabled, from=%q notify=%q region=%s", from, notifyEmail, region)

@@ -32,16 +32,17 @@ PROD=true
 APP_DIR=$APP_DIR
 BASE_URL=https://mchugh.com.au
 
-# Contact details shown on the site (PHONE empty = phone UI hidden)
+# Contact details shown on the site (PHONE empty = phone UI hidden).
+# CONTACT_EMAIL is also the SES sender + notification address (default james@mchugh.com.au).
 PHONE=
-CONTACT_EMAIL=james@mchugh.au
+CONTACT_EMAIL=james@mchugh.com.au
 
 # Pricing (AUD). Defaults: 80 service fee, 30 per 15-minute block
 ONSITE_FEE=80
 BLOCK_RATE=30
 
-# Admin + integrations
-ADMIN_EMAIL=
+# Admin + integrations (ADMIN_EMAIL = Google account allowed into /admin, default james67@gmail.com)
+ADMIN_EMAIL=james67@gmail.com
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 ANTHROPIC_API_KEY=
@@ -53,8 +54,6 @@ TURNSTILE_SECRET_KEY=
 AWS_REGION=ap-southeast-2
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
-MAIL_FROM=James McHugh <james@mchugh.com.au>
-NOTIFY_EMAIL=james@mchugh.com.au
 EOF
     chmod 640 "$APP_DIR/.env"
     echo "Created $APP_DIR/.env template — edit it before starting the service."
