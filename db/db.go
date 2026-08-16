@@ -87,19 +87,22 @@ func Open(path string) error {
 	}
 	conn.SetMaxOpenConns(1)
 
-	// Run embedded schema (idempotent CREATE TABLE IF NOT EXISTS statements)
-	if _, err := conn.Exec(schemaSQL); err != nil {
-		return fmt.Errorf("create schema: %w", err)
-	}
-
-	// Migrate existing quotes table (add columns if missing)
+	// Migrate an existing quotes table first (add columns if missing) so the
+	// schema's CREATE INDEX on newer columns succeeds. On a fresh DB the table
+	// doesn't exist yet and these fail harmlessly; the schema below creates it
+	// with all columns.
 	for _, stmt := range []string{
 		"ALTER TABLE quotes ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0",
 		"ALTER TABLE quotes ADD COLUMN status TEXT NOT NULL DEFAULT 'paid'",
 		"ALTER TABLE quotes ADD COLUMN verify_token TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE quotes ADD COLUMN verified_at TEXT NOT NULL DEFAULT ''",
 	} {
-		conn.Exec(stmt) // ignore "duplicate column" errors
+		conn.Exec(stmt) // ignore "duplicate column" / "no such table" errors
+	}
+
+	// Run embedded schema (idempotent CREATE TABLE/INDEX IF NOT EXISTS statements)
+	if _, err := conn.Exec(schemaSQL); err != nil {
+		return fmt.Errorf("create schema: %w", err)
 	}
 
 	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
