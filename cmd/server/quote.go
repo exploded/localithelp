@@ -262,9 +262,13 @@ func buildEstimatePrompt(data map[string]any) string {
 }
 
 func callClaude(apiKey, prompt string) (string, error) {
+	// Sonnet 5 thinks by default and max_tokens covers thinking + answer, so
+	// give it headroom; the estimate itself is ~200 words. Low effort keeps
+	// this quick task cheap.
 	reqBody := map[string]any{
-		"model":      "claude-sonnet-4-20250514",
-		"max_tokens": 1024,
+		"model":         "claude-sonnet-5",
+		"max_tokens":    4096,
+		"output_config": map[string]any{"effort": "low"},
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
@@ -292,9 +296,11 @@ func callClaude(apiKey, prompt string) (string, error) {
 
 	var result struct {
 		Content []struct {
+			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
-		Error struct {
+		StopReason string `json:"stop_reason"`
+		Error      struct {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
@@ -307,11 +313,17 @@ func callClaude(apiKey, prompt string) (string, error) {
 		return "", fmt.Errorf("API error %d: %s", resp.StatusCode, result.Error.Message)
 	}
 
-	if len(result.Content) == 0 {
-		return "", fmt.Errorf("empty response from Claude")
+	if result.StopReason == "refusal" {
+		return "", fmt.Errorf("Claude declined the request")
 	}
 
-	return result.Content[0].Text, nil
+	// Content may start with thinking blocks; return the first text block.
+	for _, c := range result.Content {
+		if c.Type == "text" && c.Text != "" {
+			return c.Text, nil
+		}
+	}
+	return "", fmt.Errorf("empty response from Claude (stop_reason=%s)", result.StopReason)
 }
 
 // validEmail reports whether s looks like a single, plain email address.
