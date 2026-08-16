@@ -26,9 +26,10 @@ rm -f "$BINARY"
 cp "$STAGING/mchugh-com-au" "$BINARY"
 chmod +x "$BINARY"
 
-# Sync templates and static assets
-rsync -a --delete "$STAGING/templates/" "$APP_DIR/templates/"
-rsync -a --delete "$STAGING/static/" "$APP_DIR/static/"
+# Replace templates and static assets (rm+cp instead of rsync: not installed on the box)
+rm -rf "$APP_DIR/templates" "$APP_DIR/static"
+cp -r "$STAGING/templates" "$APP_DIR/templates"
+cp -r "$STAGING/static" "$APP_DIR/static"
 
 # Fix ownership
 chown -R www-data:www-data "$APP_DIR"

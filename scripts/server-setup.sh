@@ -106,7 +106,10 @@ Next steps:
   2. Add this to /etc/caddy/Caddyfile and run: sudo systemctl reload caddy
 
      mchugh.com.au, www.mchugh.com.au {
-         reverse_proxy 127.0.0.1:$PORT
+         import access_log
+         reverse_proxy 127.0.0.1:$PORT {
+             import go_proxy
+         }
      }
 
      (Leave the existing mchugh.au / www.mchugh.au block alone — that is the

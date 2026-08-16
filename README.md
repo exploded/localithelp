@@ -76,8 +76,8 @@ this repo: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`.
    sudoers, prints the Caddy block). It refuses to touch `/var/www/mchugh.au`.
 3. **Server `.env`** — `sudo nano /var/www/mchugh.com.au/.env`: `PHONE=…`, `ADMIN_EMAIL`,
    Google/Stripe/Anthropic keys, SES creds, pricing if different.
-4. **Caddy** — add the printed `mchugh.com.au, www.mchugh.com.au { reverse_proxy 127.0.0.1:8181 }`
-   block to `/etc/caddy/Caddyfile` (leave the existing `mchugh.au` block alone),
+4. **Caddy** — add the printed block to `/etc/caddy/Caddyfile` (uses the box's shared
+   `access_log` / `go_proxy` snippets; leave the existing `mchugh.au` block alone),
    `sudo systemctl reload caddy`.
 5. **Google Cloud Console** — add `https://mchugh.com.au/auth/google/callback` to the
    OAuth client's authorised redirect URIs.
