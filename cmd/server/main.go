@@ -112,6 +112,7 @@ func main() {
 
 	// Admin routes (protected by Google sign-in + ADMIN_EMAIL check; POSTs need the session CSRF token)
 	mux.HandleFunc("GET /admin", requireAdmin(handleAdmin))
+	mux.HandleFunc("GET /admin/options", requireAdmin(handleAdminOptions))
 	mux.HandleFunc("POST /api/admin/save", requireAdmin(handleAdminSave))
 	mux.HandleFunc("GET /admin/bookings", requireAdmin(handleAdminBookings))
 	mux.HandleFunc("GET /admin/bookings/{id}", requireAdmin(handleAdminBooking))
@@ -398,16 +399,6 @@ func isOwnerEmail(email string) bool {
 }
 
 func handleAdmin(w http.ResponseWriter, r *http.Request) {
-	groupsJSON, err := db.OptionGroupsJSON()
-	if err != nil {
-		log.Printf("admin: load groups: %v", err)
-		http.Error(w, "failed to load options", http.StatusInternalServerError)
-		return
-	}
-	baseCost, err := db.GetBaseCost()
-	if err != nil {
-		log.Printf("admin: load base cost: %v", err)
-	}
 	quotes, err := db.ListQuotes()
 	if err != nil {
 		log.Printf("admin: load quotes: %v", err)
@@ -426,8 +417,6 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 		log.Printf("admin: week bookings: %v", err)
 	}
 	render(w, r, "admin", adminDashData{
-		GroupsJSON:  template.JS(groupsJSON),
-		BaseCost:    baseCost,
 		Quotes:      quotes,
 		NewCount:    counts[db.BookingNew],
 		BookedCount: counts[db.BookingBooked],
@@ -440,8 +429,6 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 
 // adminDashData is the /admin dashboard view model.
 type adminDashData struct {
-	GroupsJSON  template.JS
-	BaseCost    int
 	Quotes      []db.Quote
 	NewCount    int
 	BookedCount int
@@ -449,6 +436,30 @@ type adminDashData struct {
 	SentCount   int
 	Outstanding int64 // cents, invoices sent but unpaid
 	Week        []bookingRow
+}
+
+// adminOptionsData is the /admin/options view model: the quote option groups
+// and base cost, serialised for the client-side editor in static/js/admin.js.
+type adminOptionsData struct {
+	GroupsJSON template.JS
+	BaseCost   int
+}
+
+func handleAdminOptions(w http.ResponseWriter, r *http.Request) {
+	groupsJSON, err := db.OptionGroupsJSON()
+	if err != nil {
+		log.Printf("admin options: load groups: %v", err)
+		http.Error(w, "failed to load options", http.StatusInternalServerError)
+		return
+	}
+	baseCost, err := db.GetBaseCost()
+	if err != nil {
+		log.Printf("admin options: load base cost: %v", err)
+	}
+	render(w, r, "admin-options", adminOptionsData{
+		GroupsJSON: template.JS(groupsJSON),
+		BaseCost:   baseCost,
+	})
 }
 
 func handleAdminSave(w http.ResponseWriter, r *http.Request) {

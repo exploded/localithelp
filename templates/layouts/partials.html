@@ -99,7 +99,7 @@
     <a href="/admin/calendar"{{if hasPrefix . "/admin/calendar"}} class="active"{{end}}>Calendar</a>
     <a href="/admin/invoices"{{if hasPrefix . "/admin/invoices"}} class="active"{{end}}>Invoices</a>
     <a href="/admin/customers"{{if hasPrefix . "/admin/customers"}} class="active"{{end}}>Customers</a>
-    <a href="/admin#options"{{if eq . "/admin#options"}} class="active"{{end}}>Quote options</a>
+    <a href="/admin/options"{{if hasPrefix . "/admin/options"}} class="active"{{end}}>Quote options</a>
 </div>
 {{end}}
 

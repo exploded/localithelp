@@ -94,21 +94,4 @@
             {{end}}
         </div>
     </section>
-
-    <section class="admin-section" id="options">
-        <div class="container">
-            <h2 class="admin-heading">Quote Options</h2>
-            <div id="admin-app"></div>
-
-            <div class="admin-actions">
-                <button type="button" id="btn-add-group" class="btn btn--ghost">+ Add Group</button>
-                <button type="button" id="btn-save" class="btn btn--primary">Save All Changes</button>
-            </div>
-
-            <div id="admin-status" class="admin-status" style="display:none;"></div>
-        </div>
-    </section>
-
-    <script>window.__GROUPS__ = {{.PageData.GroupsJSON}};window.__BASE_COST__ = {{.PageData.BaseCost}};window.__CSRF__ = {{.CSRF}};</script>
-    <script src="/static/js/admin.js"></script>
 {{end}}

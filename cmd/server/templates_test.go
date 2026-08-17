@@ -64,9 +64,10 @@ func TestTemplatesRender(t *testing.T) {
 			Name: "feature_email", Label: "Email", Hint: "h",
 			Options: []db.Option{{Value: "none", Name: "None", Cost: 0, CostLabel: "Free", IsDefault: true}},
 		}}},
-		"quote-sent":   map[string]any{"Email": "a@b.co"},
-		"quote-result": map[string]any{"AIEstimate": template.HTML("<p>x</p>"), "Name": "A"},
-		"admin": adminDashData{GroupsJSON: "[]", BaseCost: 2000,
+		"quote-sent":    map[string]any{"Email": "a@b.co"},
+		"quote-result":  map[string]any{"AIEstimate": template.HTML("<p>x</p>"), "Name": "A"},
+		"admin-options": adminOptionsData{GroupsJSON: "[]", BaseCost: 2000},
+		"admin": adminDashData{
 			Quotes: []db.Quote{{ID: 1, Status: "paid", CreatedAt: time.Now()}},
 			Week:   bookingRows([]db.Booking{booked}), NewCount: 2, Outstanding: 12345},
 		"admin-bookings": adminBookingsData{Flash: flash{OK: "saved"}, Status: "new", Statuses: db.BookingStatuses,
