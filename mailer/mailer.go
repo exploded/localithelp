@@ -65,10 +65,14 @@ func (m *Mailer) SendWithAttachments(to, subject, htmlBody, textBody, replyTo st
 		Body:    body,
 	}
 	for _, a := range atts {
+		// SES defaults ContentTransferEncoding to SEVEN_BIT, which corrupts
+		// binary payloads (a PDF arrives the right size but with its compressed
+		// streams mangled → blank pages). Always ask for base64.
 		att := sestypes.Attachment{
-			FileName:           aws.String(a.Filename),
-			RawContent:         a.Data,
-			ContentDisposition: sestypes.AttachmentContentDispositionAttachment,
+			FileName:                aws.String(a.Filename),
+			RawContent:              a.Data,
+			ContentDisposition:      sestypes.AttachmentContentDispositionAttachment,
+			ContentTransferEncoding: sestypes.AttachmentContentTransferEncodingBase64,
 		}
 		if a.ContentType != "" {
 			att.ContentType = aws.String(a.ContentType)
