@@ -111,12 +111,20 @@ Next steps:
   1. Edit $APP_DIR/.env (PHONE, ADMIN_EMAIL, Google/Turnstile/Anthropic keys).
   2. Add this to /etc/caddy/Caddyfile and run: sudo systemctl reload caddy
 
-     mchugh.com.au, www.mchugh.com.au {
+     www.mchugh.com.au {
+         redir https://mchugh.com.au{uri} permanent
+     }
+
+     mchugh.com.au {
          import access_log
          reverse_proxy 127.0.0.1:$PORT {
              import go_proxy
          }
      }
+
+     (The app also 301s any non-canonical Host itself, so an older combined
+     "mchugh.com.au, www.mchugh.com.au" block still works — the split block just
+     saves a proxy hop.)
 
      (Leave the existing mchugh.au / www.mchugh.au block alone — that is the
      separate static landing page.)

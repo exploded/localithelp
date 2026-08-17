@@ -1,0 +1,48 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Page not found — James McHugh</title>
+    <meta name="description" content="That page doesn't exist. Here's where to find services, free fix-it-yourself guides, and how to book a visit.">
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">404</div>
+            <h1 class="section-title">That page isn't here.</h1>
+            <p class="page-header-intro">The link may be old or mistyped. The rest of the site is very much here — try one of these.</p>
+        </div>
+    </div>
+
+    <section class="service-section">
+        <div class="container">
+            <div class="notfound-grid">
+                <a href="/services" class="service-card">
+                    <div class="service-icon">Services</div>
+                    <h3>What I can help with</h3>
+                    <p>Email, printers, Wi-Fi, scams, slow PCs, new-computer setups and more — at your place.</p>
+                    <span class="service-card-more">See services &#8594;</span>
+                </a>
+                <a href="/fix-it-yourself" class="service-card">
+                    <div class="service-icon">Free guides</div>
+                    <h3>Fix it yourself</h3>
+                    <p>Plain-English steps for the most common problems. Try these first — no charge.</p>
+                    <span class="service-card-more">Browse guides &#8594;</span>
+                </a>
+                <a href="/areas" class="service-card">
+                    <div class="service-icon">Areas</div>
+                    <h3>Where I come to</h3>
+                    <p>Donvale and Melbourne's eastern suburbs — roughly 30 minutes' drive.</p>
+                    <span class="service-card-more">Service areas &#8594;</span>
+                </a>
+                <a href="/book" class="service-card service-card--featured">
+                    <div class="service-icon">Book</div>
+                    <h3>Book a visit</h3>
+                    <p>Tell me what's going wrong and when suits. Same or next day where possible.</p>
+                    <span class="service-card-more">Book now &#8594;</span>
+                </a>
+            </div>
+        </div>
+    </section>
+{{end}}

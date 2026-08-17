@@ -11,16 +11,34 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "LocalBusiness",
-      "name": "James McHugh — Computer Help & Software Development",
-      "url": "{{.Site.BaseURL}}",
-      "email": "{{.Site.Email}}",{{if .Site.Phone}}
-      "telephone": "{{.Site.Phone}}",{{end}}
-      "priceRange": "$$",
-      "address": {"@type": "PostalAddress", "addressLocality": "Donvale", "addressRegion": "VIC", "postalCode": "3111", "addressCountry": "AU"},
-      "areaServed": [{{range $i, $s := .Site.Suburbs}}{{if $i}}, {{end}}"{{$s}}"{{end}}],
-      "paymentAccepted": "Visa, Mastercard, Amex, PayID, Apple Pay, Google Pay",
-      "openingHours": "Mo-Fr 09:00-17:00"
+      "@graph": [
+        {
+          "@type": "LocalBusiness",
+          "@id": "{{.Site.BaseURL}}/#business",
+          "name": "James McHugh — Computer Help & Software Development",
+          "url": "{{.Site.BaseURL}}/",
+          "image": "{{.Site.BaseURL}}/static/img/og.png",
+          "logo": "{{.Site.BaseURL}}/static/img/icon-512.png",
+          "email": "{{.Site.Email}}",{{if .Site.Phone}}
+          "telephone": "{{.Site.Phone}}",{{end}}
+          "priceRange": "$$",
+          "address": {"@type": "PostalAddress", "addressLocality": "Donvale", "addressRegion": "VIC", "postalCode": "3111", "addressCountry": "AU"},
+          "geo": {"@type": "GeoCoordinates", "latitude": -37.79, "longitude": 145.18},
+          "areaServed": [{{range $i, $s := .Site.Suburbs}}{{if $i}}, {{end}}{"@type": "City", "name": "{{$s}}"}{{end}}],
+          "knowsAbout": ["Computer repair", "Wi-Fi and home networking", "Email and Outlook", "Printers", "Scam and virus removal", "New computer setup", "Data recovery", "Software development", "Shopify"],
+          "paymentAccepted": "Visa, Mastercard, Amex, PayID, Apple Pay, Google Pay",
+          "openingHours": "Mo-Fr 09:00-17:00",
+          "founder": {"@type": "Person", "name": "James McHugh"}
+        },
+        {
+          "@type": "WebSite",
+          "@id": "{{.Site.BaseURL}}/#website",
+          "url": "{{.Site.BaseURL}}/",
+          "name": "James McHugh — Computer Help & Software Development",
+          "publisher": {"@id": "{{.Site.BaseURL}}/#business"},
+          "inLanguage": "en-AU"
+        }
+      ]
     }
     </script>
 {{end}}

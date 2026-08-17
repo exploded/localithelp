@@ -1,8 +1,10 @@
 {{template "base" .}}
 
 {{define "meta"}}
-    <title>Get a Quote — James McHugh</title>
+    <title>Get a Quote — Web App &amp; Software Estimate | James McHugh</title>
     <meta name="description" content="Configure your web application requirements and get a free instant AI-powered cost estimate.">
+    <meta property="og:title" content="Get a free instant software quote">
+    <meta property="og:description" content="Pick what your web app needs and get an instant ballpark estimate — no obligation.">
 {{end}}
 
 {{define "head"}}
@@ -119,5 +121,5 @@
     </section>
 
     <script>window.__BASE_COST__ = {{.PageData.BaseCost}};</script>
-    <script src="/static/js/quote.js"></script>
+    <script src="/static/js/quote.js" defer></script>
 {{end}}

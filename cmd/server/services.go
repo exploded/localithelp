@@ -77,18 +77,6 @@ func relatedServices(s *Service) []*Service {
 	return out
 }
 
-// suburbs is the published service area (roughly 30 minutes' drive from Donvale).
-var suburbs = []string{
-	"Donvale", "Doncaster", "Doncaster East", "Templestowe", "Templestowe Lower", "Bulleen",
-	"Park Orchards", "Warrandyte", "Wonga Park", "Ringwood", "Ringwood North", "Ringwood East",
-	"Heathmont", "Croydon", "Kilsyth", "Mooroolbark", "Lilydale", "Chirnside Park",
-	"Mitcham", "Nunawading", "Vermont", "Vermont South", "Forest Hill", "Blackburn",
-	"Box Hill", "Box Hill North", "Surrey Hills", "Balwyn", "Balwyn North", "Camberwell", "Canterbury",
-	"Eltham", "Eltham North", "Montmorency", "Lower Plenty", "Greensborough", "Watsonia", "Viewbank",
-	"Heidelberg", "Eaglemont", "Rosanna", "Bayswater", "Wantirna", "Boronia", "Knoxfield",
-	"Wheelers Hill", "Glen Waverley", "Mount Waverley",
-}
-
 // softwarePackages are the fixed-price software development offerings.
 // Prices are starting points — adjust freely.
 var softwarePackages = []Package{

@@ -24,7 +24,7 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 func handleService(w http.ResponseWriter, r *http.Request) {
 	s, ok := findService(r.PathValue("slug"))
 	if !ok {
-		http.NotFound(w, r)
+		notFound(w, r)
 		return
 	}
 	if s.Featured {
@@ -40,7 +40,7 @@ func handleService(w http.ResponseWriter, r *http.Request) {
 func handleSoftwareDev(w http.ResponseWriter, r *http.Request) {
 	s := featuredService()
 	if s == nil {
-		http.NotFound(w, r)
+		notFound(w, r)
 		return
 	}
 	render(w, r, "software-development", struct {
@@ -95,7 +95,7 @@ func handleGuides(w http.ResponseWriter, r *http.Request) {
 func handleGuide(w http.ResponseWriter, r *http.Request) {
 	g, ok := findGuide(r.PathValue("slug"))
 	if !ok {
-		http.NotFound(w, r)
+		notFound(w, r)
 		return
 	}
 	var others []*Guide
@@ -108,6 +108,42 @@ func handleGuide(w http.ResponseWriter, r *http.Request) {
 		G      *Guide
 		Others []*Guide
 	}{g, others})
+}
+
+// ── Service areas ──
+
+func handleAreas(w http.ResponseWriter, r *http.Request) {
+	render(w, r, "areas", struct {
+		Groups []suburbGroup
+		Count  int
+	}{groupSuburbs(), len(suburbList)})
+}
+
+func handleArea(w http.ResponseWriter, r *http.Request) {
+	s, ok := findSuburb(r.PathValue("slug"))
+	if !ok {
+		notFound(w, r)
+		return
+	}
+	render(w, r, "area", areaPageData(s))
+}
+
+type areaPage struct {
+	A        *Suburb
+	Services []Service
+	Guides   []*Guide
+	Nearby   []*Suburb
+}
+
+func areaPageData(s *Suburb) areaPage {
+	var gs []*Guide
+	for i := range guides {
+		if len(gs) == 4 {
+			break
+		}
+		gs = append(gs, &guides[i])
+	}
+	return areaPage{A: s, Services: services, Guides: gs, Nearby: s.Nearby()}
 }
 
 // ── Booking ──
@@ -133,6 +169,9 @@ func handleBookForm(w http.ResponseWriter, r *http.Request) {
 	f := bookForm{Service: r.URL.Query().Get("service")}
 	if _, ok := findService(f.Service); !ok {
 		f.Service = ""
+	}
+	if s, ok := findSuburbByName(r.URL.Query().Get("suburb")); ok {
+		f.Suburb = s.Name
 	}
 	render(w, r, "book", bookPageData{
 		Services: services,

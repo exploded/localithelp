@@ -7,6 +7,27 @@
     <meta property="og:description" content="{{.PageData.G.MetaDesc}}">
 {{end}}
 
+{{define "head"}}
+    {{$g := .PageData.G}}
+    {{template "ld-breadcrumbs" (crumbs "Home" "/" "Fix it yourself" "/fix-it-yourself" $g.Title (print "/fix-it-yourself/" $g.Slug))}}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "{{$g.Title}}",
+      "description": "{{$g.MetaDesc}}",
+      "articleSection": "{{$g.Kicker}}",
+      "inLanguage": "en-AU",
+      "url": "{{.Site.BaseURL}}/fix-it-yourself/{{$g.Slug}}",
+      "mainEntityOfPage": "{{.Site.BaseURL}}/fix-it-yourself/{{$g.Slug}}",
+      "author": {"@type": "Person", "name": "James McHugh", "url": "{{.Site.BaseURL}}/"},
+      "publisher": {"@id": "{{.Site.BaseURL}}/#business"},
+      "image": "{{.Site.BaseURL}}/static/img/og.png",
+      "articleBody": {{stripTags $g.Summary}}
+    }
+    </script>
+{{end}}
+
 {{define "content"}}
     {{$g := .PageData.G}}
     <div class="page-header">

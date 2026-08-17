@@ -68,9 +68,9 @@
     </div>
     <div>
         <div class="area-list">
-            {{range .Suburbs}}<span class="area-chip">{{.}}</span>{{end}}
+            {{range .Areas}}<a href="{{.URL}}" class="area-chip">{{.Name}}</a>{{end}}
         </div>
-        <p class="area-note">A bit further out? Ask — I can usually make it work.</p>
+        <p class="area-note">A bit further out? Ask — I can usually make it work. <a href="/areas">All service areas &#8594;</a></p>
     </div>
 </div>
 {{end}}
@@ -89,6 +89,13 @@
         <a href="mailto:{{.Email}}" class="book-cta-email">{{.Email}}</a>
     </div>
 </div>
+{{end}}
+
+{{/* ld-breadcrumbs: takes the result of (crumbs "Home" "/" "Services" "/services" ...) — a BreadcrumbList JSON-LD block. */}}
+{{define "ld-breadcrumbs"}}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{{range $i, $c := .Items}}{{if $i}},{{end}}{"@type":"ListItem","position":{{add $i 1}},"name":{{$c.Name}},"item":"{{$.BaseURL}}{{$c.URL}}"}{{end}}]}
+</script>
 {{end}}
 
 {{/* admin-nav: takes .Path */}}

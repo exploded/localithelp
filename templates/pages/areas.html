@@ -1,0 +1,52 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Service Areas — At-Home Computer Help Across Melbourne's East | James McHugh, Donvale</title>
+    <meta name="description" content="Onsite computer help across {{.PageData.Count}} suburbs around Donvale — Manningham, Whitehorse, Maroondah, Boroondara, Banyule, Knox and more. No call-out fee in the service area.">
+    <meta property="og:title" content="Where I come to — computer help across Melbourne's east">
+    <meta property="og:description" content="{{.PageData.Count}} suburbs within about 30 minutes of Donvale. No call-out fee, no fix no fee.">
+{{end}}
+
+{{define "head"}}
+    {{template "ld-breadcrumbs" (crumbs "Home" "/" "Service areas" "/areas")}}
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Service areas</div>
+            <h1 class="section-title">Where I come to.</h1>
+            <p class="page-header-intro">I'm based in Donvale and cover Melbourne's eastern suburbs — roughly 30 minutes' drive in any direction. The service fee covers travel anywhere on this list, so there's no call-out charge on top. Pick your suburb for local details, or just <a href="/book">book a visit</a>.</p>
+        </div>
+    </div>
+
+    <section class="areas-section">
+        <div class="container">
+            <div class="reveal">{{template "areas" .Site}}</div>
+        </div>
+    </section>
+
+    <section class="services-section">
+        <div class="container">
+            {{range .PageData.Groups}}
+            <div class="guide-group">
+                <div class="section-label reveal">{{.LGA}}</div>
+                <div class="areas-index-grid">
+                    {{range .Suburbs}}
+                    <a href="{{.URL}}" class="area-index-card reveal">
+                        <span class="area-index-name">{{.Name}}</span>
+                        <span class="area-index-meta">{{.Postcode}} &middot; about {{.DriveMin}} min from Donvale</span>
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">{{template "book-cta" .Site}}</div>
+    </section>
+
+    <script src="/static/js/areamap.js" defer></script>
+{{end}}

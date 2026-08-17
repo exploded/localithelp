@@ -1,3 +1,45 @@
+/* ── Self-hosted fonts (from Google Fonts, latin subset, SIL OFL). See README → Fonts. ── */
+@font-face {
+    font-family: 'DM Sans';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/dm-sans-italic.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('/static/fonts/dm-sans.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Instrument Serif';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/instrument-serif-italic.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Instrument Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/instrument-serif.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+    src: url('/static/fonts/jetbrains-mono.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
@@ -2112,3 +2154,36 @@ a.cal-slot:hover { background: rgba(180, 83, 9, 0.12); cursor: pointer; }
     .admin-grid, .admin-grid--wide { grid-template-columns: minmax(0, 1fr); }
     .inv-parties { grid-template-columns: 1fr; }
 }
+
+/* ── SEO pass: service-area pages, 404 ── */
+a.area-chip { text-decoration: none; transition: border-color 0.2s, color 0.2s; }
+a.area-chip:hover { border-color: var(--brand); color: var(--brand); }
+.area-note a { color: var(--brand); }
+.areas-index-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+.area-index-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.area-index-card:hover { border-color: var(--border-brand); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(15,23,42,0.08); }
+.area-index-name { font-weight: 600; color: var(--text-primary); }
+.area-index-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-muted); }
+.notfound-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+}
+.notfound-grid .service-card { opacity: 1; transform: none; }
+.aside-note a { color: var(--brand); text-decoration: none; }
+.aside-note a:hover { text-decoration: underline; }

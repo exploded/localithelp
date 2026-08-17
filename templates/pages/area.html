@@ -1,0 +1,128 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Computer Help in {{.PageData.A.Name}} {{.PageData.A.Postcode}} — At-Home Repairs, Wi-Fi &amp; Email | James McHugh</title>
+    <meta name="description" content="{{.PageData.A.MetaDesc}}">
+    <meta property="og:title" content="Computer help in {{.PageData.A.Name}}, at your place">
+    <meta property="og:description" content="{{.PageData.A.MetaDesc}}">
+{{end}}
+
+{{define "head"}}
+    {{$a := .PageData.A}}
+    {{template "ld-breadcrumbs" (crumbs "Home" "/" "Service areas" "/areas" $a.Name $a.URL)}}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "name": "At-home computer help in {{$a.Name}}",
+      "serviceType": "Computer repair and IT support",
+      "description": "{{$a.MetaDesc}}",
+      "url": "{{.Site.BaseURL}}{{$a.URL}}",
+      "provider": {"@id": "{{.Site.BaseURL}}/#business"},
+      "areaServed": {"@type": "City", "name": "{{$a.Name}}", "address": {"@type": "PostalAddress", "addressLocality": "{{$a.Name}}", "postalCode": "{{$a.Postcode}}", "addressRegion": "VIC", "addressCountry": "AU"}},
+      "offers": {"@type": "Offer", "priceCurrency": "AUD", "price": "{{.Site.OnsiteFee}}", "description": "Onsite service fee; time billed at ${{.Site.BlockRate}} per 15 minutes. No fix, no fee."}
+    }
+    </script>
+{{end}}
+
+{{define "content"}}
+    {{$a := .PageData.A}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label"><a href="/areas" class="crumb">Service areas</a> &middot; {{$a.LGA}} &middot; {{$a.Postcode}}</div>
+            <h1 class="section-title">Computer help in {{$a.Name}},<br><em>at your place.</em></h1>
+            <p class="page-header-intro">{{$a.Blurb}}</p>
+        </div>
+    </div>
+
+    <section class="service-section">
+        <div class="container">
+            <div class="help-banner help-banner--slim reveal">
+                <div><strong>About {{$a.DriveMin}} minutes from Donvale.</strong> {{$a.Name}} is well inside the service area, so there's no call-out or travel fee — just the standard visit rate, and no fix, no fee.</div>
+                <div class="help-banner-actions">
+                    <a href="/book?suburb={{$a.Name}}" class="btn btn--primary">Book a visit in {{$a.Name}} &#8594;</a>
+                    {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost">Call {{.Site.Phone}}</a>{{end}}
+                </div>
+            </div>
+
+            <div class="service-layout">
+                <div class="service-body">
+                    <h2>What I can help with in {{$a.Name}}</h2>
+                    <p>Everything on the <a href="/services">services list</a> is available in {{$a.Name}} — the everyday household fixes, setting up new gear, keeping you safe online, and patient one-on-one help. The most common calls, in rough order:</p>
+                    <ul class="checklist">
+                        <li><a href="/services/wifi-internet-networking">Wi-Fi and internet</a> — dead spots, drop-outs, NBN and modem trouble, mesh systems for larger homes</li>
+                        <li><a href="/services/email-outlook">Email and Outlook</a> — accounts that stopped syncing, passwords, moving to a new provider</li>
+                        <li><a href="/services/printers-scanners">Printers and scanners</a> — offline printers, printing from phones, scan-to-email</li>
+                        <li><a href="/services/scam-virus-security">Scams, viruses and security</a> — clean-ups after a scam call, malware removal, locking accounts down</li>
+                        <li><a href="/services/computer-repairs">Slow or broken computers</a> — tune-ups, upgrades, honest advice on repair vs replace</li>
+                        <li><a href="/services/new-computer-setup">New computer setup</a> — everything moved across and working before I leave</li>
+                        <li><a href="/services/one-on-one-help">One-on-one help</a> — unhurried, plain-English lessons at your own pace</li>
+                    </ul>
+
+                    <h2>How a visit works</h2>
+                    <div class="steps steps--compact">
+                        <div class="step">
+                            <div class="step-num">01</div>
+                            <h3>Book</h3>
+                            <p>Online{{if .Site.Phone}}, by phone{{end}} or email. Tell me the symptoms; I'll ask the rest.</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">02</div>
+                            <h3>Fixed appointment</h3>
+                            <p>Same or next day where possible, at your home or office in {{$a.Name}}. I turn up when I say I will.</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">03</div>
+                            <h3>Fixed &amp; explained</h3>
+                            <p>You'll know the price before I start; tap your card at the end. If it comes back within 14 days, I come back free.</p>
+                        </div>
+                    </div>
+
+                    <h2>Try these first — free guides</h2>
+                    <p>Some problems don't need a visit. These <a href="/fix-it-yourself">plain-English guides</a> cover the things I get called out for most, and each one says when to stop and call.</p>
+                    <ul class="checklist checklist--plain">
+                        {{range .PageData.Guides}}<li><a href="/fix-it-yourself/{{.Slug}}">{{.Title}}</a></li>{{end}}
+                    </ul>
+                </div>
+
+                <aside class="service-aside">
+                    <div class="price-card price-card--highlight">
+                        <div class="price-card-kicker">Home or office visit in {{$a.Name}}</div>
+                        <div class="price-card-amount">${{.Site.OnsiteFee}} <span class="price-card-plus">+ ${{.Site.BlockRate}} / 15 min</span></div>
+                        <p class="price-card-note">Billed in 15-minute blocks. The service fee covers travel — no call-out charge for {{$a.Name}}.</p>
+                        <a href="/book?suburb={{$a.Name}}" class="btn btn--primary aside-btn">Book a visit &#8594;</a>
+                        {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost aside-btn">Call {{.Site.Phone}}</a>{{end}}
+                    </div>
+                    <ul class="aside-guarantees">
+                        <li>No fix, no fee</li>
+                        <li>14-day work guarantee</li>
+                        <li>Fixed appointment times</li>
+                    </ul>
+                    {{if .PageData.Nearby}}
+                    <div class="aside-links">
+                        <div class="price-card-kicker">Nearby suburbs</div>
+                        <ul>
+                            {{range .PageData.Nearby}}<li><a href="{{.URL}}">Computer help in {{.Name}}</a></li>{{end}}
+                        </ul>
+                        <p class="aside-note"><a href="/areas">All {{len .Site.Areas}} suburbs &#8594;</a></p>
+                    </div>
+                    {{end}}
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <section class="services-section">
+        <div class="container">
+            <div class="section-label reveal">Services</div>
+            <h2 class="section-title reveal">Everything I do, available in {{$a.Name}}.</h2>
+            <div class="services-grid">
+                {{range .PageData.Services}}{{template "service-card" .}}{{end}}
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">{{template "book-cta" .Site}}</div>
+    </section>
+{{end}}

@@ -80,11 +80,26 @@ func main() {
 		log.Println("GOOGLE_CLIENT_ID not set — Google login disabled")
 	}
 
+	mux := newMux(dir)
+
+	log.Printf("listening on :%s", port)
+	if err := http.ListenAndServe(":"+port, canonicalHost(mux)); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// newMux registers every route. Kept separate from main so tests can drive the
+// real router (see TestSitemap).
+func newMux(dir string) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Static files with cache headers
 	fs := http.FileServer(http.Dir(filepath.Join(dir, "static")))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", cacheStatic(fs)))
+
+	mux.HandleFunc("GET /robots.txt", handleRobots)
+	mux.HandleFunc("GET /sitemap.xml", handleSitemap)
+	mux.HandleFunc("GET /favicon.ico", handleFavicon(dir))
 
 	mux.HandleFunc("GET /{$}", handleHome)
 	mux.HandleFunc("GET /services", handleServices)
@@ -92,6 +107,8 @@ func main() {
 	mux.HandleFunc("GET /software-development", handleSoftwareDev)
 	mux.HandleFunc("GET /fix-it-yourself", handleGuides)
 	mux.HandleFunc("GET /fix-it-yourself/{slug}", handleGuide)
+	mux.HandleFunc("GET /areas", handleAreas)
+	mux.HandleFunc("GET /areas/{slug}", handleArea)
 	mux.HandleFunc("GET /book", handleBookForm)
 	mux.HandleFunc("POST /book", handleBookSubmit)
 	mux.HandleFunc("GET /book/thanks", handleBookThanks)
@@ -135,10 +152,9 @@ func main() {
 	mux.HandleFunc("POST /admin/customers/{id}", requireAdmin(handleAdminCustomerSave))
 	mux.HandleFunc("POST /admin/customers/{id}/bookings", requireAdmin(handleAdminCustomerBooking))
 
-	log.Printf("listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatal(err)
-	}
+	// Catch-all: trailing-slash redirects + branded 404.
+	mux.HandleFunc("/", handleNotFound)
+	return mux
 }
 
 func loadTemplates(dir string) (map[string]*template.Template, error) {
@@ -149,6 +165,8 @@ func loadTemplates(dir string) (map[string]*template.Template, error) {
 		"mul":       func(a, b int) int { return a * b },
 		"money":     fmtCents,
 		"seq":       seq,
+		"crumbs":    crumbs,
+		"stripTags": stripTags,
 	}
 	base := template.New("").Funcs(funcMap)
 	base = template.Must(base.ParseGlob(filepath.Join(dir, "layouts", "*.html")))
@@ -504,7 +522,8 @@ type siteConfig struct {
 	Email     string       // contact email
 	OnsiteFee int          // onsite service fee (AUD)
 	BlockRate int          // per 15-minute block (AUD)
-	Suburbs   []string     // service area
+	Suburbs   []string     // service area (display names)
+	Areas     []Suburb     // service area with slugs, for /areas/{slug} links
 	ABN       string       // shown on invoices
 	BankName  string       // bank transfer details on invoices (BSB empty = hidden)
 	BankBSB   string
@@ -533,6 +552,7 @@ func initSiteConfig(port string) {
 		OnsiteFee: envInt("ONSITE_FEE", 80),
 		BlockRate: envInt("BLOCK_RATE", 30),
 		Suburbs:   suburbs,
+		Areas:     suburbList,
 		ABN:       envOr("ABN", "14 723 053 435"),
 		BankName:  envOr("BANK_ACCOUNT_NAME", "James McHugh"),
 		BankBSB:   strings.TrimSpace(os.Getenv("BANK_BSB")),

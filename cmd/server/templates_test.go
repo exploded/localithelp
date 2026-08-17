@@ -60,6 +60,12 @@ func TestTemplatesRender(t *testing.T) {
 			Others []*Guide
 		}{&guides[0], []*Guide{&guides[1]}},
 		"portfolio": nil,
+		"404":       nil,
+		"areas": struct {
+			Groups []suburbGroup
+			Count  int
+		}{groupSuburbs(), len(suburbList)},
+		"area": areaPageData(&suburbList[0]),
 		"quote": quotePageData{TurnstileSiteKey: "1x00000000000000000000AA", BaseCost: 2000, Groups: []db.OptionGroup{{
 			Name: "feature_email", Label: "Email", Hint: "h",
 			Options: []db.Option{{Value: "none", Name: "None", Cost: 0, CostLabel: "Free", IsDefault: true}},

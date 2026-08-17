@@ -4,16 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {{block "meta" .}}{{end}}
+    {{block "meta" .}}
+    <title>James McHugh — Computer Help &amp; Software Development, Donvale VIC</title>
+    <meta name="description" content="Friendly at-home computer help around Donvale and Melbourne's eastern suburbs, plus software development. No fix, no fee.">
+    {{end}}
     <link rel="canonical" href="{{.Site.BaseURL}}{{.Path}}">
     <meta property="og:site_name" content="James McHugh — Computer Help &amp; Software">
     <meta property="og:url" content="{{.Site.BaseURL}}{{.Path}}">
     <meta property="og:type" content="website">
+    <meta property="og:locale" content="en_AU">
+    <meta property="og:image" content="{{.Site.BaseURL}}/static/img/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="James McHugh — computer help at your place, Donvale &amp; Melbourne's east">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="geo.region" content="AU-VIC">
     <meta name="geo.placename" content="Donvale">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#f4f6fa">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+    <link rel="manifest" href="/static/site.webmanifest">
+    <link rel="preload" href="/static/fonts/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/static/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/static/css/styles.css">
     {{block "head" .}}{{end}}
 </head>
@@ -32,7 +45,7 @@
             <a href="/software-development"{{if hasPrefix .Path "/software-development"}} class="active"{{end}}>Software</a>
             <a href="/fix-it-yourself"{{if hasPrefix .Path "/fix-it-yourself"}} class="active"{{end}}>Fix it yourself</a>
             <a href="/#pricing">Pricing</a>
-            <a href="/#areas">Areas</a>
+            <a href="/areas"{{if hasPrefix .Path "/areas"}} class="active"{{end}}>Areas</a>
             <a href="/portfolio"{{if hasPrefix .Path "/portfolio"}} class="active"{{end}}>Portfolio</a>
             {{if .IsAdmin}}<a href="/admin"{{if hasPrefix .Path "/admin"}} class="active"{{end}}>Admin</a>{{end}}
             {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="nav-phone">{{.Site.Phone}}</a>{{end}}
@@ -49,7 +62,9 @@
         </div>
     </nav>
 
+    <main>
     {{block "content" .}}{{end}}
+    </main>
 
     <!-- Footer -->
     <footer>
@@ -60,7 +75,7 @@
                 <a href="/software-development">Software</a>
                 <a href="/fix-it-yourself">Fix it yourself</a>
                 <a href="/#pricing">Pricing</a>
-                <a href="/#areas">Areas</a>
+                <a href="/areas">Areas</a>
                 <a href="/portfolio">Portfolio</a>
                 <a href="/quote">Get a Quote</a>
                 <a href="/book">Book</a>
@@ -72,7 +87,7 @@
 
 </div>
 
-<script src="/static/js/reveal.js"></script>
+<script src="/static/js/reveal.js" defer></script>
 </body>
 </html>
 {{end}}

@@ -7,6 +7,10 @@
     <meta property="og:description" content="Everything I fix and build, with prices published up front. No fix, no fee.">
 {{end}}
 
+{{define "head"}}
+    {{template "ld-breadcrumbs" (crumbs "Home" "/" "Services" "/services")}}
+{{end}}
+
 {{define "content"}}
     <div class="page-header">
         <div class="container">

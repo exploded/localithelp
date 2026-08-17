@@ -7,6 +7,23 @@
     <meta property="og:description" content="{{.PageData.S.MetaDesc}}">
 {{end}}
 
+{{define "head"}}
+    {{$s := .PageData.S}}
+    {{template "ld-breadcrumbs" (crumbs "Home" "/" "Services" "/services" $s.Title $s.URL)}}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "name": "{{$s.Title}}",
+      "serviceType": "{{$s.Kicker}}",
+      "description": "{{$s.MetaDesc}}",
+      "url": "{{.Site.BaseURL}}{{$s.URL}}",
+      "provider": {"@id": "{{.Site.BaseURL}}/#business"},
+      "areaServed": [{{range $i, $n := .Site.Suburbs}}{{if $i}}, {{end}}{"@type": "City", "name": "{{$n}}"}{{end}}]
+    }
+    </script>
+{{end}}
+
 {{define "content"}}
     {{$s := .PageData.S}}
     <div class="page-header">
