@@ -5,18 +5,66 @@
 package sqlc
 
 type Booking struct {
+	ID              int64  `json:"id"`
+	Name            string `json:"name"`
+	Phone           string `json:"phone"`
+	Email           string `json:"email"`
+	Suburb          string `json:"suburb"`
+	ServiceSlug     string `json:"service_slug"`
+	Mode            string `json:"mode"`
+	Issue           string `json:"issue"`
+	PreferredTime   string `json:"preferred_time"`
+	Status          string `json:"status"`
+	Ip              string `json:"ip"`
+	CreatedAt       string `json:"created_at"`
+	CustomerID      int64  `json:"customer_id"`
+	StartAt         string `json:"start_at"`
+	DurationMin     int64  `json:"duration_min"`
+	AdminNotes      string `json:"admin_notes"`
+	ParentBookingID int64  `json:"parent_booking_id"`
+	UpdatedAt       string `json:"updated_at"`
+}
+
+type Customer struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	PhoneNorm string `json:"phone_norm"`
+	Address   string `json:"address"`
+	Suburb    string `json:"suburb"`
+	Notes     string `json:"notes"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+type Invoice struct {
 	ID            int64  `json:"id"`
-	Name          string `json:"name"`
-	Phone         string `json:"phone"`
-	Email         string `json:"email"`
-	Suburb        string `json:"suburb"`
-	ServiceSlug   string `json:"service_slug"`
-	Mode          string `json:"mode"`
-	Issue         string `json:"issue"`
-	PreferredTime string `json:"preferred_time"`
+	Number        int64  `json:"number"`
+	BookingID     int64  `json:"booking_id"`
+	CustomerID    int64  `json:"customer_id"`
 	Status        string `json:"status"`
-	Ip            string `json:"ip"`
+	IssuedAt      string `json:"issued_at"`
+	DueAt         string `json:"due_at"`
+	PaidAt        string `json:"paid_at"`
+	PaymentMethod string `json:"payment_method"`
+	PaymentRef    string `json:"payment_ref"`
+	PaymentLink   string `json:"payment_link"`
+	TotalCents    int64  `json:"total_cents"`
+	Notes         string `json:"notes"`
+	ViewToken     string `json:"view_token"`
 	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+}
+
+type InvoiceItem struct {
+	ID          int64   `json:"id"`
+	InvoiceID   int64   `json:"invoice_id"`
+	Description string  `json:"description"`
+	Qty         float64 `json:"qty"`
+	UnitCents   int64   `json:"unit_cents"`
+	LineCents   int64   `json:"line_cents"`
+	SortOrder   int64   `json:"sort_order"`
 }
 
 type Quote struct {

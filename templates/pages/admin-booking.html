@@ -1,0 +1,142 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — Booking #{{.PageData.B.ID}}</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}{{$b := $d.B}}{{$csrf := .CSRF}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label"><a href="/admin/bookings">Bookings</a> / #{{$b.ID}}</div>
+            <h1 class="section-title">{{$b.Name}} {{template "badge" $b.Status}}</h1>
+            <p class="page-header-intro">
+                {{if $d.Row.ServiceTitle}}{{$d.Row.ServiceTitle}} · {{end}}{{if $b.Suburb}}{{$b.Suburb}} · {{end}}received {{$b.CreatedAt.Format "2 Jan 2006"}}
+                {{if $d.Parent}} · follow-up to <a href="/admin/bookings/{{$d.Parent.ID}}">#{{$d.Parent.ID}}</a>{{end}}
+            </p>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{template "flash" $d.Flash}}
+
+            <div class="admin-grid">
+                <div class="admin-col">
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Customer</h2>
+                        {{if $d.Cust}}
+                        <p><a href="/admin/customers/{{$d.Cust.ID}}"><strong>{{$d.Cust.Name}}</strong></a></p>
+                        <p>{{if $d.Cust.Phone}}<a href="tel:{{$d.Cust.Phone}}">{{$d.Cust.Phone}}</a><br>{{end}}{{if $d.Cust.Email}}<a href="mailto:{{$d.Cust.Email}}">{{$d.Cust.Email}}</a><br>{{end}}{{if $d.Cust.Address}}{{$d.Cust.Address}}<br>{{end}}{{$d.Cust.Suburb}}</p>
+                        {{if ne $b.Name $d.Cust.Name}}<p class="admin-muted">Enquiry name: {{$b.Name}}{{if $b.Phone}} · {{$b.Phone}}{{end}}{{if $b.Email}} · {{$b.Email}}{{end}}</p>{{end}}
+                        {{else}}
+                        <p class="admin-muted">Not linked to a customer record.</p>
+                        {{end}}
+                    </div>
+
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">The problem</h2>
+                        {{if $b.PreferredTime}}<p class="admin-muted">Preferred: {{$b.PreferredTime}}</p>{{end}}
+                        <blockquote class="admin-quote">{{$b.Issue}}</blockquote>
+                    </div>
+
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Notes (private)</h2>
+                        <form method="POST" action="/admin/bookings/{{$b.ID}}/notes">
+                            {{template "csrf" $csrf}}
+                            <textarea name="notes" rows="4" class="admin-input" placeholder="What was done, parts, passwords reset, follow-ups…">{{$b.AdminNotes}}</textarea>
+                            <div class="admin-row-actions"><button class="btn btn--ghost btn--sm" type="submit">Save notes</button></div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="admin-col">
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">{{if $b.StartAt.IsZero}}Schedule the visit{{else}}Scheduled: {{$d.Row.When}} ({{$b.DurationMin}} min){{end}}</h2>
+                        <form method="POST" action="/admin/bookings/{{$b.ID}}/schedule" class="admin-form-inline">
+                            {{template "csrf" $csrf}}
+                            <div class="admin-field">
+                                <label for="start">Start</label>
+                                <input class="admin-input" type="datetime-local" id="start" name="start" value="{{$d.StartValue}}" step="900" required>
+                            </div>
+                            <div class="admin-field admin-field--narrow">
+                                <label for="duration">Duration</label>
+                                <select class="admin-input" id="duration" name="duration">
+                                    {{range $d.Durations}}<option value="{{.}}"{{if eq . $b.DurationMin}} selected{{end}}>{{.}} min</option>{{end}}
+                                </select>
+                            </div>
+                            <label class="admin-check"><input type="checkbox" name="notify" value="1"{{if $b.Email}} checked{{else}} disabled{{end}}> Email confirmation{{if not $b.Email}} (no email){{end}}</label>
+                            <button class="btn btn--primary btn--sm" type="submit">{{if $b.StartAt.IsZero}}Book it{{else}}Reschedule{{end}}</button>
+                        </form>
+                        <p class="admin-muted">Or <a href="/admin/calendar?for={{$b.ID}}{{if not $b.StartAt.IsZero}}&week={{$b.StartAt.Format "2006-01-02"}}{{end}}">pick a free slot on the calendar &#8594;</a></p>
+                    </div>
+
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Status</h2>
+                        <div class="admin-btn-row">
+                            {{if ne $b.Status "contacted"}}
+                            <form method="POST" action="/admin/bookings/{{$b.ID}}/status">{{template "csrf" $csrf}}<input type="hidden" name="status" value="contacted"><button class="btn btn--ghost btn--sm" type="submit">Contacted</button></form>
+                            {{end}}
+                            {{if ne $b.Status "done"}}
+                            <form method="POST" action="/admin/bookings/{{$b.ID}}/status">{{template "csrf" $csrf}}<input type="hidden" name="status" value="done"><button class="btn btn--ghost btn--sm" type="submit">Visit done</button></form>
+                            {{end}}
+                            {{if ne $b.Status "new"}}
+                            <form method="POST" action="/admin/bookings/{{$b.ID}}/status">{{template "csrf" $csrf}}<input type="hidden" name="status" value="new"><button class="btn btn--ghost btn--sm" type="submit">Back to new</button></form>
+                            {{end}}
+                            {{if ne $b.Status "spam"}}
+                            <form method="POST" action="/admin/bookings/{{$b.ID}}/status">{{template "csrf" $csrf}}<input type="hidden" name="status" value="spam"><button class="btn btn--ghost btn--sm" type="submit">Spam</button></form>
+                            {{end}}
+                        </div>
+                        {{if ne $b.Status "cancelled"}}
+                        <details class="admin-details">
+                            <summary>Cancel this booking…</summary>
+                            <form method="POST" action="/admin/bookings/{{$b.ID}}/status" class="admin-form-inline">
+                                {{template "csrf" $csrf}}
+                                <input type="hidden" name="status" value="cancelled">
+                                <div class="admin-field admin-field--wide"><label for="reason">Reason (optional, shown to customer)</label><input class="admin-input" id="reason" name="reason" maxlength="200"></div>
+                                <label class="admin-check"><input type="checkbox" name="notify" value="1"{{if $b.Email}} checked{{else}} disabled{{end}}> Email customer</label>
+                                <button class="btn btn--ghost btn--sm btn--danger" type="submit">Cancel booking</button>
+                            </form>
+                        </details>
+                        {{end}}
+                    </div>
+
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Invoice</h2>
+                        {{if $d.Invoices}}
+                        <ul class="admin-list">
+                            {{range $d.Invoices}}<li><a href="/admin/invoices/{{.ID}}">{{.Ref}}</a> — {{money .TotalCents}} {{template "badge" .Status}}</li>{{end}}
+                        </ul>
+                        {{end}}
+                        {{if $d.CanInvoice}}
+                        <form method="POST" action="/admin/invoices/new" class="admin-btn-row">
+                            {{template "csrf" $csrf}}
+                            <input type="hidden" name="booking" value="{{$b.ID}}">
+                            <button class="btn btn--primary btn--sm" type="submit">{{if $d.Invoices}}New invoice{{else}}Create invoice{{end}}</button>
+                            <span class="admin-muted">Prefilled with the service fee and labour from the duration; add hardware on the next screen. Paid on the day? Create it, then “Mark paid”.</span>
+                        </form>
+                        {{else}}
+                        <p class="admin-muted">Link a customer (and un-cancel) to invoice.</p>
+                        {{end}}
+                    </div>
+
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Follow-up visit</h2>
+                        {{if $d.Children}}
+                        <ul class="admin-list">
+                            {{range $d.Children}}<li><a href="/admin/bookings/{{.ID}}">#{{.ID}}</a> {{if .When}}{{.When}}{{else}}unscheduled{{end}} {{template "badge" .Status}}</li>{{end}}
+                        </ul>
+                        {{end}}
+                        <form method="POST" action="/admin/bookings/{{$b.ID}}/followup" class="admin-form-inline">
+                            {{template "csrf" $csrf}}
+                            <div class="admin-field admin-field--wide"><label for="issue">Purpose</label><input class="admin-input" id="issue" name="issue" maxlength="500" value="{{$d.FollowupText}}"></div>
+                            <button class="btn btn--ghost btn--sm" type="submit">Create follow-up</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+{{end}}

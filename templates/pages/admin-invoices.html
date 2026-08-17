@@ -1,0 +1,50 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — Invoices</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Administration</div>
+            <h1 class="section-title">Invoices</h1>
+            <p class="page-header-intro">Outstanding (sent, unpaid): <strong>{{money $d.TotalOut}}</strong></p>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{template "flash" $d.Flash}}
+            <div class="admin-filters">
+                <a href="/admin/invoices"{{if eq $d.Status ""}} class="active"{{end}}>All</a>
+                {{range $d.Statuses}}<a href="/admin/invoices?status={{.}}"{{if eq $d.Status .}} class="active"{{end}}>{{.}}</a>{{end}}
+            </div>
+            {{if $d.Rows}}
+            <div class="admin-quotes-table-wrap">
+                <table class="admin-quotes-table">
+                    <thead><tr><th>Invoice</th><th>Customer</th><th>Issued</th><th>Due</th><th>Paid</th><th class="td-num">Total</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {{range $d.Rows}}
+                        <tr>
+                            <td><a href="/admin/invoices/{{.ID}}">{{.Ref}}</a></td>
+                            <td>{{if .CustomerID}}<a href="/admin/customers/{{.CustomerID}}">{{.CustName}}</a>{{end}}</td>
+                            <td>{{.Issued}}</td>
+                            <td>{{.Due}}</td>
+                            <td>{{.Paid}}</td>
+                            <td class="td-num">{{money .TotalCents}}</td>
+                            <td>{{template "badge" .Status}}</td>
+                        </tr>
+                    {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="admin-empty">No invoices{{if $d.Status}} with status “{{$d.Status}}”{{end}}. Create one from a booking.</p>
+            {{end}}
+        </div>
+    </section>
+{{end}}

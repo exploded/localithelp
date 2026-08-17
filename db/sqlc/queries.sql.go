@@ -9,6 +9,38 @@ import (
 	"context"
 )
 
+const countBookingsByStatus = `-- name: CountBookingsByStatus :many
+SELECT status, COUNT(*) AS n FROM bookings GROUP BY status
+`
+
+type CountBookingsByStatusRow struct {
+	Status string `json:"status"`
+	N      int64  `json:"n"`
+}
+
+func (q *Queries) CountBookingsByStatus(ctx context.Context) ([]CountBookingsByStatusRow, error) {
+	rows, err := q.db.QueryContext(ctx, countBookingsByStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountBookingsByStatusRow
+	for rows.Next() {
+		var i CountBookingsByStatusRow
+		if err := rows.Scan(&i.Status, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countOptionGroups = `-- name: CountOptionGroups :one
 SELECT COUNT(*) FROM quote_option_groups
 `
@@ -60,6 +92,15 @@ func (q *Queries) DeleteAllOptions(ctx context.Context) error {
 	return err
 }
 
+const deleteInvoiceItems = `-- name: DeleteInvoiceItems :exec
+DELETE FROM invoice_items WHERE invoice_id = ?
+`
+
+func (q *Queries) DeleteInvoiceItems(ctx context.Context, invoiceID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteInvoiceItems, invoiceID)
+	return err
+}
+
 const deletePendingByEmail = `-- name: DeletePendingByEmail :exec
 DELETE FROM quotes WHERE email = ? AND status = 'pending'
 `
@@ -69,13 +110,14 @@ func (q *Queries) DeletePendingByEmail(ctx context.Context, email string) error 
 	return err
 }
 
-const getLastBooking = `-- name: GetLastBooking :one
-SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at
-FROM bookings WHERE id = (SELECT MAX(id) FROM bookings)
+const getBooking = `-- name: GetBooking :one
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE id = ?
 `
 
-func (q *Queries) GetLastBooking(ctx context.Context) (Booking, error) {
-	row := q.db.QueryRowContext(ctx, getLastBooking)
+func (q *Queries) GetBooking(ctx context.Context, id int64) (Booking, error) {
+	row := q.db.QueryRowContext(ctx, getBooking, id)
 	var i Booking
 	err := row.Scan(
 		&i.ID,
@@ -90,6 +132,141 @@ func (q *Queries) GetLastBooking(ctx context.Context) (Booking, error) {
 		&i.Status,
 		&i.Ip,
 		&i.CreatedAt,
+		&i.CustomerID,
+		&i.StartAt,
+		&i.DurationMin,
+		&i.AdminNotes,
+		&i.ParentBookingID,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCustomer = `-- name: GetCustomer :one
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers WHERE id = ?
+`
+
+func (q *Queries) GetCustomer(ctx context.Context, id int64) (Customer, error) {
+	row := q.db.QueryRowContext(ctx, getCustomer, id)
+	var i Customer
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.PhoneNorm,
+		&i.Address,
+		&i.Suburb,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCustomerByEmail = `-- name: GetCustomerByEmail :one
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers WHERE email = ? AND email <> ''
+`
+
+func (q *Queries) GetCustomerByEmail(ctx context.Context, email string) (Customer, error) {
+	row := q.db.QueryRowContext(ctx, getCustomerByEmail, email)
+	var i Customer
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.PhoneNorm,
+		&i.Address,
+		&i.Suburb,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCustomerByPhoneNorm = `-- name: GetCustomerByPhoneNorm :one
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers WHERE phone_norm = ? AND phone_norm <> '' ORDER BY id LIMIT 1
+`
+
+func (q *Queries) GetCustomerByPhoneNorm(ctx context.Context, phoneNorm string) (Customer, error) {
+	row := q.db.QueryRowContext(ctx, getCustomerByPhoneNorm, phoneNorm)
+	var i Customer
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.PhoneNorm,
+		&i.Address,
+		&i.Suburb,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getInvoice = `-- name: GetInvoice :one
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE id = ?
+`
+
+func (q *Queries) GetInvoice(ctx context.Context, id int64) (Invoice, error) {
+	row := q.db.QueryRowContext(ctx, getInvoice, id)
+	var i Invoice
+	err := row.Scan(
+		&i.ID,
+		&i.Number,
+		&i.BookingID,
+		&i.CustomerID,
+		&i.Status,
+		&i.IssuedAt,
+		&i.DueAt,
+		&i.PaidAt,
+		&i.PaymentMethod,
+		&i.PaymentRef,
+		&i.PaymentLink,
+		&i.TotalCents,
+		&i.Notes,
+		&i.ViewToken,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getInvoiceByToken = `-- name: GetInvoiceByToken :one
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE view_token = ? AND view_token <> ''
+`
+
+func (q *Queries) GetInvoiceByToken(ctx context.Context, viewToken string) (Invoice, error) {
+	row := q.db.QueryRowContext(ctx, getInvoiceByToken, viewToken)
+	var i Invoice
+	err := row.Scan(
+		&i.ID,
+		&i.Number,
+		&i.BookingID,
+		&i.CustomerID,
+		&i.Status,
+		&i.IssuedAt,
+		&i.DueAt,
+		&i.PaidAt,
+		&i.PaymentMethod,
+		&i.PaymentRef,
+		&i.PaymentLink,
+		&i.TotalCents,
+		&i.Notes,
+		&i.ViewToken,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -198,10 +375,11 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 	return i, err
 }
 
-const insertBooking = `-- name: InsertBooking :exec
+const insertBooking = `-- name: InsertBooking :one
 
-INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip, customer_id, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+RETURNING id
 `
 
 type InsertBookingParams struct {
@@ -214,11 +392,12 @@ type InsertBookingParams struct {
 	Issue         string `json:"issue"`
 	PreferredTime string `json:"preferred_time"`
 	Ip            string `json:"ip"`
+	CustomerID    int64  `json:"customer_id"`
 }
 
 // Bookings
-func (q *Queries) InsertBooking(ctx context.Context, arg InsertBookingParams) error {
-	_, err := q.db.ExecContext(ctx, insertBooking,
+func (q *Queries) InsertBooking(ctx context.Context, arg InsertBookingParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertBooking,
 		arg.Name,
 		arg.Phone,
 		arg.Email,
@@ -228,6 +407,134 @@ func (q *Queries) InsertBooking(ctx context.Context, arg InsertBookingParams) er
 		arg.Issue,
 		arg.PreferredTime,
 		arg.Ip,
+		arg.CustomerID,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertCustomer = `-- name: InsertCustomer :one
+
+INSERT INTO customers (name, email, phone, phone_norm, address, suburb, notes)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING id
+`
+
+type InsertCustomerParams struct {
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	PhoneNorm string `json:"phone_norm"`
+	Address   string `json:"address"`
+	Suburb    string `json:"suburb"`
+	Notes     string `json:"notes"`
+}
+
+// Customers
+func (q *Queries) InsertCustomer(ctx context.Context, arg InsertCustomerParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertCustomer,
+		arg.Name,
+		arg.Email,
+		arg.Phone,
+		arg.PhoneNorm,
+		arg.Address,
+		arg.Suburb,
+		arg.Notes,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertFollowupBooking = `-- name: InsertFollowupBooking :one
+INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, status, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, 'new', datetime('now'))
+RETURNING id
+`
+
+type InsertFollowupBookingParams struct {
+	Name            string `json:"name"`
+	Phone           string `json:"phone"`
+	Email           string `json:"email"`
+	Suburb          string `json:"suburb"`
+	ServiceSlug     string `json:"service_slug"`
+	Mode            string `json:"mode"`
+	Issue           string `json:"issue"`
+	CustomerID      int64  `json:"customer_id"`
+	ParentBookingID int64  `json:"parent_booking_id"`
+}
+
+func (q *Queries) InsertFollowupBooking(ctx context.Context, arg InsertFollowupBookingParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertFollowupBooking,
+		arg.Name,
+		arg.Phone,
+		arg.Email,
+		arg.Suburb,
+		arg.ServiceSlug,
+		arg.Mode,
+		arg.Issue,
+		arg.CustomerID,
+		arg.ParentBookingID,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertInvoice = `-- name: InsertInvoice :one
+
+INSERT INTO invoices (number, booking_id, customer_id, status, issued_at, due_at, notes, view_token)
+VALUES ((SELECT COALESCE(MAX(number), 999) + 1 FROM invoices), ?, ?, 'draft', ?, ?, ?, ?)
+RETURNING id
+`
+
+type InsertInvoiceParams struct {
+	BookingID  int64  `json:"booking_id"`
+	CustomerID int64  `json:"customer_id"`
+	IssuedAt   string `json:"issued_at"`
+	DueAt      string `json:"due_at"`
+	Notes      string `json:"notes"`
+	ViewToken  string `json:"view_token"`
+}
+
+// Invoices
+func (q *Queries) InsertInvoice(ctx context.Context, arg InsertInvoiceParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertInvoice,
+		arg.BookingID,
+		arg.CustomerID,
+		arg.IssuedAt,
+		arg.DueAt,
+		arg.Notes,
+		arg.ViewToken,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertInvoiceItem = `-- name: InsertInvoiceItem :exec
+INSERT INTO invoice_items (invoice_id, description, qty, unit_cents, line_cents, sort_order)
+VALUES (?, ?, ?, ?, ?, ?)
+`
+
+type InsertInvoiceItemParams struct {
+	InvoiceID   int64   `json:"invoice_id"`
+	Description string  `json:"description"`
+	Qty         float64 `json:"qty"`
+	UnitCents   int64   `json:"unit_cents"`
+	LineCents   int64   `json:"line_cents"`
+	SortOrder   int64   `json:"sort_order"`
+}
+
+func (q *Queries) InsertInvoiceItem(ctx context.Context, arg InsertInvoiceItemParams) error {
+	_, err := q.db.ExecContext(ctx, insertInvoiceItem,
+		arg.InvoiceID,
+		arg.Description,
+		arg.Qty,
+		arg.UnitCents,
+		arg.LineCents,
+		arg.SortOrder,
 	)
 	return err
 }
@@ -316,7 +623,8 @@ func (q *Queries) InsertQuote(ctx context.Context, arg InsertQuoteParams) (int64
 }
 
 const listBookings = `-- name: ListBookings :many
-SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
 FROM bookings ORDER BY id DESC
 `
 
@@ -342,6 +650,470 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 			&i.Status,
 			&i.Ip,
 			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookingsBetween = `-- name: ListBookingsBetween :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings
+WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam')
+ORDER BY start_at
+`
+
+type ListBookingsBetweenParams struct {
+	StartAt   string `json:"start_at"`
+	StartAt_2 string `json:"start_at_2"`
+}
+
+func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetweenParams) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listBookingsBetween, arg.StartAt, arg.StartAt_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookingsByCustomer = `-- name: ListBookingsByCustomer :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE customer_id = ? ORDER BY id DESC
+`
+
+func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listBookingsByCustomer, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookingsByStatus = `-- name: ListBookingsByStatus :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE status = ? ORDER BY id DESC
+`
+
+func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listBookingsByStatus, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listChildBookings = `-- name: ListChildBookings :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE parent_booking_id = ? ORDER BY id
+`
+
+func (q *Queries) ListChildBookings(ctx context.Context, parentBookingID int64) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listChildBookings, parentBookingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCustomers = `-- name: ListCustomers :many
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers ORDER BY name COLLATE NOCASE, id
+`
+
+func (q *Queries) ListCustomers(ctx context.Context) ([]Customer, error) {
+	rows, err := q.db.QueryContext(ctx, listCustomers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Customer
+	for rows.Next() {
+		var i Customer
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.Phone,
+			&i.PhoneNorm,
+			&i.Address,
+			&i.Suburb,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInvoiceItems = `-- name: ListInvoiceItems :many
+SELECT id, invoice_id, description, qty, unit_cents, line_cents, sort_order
+FROM invoice_items WHERE invoice_id = ? ORDER BY sort_order, id
+`
+
+func (q *Queries) ListInvoiceItems(ctx context.Context, invoiceID int64) ([]InvoiceItem, error) {
+	rows, err := q.db.QueryContext(ctx, listInvoiceItems, invoiceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InvoiceItem
+	for rows.Next() {
+		var i InvoiceItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.InvoiceID,
+			&i.Description,
+			&i.Qty,
+			&i.UnitCents,
+			&i.LineCents,
+			&i.SortOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInvoices = `-- name: ListInvoices :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices ORDER BY number DESC
+`
+
+func (q *Queries) ListInvoices(ctx context.Context) ([]Invoice, error) {
+	rows, err := q.db.QueryContext(ctx, listInvoices)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invoice
+	for rows.Next() {
+		var i Invoice
+		if err := rows.Scan(
+			&i.ID,
+			&i.Number,
+			&i.BookingID,
+			&i.CustomerID,
+			&i.Status,
+			&i.IssuedAt,
+			&i.DueAt,
+			&i.PaidAt,
+			&i.PaymentMethod,
+			&i.PaymentRef,
+			&i.PaymentLink,
+			&i.TotalCents,
+			&i.Notes,
+			&i.ViewToken,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInvoicesByBooking = `-- name: ListInvoicesByBooking :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE booking_id = ? ORDER BY number DESC
+`
+
+func (q *Queries) ListInvoicesByBooking(ctx context.Context, bookingID int64) ([]Invoice, error) {
+	rows, err := q.db.QueryContext(ctx, listInvoicesByBooking, bookingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invoice
+	for rows.Next() {
+		var i Invoice
+		if err := rows.Scan(
+			&i.ID,
+			&i.Number,
+			&i.BookingID,
+			&i.CustomerID,
+			&i.Status,
+			&i.IssuedAt,
+			&i.DueAt,
+			&i.PaidAt,
+			&i.PaymentMethod,
+			&i.PaymentRef,
+			&i.PaymentLink,
+			&i.TotalCents,
+			&i.Notes,
+			&i.ViewToken,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInvoicesByCustomer = `-- name: ListInvoicesByCustomer :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE customer_id = ? ORDER BY number DESC
+`
+
+func (q *Queries) ListInvoicesByCustomer(ctx context.Context, customerID int64) ([]Invoice, error) {
+	rows, err := q.db.QueryContext(ctx, listInvoicesByCustomer, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invoice
+	for rows.Next() {
+		var i Invoice
+		if err := rows.Scan(
+			&i.ID,
+			&i.Number,
+			&i.BookingID,
+			&i.CustomerID,
+			&i.Status,
+			&i.IssuedAt,
+			&i.DueAt,
+			&i.PaidAt,
+			&i.PaymentMethod,
+			&i.PaymentRef,
+			&i.PaymentLink,
+			&i.TotalCents,
+			&i.Notes,
+			&i.ViewToken,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInvoicesByStatus = `-- name: ListInvoicesByStatus :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE status = ? ORDER BY number DESC
+`
+
+func (q *Queries) ListInvoicesByStatus(ctx context.Context, status string) ([]Invoice, error) {
+	rows, err := q.db.QueryContext(ctx, listInvoicesByStatus, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invoice
+	for rows.Next() {
+		var i Invoice
+		if err := rows.Scan(
+			&i.ID,
+			&i.Number,
+			&i.BookingID,
+			&i.CustomerID,
+			&i.Status,
+			&i.IssuedAt,
+			&i.DueAt,
+			&i.PaidAt,
+			&i.PaymentMethod,
+			&i.PaymentRef,
+			&i.PaymentLink,
+			&i.TotalCents,
+			&i.Notes,
+			&i.ViewToken,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -472,6 +1244,101 @@ func (q *Queries) ListQuotes(ctx context.Context) ([]Quote, error) {
 	return items, nil
 }
 
+const listUnlinkedBookings = `-- name: ListUnlinkedBookings :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id
+`
+
+func (q *Queries) ListUnlinkedBookings(ctx context.Context) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listUnlinkedBookings)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markInvoicePaid = `-- name: MarkInvoicePaid :execrows
+UPDATE invoices SET status = 'paid', paid_at = ?, payment_method = ?, payment_ref = ?,
+    issued_at = CASE WHEN issued_at = '' THEN ? ELSE issued_at END, updated_at = datetime('now')
+WHERE id = ? AND status IN ('draft', 'sent')
+`
+
+type MarkInvoicePaidParams struct {
+	PaidAt        string `json:"paid_at"`
+	PaymentMethod string `json:"payment_method"`
+	PaymentRef    string `json:"payment_ref"`
+	IssuedAt      string `json:"issued_at"`
+	ID            int64  `json:"id"`
+}
+
+func (q *Queries) MarkInvoicePaid(ctx context.Context, arg MarkInvoicePaidParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markInvoicePaid,
+		arg.PaidAt,
+		arg.PaymentMethod,
+		arg.PaymentRef,
+		arg.IssuedAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const markInvoiceSent = `-- name: MarkInvoiceSent :execrows
+UPDATE invoices SET status = 'sent', issued_at = ?, due_at = ?, updated_at = datetime('now')
+WHERE id = ? AND status = 'draft'
+`
+
+type MarkInvoiceSentParams struct {
+	IssuedAt string `json:"issued_at"`
+	DueAt    string `json:"due_at"`
+	ID       int64  `json:"id"`
+}
+
+func (q *Queries) MarkInvoiceSent(ctx context.Context, arg MarkInvoiceSentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markInvoiceSent, arg.IssuedAt, arg.DueAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const markQuoteVerified = `-- name: MarkQuoteVerified :execrows
 UPDATE quotes SET status = 'verified', ai_estimate = ?, verified_at = datetime('now')
 WHERE id = ? AND status = 'pending'
@@ -490,8 +1357,147 @@ func (q *Queries) MarkQuoteVerified(ctx context.Context, arg MarkQuoteVerifiedPa
 	return result.RowsAffected()
 }
 
+const searchCustomers = `-- name: SearchCustomers :many
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers
+WHERE name LIKE ? OR email LIKE ? OR phone_norm LIKE ? OR suburb LIKE ?
+ORDER BY name COLLATE NOCASE, id
+`
+
+type SearchCustomersParams struct {
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	PhoneNorm string `json:"phone_norm"`
+	Suburb    string `json:"suburb"`
+}
+
+func (q *Queries) SearchCustomers(ctx context.Context, arg SearchCustomersParams) ([]Customer, error) {
+	rows, err := q.db.QueryContext(ctx, searchCustomers,
+		arg.Name,
+		arg.Email,
+		arg.PhoneNorm,
+		arg.Suburb,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Customer
+	for rows.Next() {
+		var i Customer
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.Phone,
+			&i.PhoneNorm,
+			&i.Address,
+			&i.Suburb,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setBookingCustomer = `-- name: SetBookingCustomer :exec
+UPDATE bookings SET customer_id = ? WHERE id = ?
+`
+
+type SetBookingCustomerParams struct {
+	CustomerID int64 `json:"customer_id"`
+	ID         int64 `json:"id"`
+}
+
+func (q *Queries) SetBookingCustomer(ctx context.Context, arg SetBookingCustomerParams) error {
+	_, err := q.db.ExecContext(ctx, setBookingCustomer, arg.CustomerID, arg.ID)
+	return err
+}
+
+const sumOutstandingCents = `-- name: SumOutstandingCents :one
+SELECT COALESCE(SUM(total_cents), 0) FROM invoices WHERE status = 'sent'
+`
+
+func (q *Queries) SumOutstandingCents(ctx context.Context) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, sumOutstandingCents)
+	var coalesce interface{}
+	err := row.Scan(&coalesce)
+	return coalesce, err
+}
+
+const touchCustomerContact = `-- name: TouchCustomerContact :exec
+UPDATE customers SET
+    name       = CASE WHEN name = ''       THEN ? ELSE name END,
+    email      = CASE WHEN email = ''      THEN ? ELSE email END,
+    phone      = CASE WHEN phone = ''      THEN ? ELSE phone END,
+    phone_norm = CASE WHEN phone_norm = '' THEN ? ELSE phone_norm END,
+    suburb     = CASE WHEN suburb = ''     THEN ? ELSE suburb END,
+    updated_at = datetime('now')
+WHERE id = ?
+`
+
+type TouchCustomerContactParams struct {
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	PhoneNorm string `json:"phone_norm"`
+	Suburb    string `json:"suburb"`
+	ID        int64  `json:"id"`
+}
+
+func (q *Queries) TouchCustomerContact(ctx context.Context, arg TouchCustomerContactParams) error {
+	_, err := q.db.ExecContext(ctx, touchCustomerContact,
+		arg.Name,
+		arg.Email,
+		arg.Phone,
+		arg.PhoneNorm,
+		arg.Suburb,
+		arg.ID,
+	)
+	return err
+}
+
+const updateBookingNotes = `-- name: UpdateBookingNotes :exec
+UPDATE bookings SET admin_notes = ?, updated_at = datetime('now') WHERE id = ?
+`
+
+type UpdateBookingNotesParams struct {
+	AdminNotes string `json:"admin_notes"`
+	ID         int64  `json:"id"`
+}
+
+func (q *Queries) UpdateBookingNotes(ctx context.Context, arg UpdateBookingNotesParams) error {
+	_, err := q.db.ExecContext(ctx, updateBookingNotes, arg.AdminNotes, arg.ID)
+	return err
+}
+
+const updateBookingSchedule = `-- name: UpdateBookingSchedule :exec
+UPDATE bookings SET start_at = ?, duration_min = ?, status = 'booked', updated_at = datetime('now') WHERE id = ?
+`
+
+type UpdateBookingScheduleParams struct {
+	StartAt     string `json:"start_at"`
+	DurationMin int64  `json:"duration_min"`
+	ID          int64  `json:"id"`
+}
+
+func (q *Queries) UpdateBookingSchedule(ctx context.Context, arg UpdateBookingScheduleParams) error {
+	_, err := q.db.ExecContext(ctx, updateBookingSchedule, arg.StartAt, arg.DurationMin, arg.ID)
+	return err
+}
+
 const updateBookingStatus = `-- name: UpdateBookingStatus :exec
-UPDATE bookings SET status = ? WHERE id = ?
+UPDATE bookings SET status = ?, updated_at = datetime('now') WHERE id = ?
 `
 
 type UpdateBookingStatusParams struct {
@@ -501,6 +1507,75 @@ type UpdateBookingStatusParams struct {
 
 func (q *Queries) UpdateBookingStatus(ctx context.Context, arg UpdateBookingStatusParams) error {
 	_, err := q.db.ExecContext(ctx, updateBookingStatus, arg.Status, arg.ID)
+	return err
+}
+
+const updateCustomer = `-- name: UpdateCustomer :exec
+UPDATE customers SET name = ?, email = ?, phone = ?, phone_norm = ?, address = ?, suburb = ?, notes = ?, updated_at = datetime('now')
+WHERE id = ?
+`
+
+type UpdateCustomerParams struct {
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	PhoneNorm string `json:"phone_norm"`
+	Address   string `json:"address"`
+	Suburb    string `json:"suburb"`
+	Notes     string `json:"notes"`
+	ID        int64  `json:"id"`
+}
+
+func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) error {
+	_, err := q.db.ExecContext(ctx, updateCustomer,
+		arg.Name,
+		arg.Email,
+		arg.Phone,
+		arg.PhoneNorm,
+		arg.Address,
+		arg.Suburb,
+		arg.Notes,
+		arg.ID,
+	)
+	return err
+}
+
+const updateInvoiceDraft = `-- name: UpdateInvoiceDraft :exec
+UPDATE invoices SET due_at = ?, notes = ?, payment_link = ?, total_cents = ?, updated_at = datetime('now')
+WHERE id = ? AND status = 'draft'
+`
+
+type UpdateInvoiceDraftParams struct {
+	DueAt       string `json:"due_at"`
+	Notes       string `json:"notes"`
+	PaymentLink string `json:"payment_link"`
+	TotalCents  int64  `json:"total_cents"`
+	ID          int64  `json:"id"`
+}
+
+func (q *Queries) UpdateInvoiceDraft(ctx context.Context, arg UpdateInvoiceDraftParams) error {
+	_, err := q.db.ExecContext(ctx, updateInvoiceDraft,
+		arg.DueAt,
+		arg.Notes,
+		arg.PaymentLink,
+		arg.TotalCents,
+		arg.ID,
+	)
+	return err
+}
+
+const updateInvoicePaymentLink = `-- name: UpdateInvoicePaymentLink :exec
+UPDATE invoices SET payment_link = ?, updated_at = datetime('now')
+WHERE id = ? AND status IN ('draft', 'sent')
+`
+
+type UpdateInvoicePaymentLinkParams struct {
+	PaymentLink string `json:"payment_link"`
+	ID          int64  `json:"id"`
+}
+
+func (q *Queries) UpdateInvoicePaymentLink(ctx context.Context, arg UpdateInvoicePaymentLinkParams) error {
+	_, err := q.db.ExecContext(ctx, updateInvoicePaymentLink, arg.PaymentLink, arg.ID)
 	return err
 }
 
@@ -544,4 +1619,17 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 		arg.Picture,
 	)
 	return err
+}
+
+const voidInvoice = `-- name: VoidInvoice :execrows
+UPDATE invoices SET status = 'void', updated_at = datetime('now')
+WHERE id = ? AND status IN ('draft', 'sent')
+`
+
+func (q *Queries) VoidInvoice(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, voidInvoice, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

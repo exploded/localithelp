@@ -41,6 +41,12 @@ CONTACT_EMAIL=james@mchugh.com.au
 ONSITE_FEE=80
 BLOCK_RATE=30
 
+# Invoices: ABN and bank transfer details (BANK_BSB empty = bank details hidden)
+ABN=14 723 053 435
+BANK_ACCOUNT_NAME=James McHugh
+BANK_BSB=
+BANK_ACCOUNT_NO=
+
 # Admin + integrations (ADMIN_EMAIL = Google account allowed into /admin, default james67@gmail.com)
 ADMIN_EMAIL=james67@gmail.com
 GOOGLE_CLIENT_ID=

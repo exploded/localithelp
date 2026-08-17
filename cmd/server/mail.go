@@ -52,6 +52,21 @@ func send(to, subject, html, text, replyTo string) {
 	}()
 }
 
+// sendNow delivers synchronously (with optional attachments) and returns the
+// error, for admin actions where the outcome must be shown and a state change
+// should only happen on success. When SES is not configured it logs and
+// returns nil so local flows still complete.
+func sendNow(to, subject, html, text, replyTo string, atts ...mailer.Attachment) error {
+	if to == "" {
+		return fmt.Errorf("no recipient address")
+	}
+	if !mail.Enabled() {
+		log.Printf("email: (disabled) would send %q to %s with %d attachment(s)", subject, to, len(atts))
+		return nil
+	}
+	return mail.SendWithAttachments(to, subject, html, text, replyTo, atts...)
+}
+
 const mailTmplSrc = `
 {{define "wrap"}}<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#1c1c1c;margin:0;padding:24px;background:#f6f5f2">
 <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e6e3dc;border-radius:8px;padding:28px">
@@ -129,10 +144,12 @@ const mailTmplSrc = `
 {{end}}
 `
 
-var mailTmpl = template.Must(template.New("mail").Funcs(template.FuncMap{
-	"site": func() *siteConfig { return &site },
-	"kv":   func(k, v string) map[string]string { return map[string]string{"K": k, "V": v} },
-}).Parse(mailTmplSrc))
+var mailTmpl = template.Must(template.Must(template.New("mail").Funcs(template.FuncMap{
+	"site":  func() *siteConfig { return &site },
+	"kv":    func(k, v string) map[string]string { return map[string]string{"K": k, "V": v} },
+	"money": fmtCents,
+	"btn":   func(href, label string) map[string]string { return map[string]string{"Href": href, "Label": label} },
+}).Parse(mailTmplSrc)).Parse(mailBillingTmplSrc))
 
 // renderMail executes a named body template inside the "wrap" chrome.
 func renderMail(name string, data any) (string, error) {

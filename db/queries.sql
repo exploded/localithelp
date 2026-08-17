@@ -83,17 +83,179 @@ SELECT COUNT(*) FROM quote_settings WHERE key = ?;
 
 -- Bookings
 
--- name: InsertBooking :exec
-INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+-- name: InsertBooking :one
+INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip, customer_id, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+RETURNING id;
 
--- name: GetLastBooking :one
-SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at
-FROM bookings WHERE id = (SELECT MAX(id) FROM bookings);
+-- name: InsertFollowupBooking :one
+INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, status, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, 'new', datetime('now'))
+RETURNING id;
+
+-- name: GetBooking :one
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE id = ?;
 
 -- name: ListBookings :many
-SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
 FROM bookings ORDER BY id DESC;
 
+-- name: ListBookingsByStatus :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE status = ? ORDER BY id DESC;
+
+-- name: ListBookingsBetween :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings
+WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam')
+ORDER BY start_at;
+
+-- name: ListBookingsByCustomer :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE customer_id = ? ORDER BY id DESC;
+
+-- name: ListChildBookings :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE parent_booking_id = ? ORDER BY id;
+
+-- name: ListUnlinkedBookings :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id;
+
+-- name: CountBookingsByStatus :many
+SELECT status, COUNT(*) AS n FROM bookings GROUP BY status;
+
 -- name: UpdateBookingStatus :exec
-UPDATE bookings SET status = ? WHERE id = ?;
+UPDATE bookings SET status = ?, updated_at = datetime('now') WHERE id = ?;
+
+-- name: UpdateBookingSchedule :exec
+UPDATE bookings SET start_at = ?, duration_min = ?, status = 'booked', updated_at = datetime('now') WHERE id = ?;
+
+-- name: UpdateBookingNotes :exec
+UPDATE bookings SET admin_notes = ?, updated_at = datetime('now') WHERE id = ?;
+
+-- name: SetBookingCustomer :exec
+UPDATE bookings SET customer_id = ? WHERE id = ?;
+
+-- Customers
+
+-- name: InsertCustomer :one
+INSERT INTO customers (name, email, phone, phone_norm, address, suburb, notes)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING id;
+
+-- name: GetCustomer :one
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers WHERE id = ?;
+
+-- name: GetCustomerByEmail :one
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers WHERE email = ? AND email <> '';
+
+-- name: GetCustomerByPhoneNorm :one
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers WHERE phone_norm = ? AND phone_norm <> '' ORDER BY id LIMIT 1;
+
+-- name: ListCustomers :many
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers ORDER BY name COLLATE NOCASE, id;
+
+-- name: SearchCustomers :many
+SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
+FROM customers
+WHERE name LIKE ? OR email LIKE ? OR phone_norm LIKE ? OR suburb LIKE ?
+ORDER BY name COLLATE NOCASE, id;
+
+-- name: UpdateCustomer :exec
+UPDATE customers SET name = ?, email = ?, phone = ?, phone_norm = ?, address = ?, suburb = ?, notes = ?, updated_at = datetime('now')
+WHERE id = ?;
+
+-- name: TouchCustomerContact :exec
+UPDATE customers SET
+    name       = CASE WHEN name = ''       THEN ? ELSE name END,
+    email      = CASE WHEN email = ''      THEN ? ELSE email END,
+    phone      = CASE WHEN phone = ''      THEN ? ELSE phone END,
+    phone_norm = CASE WHEN phone_norm = '' THEN ? ELSE phone_norm END,
+    suburb     = CASE WHEN suburb = ''     THEN ? ELSE suburb END,
+    updated_at = datetime('now')
+WHERE id = ?;
+
+-- Invoices
+
+-- name: InsertInvoice :one
+INSERT INTO invoices (number, booking_id, customer_id, status, issued_at, due_at, notes, view_token)
+VALUES ((SELECT COALESCE(MAX(number), 999) + 1 FROM invoices), ?, ?, 'draft', ?, ?, ?, ?)
+RETURNING id;
+
+-- name: GetInvoice :one
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE id = ?;
+
+-- name: GetInvoiceByToken :one
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE view_token = ? AND view_token <> '';
+
+-- name: ListInvoices :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices ORDER BY number DESC;
+
+-- name: ListInvoicesByStatus :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE status = ? ORDER BY number DESC;
+
+-- name: ListInvoicesByCustomer :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE customer_id = ? ORDER BY number DESC;
+
+-- name: ListInvoicesByBooking :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, created_at, updated_at
+FROM invoices WHERE booking_id = ? ORDER BY number DESC;
+
+-- name: SumOutstandingCents :one
+SELECT COALESCE(SUM(total_cents), 0) FROM invoices WHERE status = 'sent';
+
+-- name: UpdateInvoiceDraft :exec
+UPDATE invoices SET due_at = ?, notes = ?, payment_link = ?, total_cents = ?, updated_at = datetime('now')
+WHERE id = ? AND status = 'draft';
+
+-- name: UpdateInvoicePaymentLink :exec
+UPDATE invoices SET payment_link = ?, updated_at = datetime('now')
+WHERE id = ? AND status IN ('draft', 'sent');
+
+-- name: MarkInvoiceSent :execrows
+UPDATE invoices SET status = 'sent', issued_at = ?, due_at = ?, updated_at = datetime('now')
+WHERE id = ? AND status = 'draft';
+
+-- name: MarkInvoicePaid :execrows
+UPDATE invoices SET status = 'paid', paid_at = ?, payment_method = ?, payment_ref = ?,
+    issued_at = CASE WHEN issued_at = '' THEN ? ELSE issued_at END, updated_at = datetime('now')
+WHERE id = ? AND status IN ('draft', 'sent');
+
+-- name: VoidInvoice :execrows
+UPDATE invoices SET status = 'void', updated_at = datetime('now')
+WHERE id = ? AND status IN ('draft', 'sent');
+
+-- name: DeleteInvoiceItems :exec
+DELETE FROM invoice_items WHERE invoice_id = ?;
+
+-- name: InsertInvoiceItem :exec
+INSERT INTO invoice_items (invoice_id, description, qty, unit_cents, line_cents, sort_order)
+VALUES (?, ?, ?, ?, ?, ?);
+
+-- name: ListInvoiceItems :many
+SELECT id, invoice_id, description, qty, unit_cents, line_cents, sort_order
+FROM invoice_items WHERE invoice_id = ? ORDER BY sort_order, id;

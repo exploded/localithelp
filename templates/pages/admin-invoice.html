@@ -1,0 +1,157 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — {{.PageData.Ref}}</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}{{$v := $d.V}}{{$inv := $v.Inv}}{{$csrf := .CSRF}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label"><a href="/admin/invoices">Invoices</a> / {{$d.Ref}}</div>
+            <h1 class="section-title">{{$d.Ref}} {{template "badge" $inv.Status}} <span class="admin-total">{{$d.Total}}</span></h1>
+            <p class="page-header-intro">
+                {{if $v.Cust}}<a href="/admin/customers/{{$v.Cust.ID}}">{{$v.Cust.Name}}</a>{{if $v.Cust.Email}} · {{$v.Cust.Email}}{{end}}{{end}}
+                {{if $v.Booking}} · booking <a href="/admin/bookings/{{$v.Booking.ID}}">#{{$v.Booking.ID}}</a>{{if $d.When}} ({{$d.When}}){{end}}{{end}}
+            </p>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{template "flash" $d.Flash}}
+
+            <div class="admin-grid admin-grid--wide">
+                <div class="admin-col">
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Lines</h2>
+                        {{if $d.Editable}}
+                        <form method="POST" action="/admin/invoices/{{$inv.ID}}/items" id="invoice-form">
+                            {{template "csrf" $csrf}}
+                            <div class="admin-quotes-table-wrap"><table class="admin-quotes-table inv-lines" data-block-rate="{{$d.BlockRate}}">
+                                <thead><tr><th>Description</th><th class="td-num">Qty</th><th class="td-num">Unit ($)</th><th class="td-num">Amount</th><th></th></tr></thead>
+                                <tbody id="inv-lines-body">
+                                {{range $d.Lines}}
+                                <tr>
+                                    <td><input class="admin-input" name="desc" value="{{.Description}}" maxlength="200"></td>
+                                    <td class="td-num"><input class="admin-input inv-qty" name="qty" value="{{.Qty}}" inputmode="decimal"></td>
+                                    <td class="td-num"><input class="admin-input inv-unit" name="unit" value="{{.Unit}}" inputmode="decimal"></td>
+                                    <td class="td-num inv-line">{{.Line}}</td>
+                                    <td><button type="button" class="btn-icon inv-remove" title="Remove line">&times;</button></td>
+                                </tr>
+                                {{end}}
+                                {{range seq $d.Blank}}
+                                <tr>
+                                    <td><input class="admin-input" name="desc" value="" maxlength="200" placeholder="e.g. 1 TB SSD, or Labour — extra 15 min"></td>
+                                    <td class="td-num"><input class="admin-input inv-qty" name="qty" value="1" inputmode="decimal"></td>
+                                    <td class="td-num"><input class="admin-input inv-unit" name="unit" value="" inputmode="decimal"></td>
+                                    <td class="td-num inv-line"></td>
+                                    <td><button type="button" class="btn-icon inv-remove" title="Remove line">&times;</button></td>
+                                </tr>
+                                {{end}}
+                                </tbody>
+                                <tfoot>
+                                    <tr><td colspan="3" class="td-num"><strong>Total</strong></td><td class="td-num"><strong id="inv-total">{{$d.Total}}</strong></td><td></td></tr>
+                                </tfoot>
+                            </table></div>
+                            <div class="admin-btn-row">
+                                <button type="button" class="btn btn--ghost btn--sm" id="inv-add">+ Line</button>
+                                <button type="button" class="btn btn--ghost btn--sm" id="inv-add-labour" data-rate="{{$d.BlockRate}}">+ Labour (15 min blocks @ ${{$d.BlockRate}})</button>
+                            </div>
+                            <div class="admin-form-inline" style="margin-top:1rem">
+                                <div class="admin-field"><label for="due">Due date</label><input class="admin-input" type="date" id="due" name="due" value="{{$d.DueValue}}"></div>
+                                <div class="admin-field admin-field--wide"><label for="notes">Notes on invoice (optional)</label><input class="admin-input" id="notes" name="notes" maxlength="2000" value="{{$inv.Notes}}"></div>
+                            </div>
+                            <div class="admin-field" style="margin-top:0.75rem">
+                                <label for="payment_link">Zeller payment link (paste from the Zeller app)</label>
+                                <input class="admin-input" type="url" id="payment_link" name="payment_link" placeholder="https://…" value="{{$inv.PaymentLink}}">
+                            </div>
+                            <div class="admin-row-actions"><button class="btn btn--primary btn--sm" type="submit">Save</button></div>
+                        </form>
+                        {{else}}
+                        <table class="admin-quotes-table inv-lines">
+                            <thead><tr><th>Description</th><th class="td-num">Qty</th><th class="td-num">Unit</th><th class="td-num">Amount</th></tr></thead>
+                            <tbody>
+                            {{range $d.Lines}}<tr><td>{{.Description}}</td><td class="td-num">{{.Qty}}</td><td class="td-num">${{.Unit}}</td><td class="td-num">{{.Line}}</td></tr>{{end}}
+                            </tbody>
+                            <tfoot><tr><td colspan="3" class="td-num"><strong>Total</strong></td><td class="td-num"><strong>{{$d.Total}}</strong></td></tr></tfoot>
+                        </table>
+                        {{if $inv.Notes}}<p class="admin-muted">Notes: {{$inv.Notes}}</p>{{end}}
+                        <p class="admin-muted">Issued {{if $inv.IssuedAt.IsZero}}—{{else}}{{$inv.IssuedAt.Format "2 Jan 2006"}}{{end}}{{if not $inv.DueAt.IsZero}} · due {{$inv.DueAt.Format "2 Jan 2006"}}{{end}}{{if not $inv.PaidAt.IsZero}} · paid {{$inv.PaidAt.Format "2 Jan 2006"}} via {{$d.PaymentMethod}}{{if $inv.PaymentRef}} ({{$inv.PaymentRef}}){{end}}{{end}}</p>
+                        {{end}}
+                        <p class="admin-muted"><a href="/admin/invoices/{{$inv.ID}}/pdf" target="_blank" rel="noopener">Preview PDF</a> · <a href="{{$d.PublicURL}}" target="_blank" rel="noopener">Customer view</a></p>
+                    </div>
+                </div>
+
+                <div class="admin-col">
+                    {{if or $d.CanSend $d.CanResend}}
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">1. Zeller payment link</h2>
+                        <p>In the Zeller app create a <strong>Payment Link</strong> for this amount and reference, then paste the link{{if $d.Editable}} in the form on the left and Save{{else}} below{{end}}.</p>
+                        <div class="zeller-copy">
+                            <div><span class="admin-muted">Amount</span> <code>{{$d.TotalDollars}}</code> <button type="button" class="btn-icon copy-btn" data-copy="{{$d.TotalDollars}}" title="Copy amount">&#9112;</button></div>
+                            <div><span class="admin-muted">Reference</span> <code>{{$d.Ref}}</code> <button type="button" class="btn-icon copy-btn" data-copy="{{$d.Ref}}" title="Copy reference">&#9112;</button></div>
+                        </div>
+                        {{if $inv.PaymentLink}}<p class="admin-ok">&#10003; Link saved: <a href="{{$inv.PaymentLink}}" target="_blank" rel="noopener">{{$inv.PaymentLink}}</a></p>{{else}}<p class="admin-muted">No payment link yet.{{if $d.BankConfigured}} Bank transfer details will still be shown.{{end}}</p>{{end}}
+                        {{if not $d.Editable}}
+                        <form method="POST" action="/admin/invoices/{{$inv.ID}}/link" class="admin-form-inline">
+                            {{template "csrf" $csrf}}
+                            <div class="admin-field admin-field--wide"><label for="payment_link2">Payment link</label><input class="admin-input" type="url" id="payment_link2" name="payment_link" placeholder="https://…" value="{{$inv.PaymentLink}}"></div>
+                            <button class="btn btn--ghost btn--sm" type="submit">Save link</button>
+                        </form>
+                        {{end}}
+                    </div>
+
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">2. {{if $d.CanSend}}Send invoice{{else}}Resend invoice{{end}}</h2>
+                        {{if $d.HasCustEmail}}
+                        <form method="POST" action="/admin/invoices/{{$inv.ID}}/send">
+                            {{template "csrf" $csrf}}
+                            <p class="admin-muted">Emails <strong>{{$v.Cust.Email}}</strong> the PDF with the payment link{{if $d.BankConfigured}} and bank details{{end}}.{{if $d.CanSend}} Marks the invoice sent and the booking invoiced.{{end}}</p>
+                            {{if and $d.CanSend (not $inv.PaymentLink) (not $d.BankConfigured)}}
+                            <label class="admin-check"><input type="checkbox" name="no_link_ok" value="1"> Send without a payment link (pay on the day)</label>
+                            {{end}}
+                            <button class="btn btn--primary btn--sm" type="submit">{{if $d.CanSend}}Send invoice{{else}}Resend{{end}}</button>
+                        </form>
+                        {{else}}
+                        <p class="admin-muted">The customer has no email address — <a href="/admin/customers/{{$inv.CustomerID}}">add one</a> to send, or mark it paid and hand over a printed <a href="/admin/invoices/{{$inv.ID}}/pdf" target="_blank" rel="noopener">PDF</a>.</p>
+                        {{end}}
+                    </div>
+                    {{end}}
+
+                    {{if $d.CanPay}}
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">3. Mark paid</h2>
+                        <form method="POST" action="/admin/invoices/{{$inv.ID}}/paid" class="admin-form-stack">
+                            {{template "csrf" $csrf}}
+                            <div class="admin-form-inline">
+                                <div class="admin-field"><label for="method">How</label>
+                                    <select class="admin-input" id="method" name="method">
+                                        {{range $d.Methods}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
+                                    </select>
+                                </div>
+                                <div class="admin-field"><label for="paid_at">Date</label><input class="admin-input" type="date" id="paid_at" name="paid_at" value="{{$d.PaidValue}}"></div>
+                                <div class="admin-field"><label for="ref">Ref (optional)</label><input class="admin-input" id="ref" name="ref" maxlength="100" placeholder="Zeller receipt no."></div>
+                            </div>
+                            <label class="admin-check"><input type="checkbox" name="notify" value="1"{{if $d.HasCustEmail}} checked{{else}} disabled{{end}}> Email receipt (PDF){{if not $d.HasCustEmail}} — no email on file{{end}}</label>
+                            <div><button class="btn btn--primary btn--sm" type="submit">Mark paid{{if $d.HasCustEmail}} &amp; send receipt{{end}}</button></div>
+                        </form>
+                        <p class="admin-muted">Paid on the day by card or cash? Mark it here — the customer just gets the receipt.</p>
+                    </div>
+                    {{end}}
+
+                    {{if $d.CanVoid}}
+                    <div class="admin-card">
+                        <details class="admin-details"><summary>Void this invoice…</summary>
+                            <form method="POST" action="/admin/invoices/{{$inv.ID}}/void">{{template "csrf" $csrf}}<p class="admin-muted">Keeps the number; nothing is payable. The booking goes back to “done” so you can re-invoice.</p><button class="btn btn--ghost btn--sm btn--danger" type="submit">Void {{$d.Ref}}</button></form>
+                        </details>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </section>
+    <script src="/static/js/invoice.js" defer></script>
+{{end}}

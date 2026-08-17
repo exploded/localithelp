@@ -1,0 +1,79 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>{{if .PageData.Paidish}}Receipt{{else}}Invoice{{end}} {{.PageData.Ref}} — James McHugh</title>
+    <meta name="robots" content="noindex, nofollow">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}{{$v := $d.V}}{{$inv := $v.Inv}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">{{if $d.Paidish}}Receipt{{else if $d.Void}}Void invoice{{else}}Invoice{{end}}</div>
+            <h1 class="section-title">{{$d.Ref}}</h1>
+            <p class="page-header-intro">
+                {{if $d.Paidish}}Paid {{$d.Paid}} via {{$d.Method}} — thank you.{{else if $d.Void}}This invoice has been cancelled; nothing is payable.{{else}}{{if $d.Issued}}Issued {{$d.Issued}}{{if $d.Due}} · {{end}}{{end}}{{if $d.Due}}Due {{$d.Due}}{{end}}{{end}}
+            </p>
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container inv-public">
+            <div class="admin-grid admin-grid--wide">
+                <div class="admin-col">
+                    <div class="admin-card">
+                        <div class="inv-parties">
+                            <div>
+                                <div class="section-label">From</div>
+                                <p><strong>James McHugh</strong><br>Local computer help — Donvale VIC<br>ABN {{.Site.ABN}}<br><a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a>{{if .Site.Phone}}<br><a href="{{.Site.PhoneHref}}">{{.Site.Phone}}</a>{{end}}</p>
+                            </div>
+                            {{if $v.Cust}}
+                            <div>
+                                <div class="section-label">Bill to</div>
+                                <p><strong>{{$v.Cust.Name}}</strong>{{if $v.Cust.Address}}<br>{{$v.Cust.Address}}{{end}}{{if $v.Cust.Suburb}}<br>{{$v.Cust.Suburb}}{{end}}{{if $v.Cust.Email}}<br>{{$v.Cust.Email}}{{end}}</p>
+                            </div>
+                            {{end}}
+                        </div>
+                        {{if $v.Booking}}<p class="admin-muted">{{if $v.ServiceTitle}}{{$v.ServiceTitle}}{{if $d.When}} · {{end}}{{end}}{{if $d.When}}Visit {{$d.When}}{{end}}</p>{{end}}
+                        <table class="admin-quotes-table inv-lines">
+                            <thead><tr><th>Description</th><th class="td-num">Qty</th><th class="td-num">Unit</th><th class="td-num">Amount</th></tr></thead>
+                            <tbody>
+                            {{range $d.Lines}}<tr><td>{{.Description}}</td><td class="td-num">{{.Qty}}</td><td class="td-num">{{.Unit}}</td><td class="td-num">{{.Line}}</td></tr>{{end}}
+                            </tbody>
+                            <tfoot><tr><td colspan="3" class="td-num"><strong>{{if $d.Paidish}}Total paid{{else}}Total due{{end}}</strong></td><td class="td-num"><strong>{{$d.Total}}</strong></td></tr></tfoot>
+                        </table>
+                        <p class="admin-muted">No GST is charged — not registered for GST.</p>
+                        {{if $inv.Notes}}<p>{{$inv.Notes}}</p>{{end}}
+                        <p><a class="btn btn--ghost btn--sm" href="/invoice/{{$inv.ViewToken}}/pdf">Download PDF</a></p>
+                    </div>
+                </div>
+                <div class="admin-col">
+                    {{if and (not $d.Paidish) (not $d.Void)}}
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">How to pay</h2>
+                        {{if $inv.PaymentLink}}
+                        <p><a class="btn btn--primary" href="{{$inv.PaymentLink}}" rel="noopener">Pay {{$d.Total}} by card</a></p>
+                        <p class="admin-muted">Visa, Mastercard, Amex, Apple Pay, Google Pay — secure payment via Zeller.</p>
+                        {{end}}
+                        {{if .Site.BankBSB}}
+                        <p><strong>Bank transfer</strong></p>
+                        <table class="inv-bank">
+                            <tr><td>Account name</td><td>{{.Site.BankName}}</td></tr>
+                            <tr><td>BSB</td><td>{{.Site.BankBSB}}</td></tr>
+                            <tr><td>Account</td><td>{{.Site.BankAcct}}</td></tr>
+                            <tr><td>Reference</td><td><strong>{{$d.Ref}}</strong></td></tr>
+                        </table>
+                        {{end}}
+                        <p class="admin-muted">Or tap-to-pay by card, or cash, on the day. Please quote {{$d.Ref}}.</p>
+                    </div>
+                    {{end}}
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Questions?</h2>
+                        <p>Email <a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a>{{if .Site.Phone}} or call <a href="{{.Site.PhoneHref}}">{{.Site.Phone}}</a>{{end}}.</p>
+                        <p><a href="/book">Book another visit &#8594;</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+{{end}}

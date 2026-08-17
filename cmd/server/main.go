@@ -31,6 +31,7 @@ var userSessions sync.Map // token -> *userSession
 type userSession struct {
 	User   *db.User
 	Expiry time.Time
+	CSRF   string // per-session token required on admin form POSTs
 }
 
 var googleOAuth *oauth2.Config
@@ -105,9 +106,32 @@ func main() {
 	mux.HandleFunc("GET /auth/google/callback", handleGoogleCallback)
 	mux.HandleFunc("POST /auth/logout", handleUserLogout)
 
-	// Admin routes (protected by Google sign-in + ADMIN_EMAIL check)
-	mux.HandleFunc("GET /admin", handleAdmin)
-	mux.HandleFunc("POST /api/admin/save", handleAdminSave)
+	// Public tokenised invoice/receipt views (no login; the token is the secret).
+	mux.HandleFunc("GET /invoice/{token}", handleInvoicePublic)
+	mux.HandleFunc("GET /invoice/{token}/pdf", handleInvoicePublicPDF)
+
+	// Admin routes (protected by Google sign-in + ADMIN_EMAIL check; POSTs need the session CSRF token)
+	mux.HandleFunc("GET /admin", requireAdmin(handleAdmin))
+	mux.HandleFunc("POST /api/admin/save", requireAdmin(handleAdminSave))
+	mux.HandleFunc("GET /admin/bookings", requireAdmin(handleAdminBookings))
+	mux.HandleFunc("GET /admin/bookings/{id}", requireAdmin(handleAdminBooking))
+	mux.HandleFunc("POST /admin/bookings/{id}/schedule", requireAdmin(handleAdminBookingSchedule))
+	mux.HandleFunc("POST /admin/bookings/{id}/status", requireAdmin(handleAdminBookingStatus))
+	mux.HandleFunc("POST /admin/bookings/{id}/notes", requireAdmin(handleAdminBookingNotes))
+	mux.HandleFunc("POST /admin/bookings/{id}/followup", requireAdmin(handleAdminBookingFollowup))
+	mux.HandleFunc("GET /admin/calendar", requireAdmin(handleAdminCalendar))
+	mux.HandleFunc("GET /admin/invoices", requireAdmin(handleAdminInvoices))
+	mux.HandleFunc("POST /admin/invoices/new", requireAdmin(handleAdminInvoiceNew))
+	mux.HandleFunc("GET /admin/invoices/{id}", requireAdmin(handleAdminInvoice))
+	mux.HandleFunc("GET /admin/invoices/{id}/pdf", requireAdmin(handleAdminInvoicePDF))
+	mux.HandleFunc("POST /admin/invoices/{id}/items", requireAdmin(handleAdminInvoiceItems))
+	mux.HandleFunc("POST /admin/invoices/{id}/link", requireAdmin(handleAdminInvoiceLink))
+	mux.HandleFunc("POST /admin/invoices/{id}/send", requireAdmin(handleAdminInvoiceSend))
+	mux.HandleFunc("POST /admin/invoices/{id}/paid", requireAdmin(handleAdminInvoicePaid))
+	mux.HandleFunc("POST /admin/invoices/{id}/void", requireAdmin(handleAdminInvoiceVoid))
+	mux.HandleFunc("GET /admin/customers", requireAdmin(handleAdminCustomers))
+	mux.HandleFunc("GET /admin/customers/{id}", requireAdmin(handleAdminCustomer))
+	mux.HandleFunc("POST /admin/customers/{id}", requireAdmin(handleAdminCustomerSave))
 
 	log.Printf("listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
@@ -121,6 +145,8 @@ func loadTemplates(dir string) (map[string]*template.Template, error) {
 		"hasPrefix": strings.HasPrefix,
 		"add":       func(a, b int) int { return a + b },
 		"mul":       func(a, b int) int { return a * b },
+		"money":     fmtCents,
+		"seq":       seq,
 	}
 	base := template.New("").Funcs(funcMap)
 	base = template.Must(base.ParseGlob(filepath.Join(dir, "layouts", "*.html")))
@@ -149,6 +175,7 @@ type pageData struct {
 	IsAdmin  bool       // true if logged-in user's email matches ADMIN_EMAIL
 	Site     siteConfig // global site settings (phone, pricing, base URL, suburbs)
 	Path     string     // current request path (for nav active state + canonical)
+	CSRF     string     // admin session CSRF token for form POSTs ("" when not signed in)
 	PageData any        // page-specific data
 }
 
@@ -158,12 +185,18 @@ func render(w http.ResponseWriter, r *http.Request, page string, data any) {
 		http.Error(w, "page not found", http.StatusNotFound)
 		return
 	}
-	user := getLoggedInUser(r)
+	sess := getSession(r)
+	var user *db.User
+	csrf := ""
+	if sess != nil {
+		user, csrf = sess.User, sess.CSRF
+	}
 	pd := pageData{
 		User:     user,
 		IsAdmin:  isAdmin(user),
 		Site:     site,
 		Path:     r.URL.Path,
+		CSRF:     csrf,
 		PageData: data,
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -173,8 +206,8 @@ func render(w http.ResponseWriter, r *http.Request, page string, data any) {
 	}
 }
 
-// getLoggedInUser returns the logged-in user from the session cookie, or nil.
-func getLoggedInUser(r *http.Request) *db.User {
+// getSession returns the live session for the request cookie, or nil.
+func getSession(r *http.Request) *userSession {
 	cookie, err := r.Cookie("user_session")
 	if err != nil {
 		return nil
@@ -188,7 +221,15 @@ func getLoggedInUser(r *http.Request) *db.User {
 		userSessions.Delete(cookie.Value)
 		return nil
 	}
-	return sess.User
+	return sess
+}
+
+// getLoggedInUser returns the logged-in user from the session cookie, or nil.
+func getLoggedInUser(r *http.Request) *db.User {
+	if sess := getSession(r); sess != nil {
+		return sess.User
+	}
+	return nil
 }
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
@@ -288,6 +329,7 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	userSessions.Store(sessToken, &userSession{
 		User:   user,
 		Expiry: time.Now().Add(7 * 24 * time.Hour),
+		CSRF:   generateSessionToken(),
 	})
 
 	http.SetCookie(w, &http.Cookie{
@@ -356,17 +398,6 @@ func isOwnerEmail(email string) bool {
 }
 
 func handleAdmin(w http.ResponseWriter, r *http.Request) {
-	user := getLoggedInUser(r)
-	if user == nil {
-		// Not signed in — redirect to Google sign-in, then back here
-		http.Redirect(w, r, "/auth/google?redirect=/admin", http.StatusSeeOther)
-		return
-	}
-	if !isAdmin(user) {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-
 	groupsJSON, err := db.OptionGroupsJSON()
 	if err != nil {
 		log.Printf("admin: load groups: %v", err)
@@ -381,31 +412,46 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("admin: load quotes: %v", err)
 	}
-	bookings, err := db.ListBookings()
+	counts, err := db.CountBookingsByStatus()
 	if err != nil {
-		log.Printf("admin: load bookings: %v", err)
+		log.Printf("admin: count bookings: %v", err)
 	}
-
-	render(w, r, "admin", struct {
-		GroupsJSON template.JS
-		BaseCost   int
-		Quotes     []db.Quote
-		Bookings   []db.Booking
-	}{
-		GroupsJSON: template.JS(groupsJSON),
-		BaseCost:   baseCost,
-		Quotes:     quotes,
-		Bookings:   bookings,
+	outstanding, err := db.SumOutstandingCents()
+	if err != nil {
+		log.Printf("admin: outstanding: %v", err)
+	}
+	weekStart := startOfWeek(db.Today())
+	week, err := db.ListBookingsBetween(weekStart, weekStart.AddDate(0, 0, 7))
+	if err != nil {
+		log.Printf("admin: week bookings: %v", err)
+	}
+	render(w, r, "admin", adminDashData{
+		GroupsJSON:  template.JS(groupsJSON),
+		BaseCost:    baseCost,
+		Quotes:      quotes,
+		NewCount:    counts[db.BookingNew],
+		BookedCount: counts[db.BookingBooked],
+		DoneCount:   counts[db.BookingDone],
+		SentCount:   counts[db.BookingInvoiced],
+		Outstanding: outstanding,
+		Week:        bookingRows(week),
 	})
 }
 
-func handleAdminSave(w http.ResponseWriter, r *http.Request) {
-	user := getLoggedInUser(r)
-	if !isAdmin(user) {
-		jsonError(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
+// adminDashData is the /admin dashboard view model.
+type adminDashData struct {
+	GroupsJSON  template.JS
+	BaseCost    int
+	Quotes      []db.Quote
+	NewCount    int
+	BookedCount int
+	DoneCount   int
+	SentCount   int
+	Outstanding int64 // cents, invoices sent but unpaid
+	Week        []bookingRow
+}
 
+func handleAdminSave(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Groups   []db.OptionGroup `json:"groups"`
 		BaseCost int              `json:"base_cost"`
@@ -447,6 +493,10 @@ type siteConfig struct {
 	OnsiteFee int          // onsite service fee (AUD)
 	BlockRate int          // per 15-minute block (AUD)
 	Suburbs   []string     // service area
+	ABN       string       // shown on invoices
+	BankName  string       // bank transfer details on invoices (BSB empty = hidden)
+	BankBSB   string
+	BankAcct  string
 }
 
 var site siteConfig
@@ -471,8 +521,19 @@ func initSiteConfig(port string) {
 		OnsiteFee: envInt("ONSITE_FEE", 80),
 		BlockRate: envInt("BLOCK_RATE", 30),
 		Suburbs:   suburbs,
+		ABN:       envOr("ABN", "14 723 053 435"),
+		BankName:  envOr("BANK_ACCOUNT_NAME", "James McHugh"),
+		BankBSB:   strings.TrimSpace(os.Getenv("BANK_BSB")),
+		BankAcct:  strings.TrimSpace(os.Getenv("BANK_ACCOUNT_NO")),
 	}
 	site.PhoneHref = template.URL(telHref(site.Phone))
+}
+
+func envOr(key, def string) string {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		return v
+	}
+	return def
 }
 
 func envInt(key string, def int) int {

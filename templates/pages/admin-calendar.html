@@ -1,0 +1,53 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — Calendar</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Administration</div>
+            <h1 class="section-title">Calendar</h1>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{if $d.ForID}}
+            <div class="admin-status admin-status--success admin-flash">Picking a time for <a href="/admin/bookings/{{$d.ForID}}">#{{$d.ForID}} {{$d.ForName}}</a> — click a free slot.</div>
+            {{end}}
+            <div class="cal-toolbar">
+                <a class="btn btn--ghost btn--sm" href="/admin/calendar?week={{$d.Prev}}{{if $d.ForID}}&for={{$d.ForID}}{{end}}">&#8592; Prev</a>
+                <a class="btn btn--ghost btn--sm" href="/admin/calendar?week={{$d.ThisWeek}}{{if $d.ForID}}&for={{$d.ForID}}{{end}}">This week</a>
+                <a class="btn btn--ghost btn--sm" href="/admin/calendar?week={{$d.Next}}{{if $d.ForID}}&for={{$d.ForID}}{{end}}">Next &#8594;</a>
+                <span class="cal-week-label">{{$d.WeekLabel}}</span>
+            </div>
+
+            <div class="cal-wrap">
+            <div class="cal" style="--slot-px:{{$d.SlotPx}}px;--col-px:{{$d.ColPx}}px">
+                <div class="cal-head cal-gutter"></div>
+                {{range $d.Days}}<div class="cal-head{{if .IsToday}} cal-today{{end}}">{{.Label}}</div>{{end}}
+                <div class="cal-gutter cal-hours">
+                    {{range $d.Hours}}<div class="cal-hour">{{.}}:00</div>{{end}}
+                </div>
+                {{range $d.Days}}
+                <div class="cal-col{{if .IsToday}} cal-today{{end}}">
+                    {{range .Slots}}{{if .Href}}<a class="cal-slot{{if .OnHour}} cal-slot--hour{{end}}" href="{{.Href}}" title="{{.Time}}"></a>{{else}}<div class="cal-slot{{if .OnHour}} cal-slot--hour{{end}}"></div>{{end}}{{end}}
+                    {{range .Events}}
+                    <a class="cal-event cal-event--{{.Row.Status}}" href="{{.Href}}" style="top:{{.Top}}px;height:{{.Height}}px" title="{{.Label}} — {{.Row.Name}}{{if .Row.Suburb}}, {{.Row.Suburb}}{{end}}">
+                        <span class="cal-event-time">{{.Label}}</span>
+                        <span class="cal-event-name">{{.Row.Name}}</span>
+                        {{if .Row.Suburb}}<span class="cal-event-sub">{{.Row.Suburb}}</span>{{end}}
+                    </a>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+            </div>
+        </div>
+    </section>
+{{end}}

@@ -35,9 +35,22 @@ func New(region, accessKey, secretKey, from string) *Mailer {
 // Enabled reports whether the mailer is configured.
 func (m *Mailer) Enabled() bool { return m != nil }
 
+// Attachment is a file to attach to an email.
+type Attachment struct {
+	Filename    string
+	ContentType string // e.g. "application/pdf"
+	Data        []byte
+}
+
 // Send sends an HTML email (with a plain-text fallback derived by the caller).
 // replyTo may be empty.
 func (m *Mailer) Send(to, subject, htmlBody, textBody, replyTo string) error {
+	return m.SendWithAttachments(to, subject, htmlBody, textBody, replyTo)
+}
+
+// SendWithAttachments is Send plus zero or more file attachments (SES v2
+// simple-message attachments; the SDK handles the MIME encoding).
+func (m *Mailer) SendWithAttachments(to, subject, htmlBody, textBody, replyTo string, atts ...Attachment) error {
 	if m == nil {
 		return nil
 	}
@@ -47,15 +60,25 @@ func (m *Mailer) Send(to, subject, htmlBody, textBody, replyTo string) error {
 	if textBody != "" {
 		body.Text = &sestypes.Content{Data: aws.String(textBody), Charset: aws.String("UTF-8")}
 	}
+	msg := &sestypes.Message{
+		Subject: &sestypes.Content{Data: aws.String(subject), Charset: aws.String("UTF-8")},
+		Body:    body,
+	}
+	for _, a := range atts {
+		att := sestypes.Attachment{
+			FileName:           aws.String(a.Filename),
+			RawContent:         a.Data,
+			ContentDisposition: sestypes.AttachmentContentDispositionAttachment,
+		}
+		if a.ContentType != "" {
+			att.ContentType = aws.String(a.ContentType)
+		}
+		msg.Attachments = append(msg.Attachments, att)
+	}
 	in := &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String(m.from),
 		Destination:      &sestypes.Destination{ToAddresses: []string{to}},
-		Content: &sestypes.EmailContent{
-			Simple: &sestypes.Message{
-				Subject: &sestypes.Content{Data: aws.String(subject), Charset: aws.String("UTF-8")},
-				Body:    body,
-			},
-		},
+		Content:          &sestypes.EmailContent{Simple: msg},
 	}
 	if replyTo != "" {
 		in.ReplyToAddresses = []string{replyTo}

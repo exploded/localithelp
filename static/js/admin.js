@@ -150,7 +150,7 @@
 
         fetch('/api/admin/save', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.__CSRF__ || '' },
             body: JSON.stringify({ groups: groups, base_cost: baseCost })
         })
         .then(function(r) { return r.json(); })

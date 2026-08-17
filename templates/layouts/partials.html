@@ -90,3 +90,27 @@
     </div>
 </div>
 {{end}}
+
+{{/* admin-nav: takes .Path */}}
+{{define "admin-nav"}}
+<div class="admin-nav" role="navigation" aria-label="Admin sections">
+    <a href="/admin"{{if eq . "/admin"}} class="active"{{end}}>Dashboard</a>
+    <a href="/admin/bookings"{{if hasPrefix . "/admin/bookings"}} class="active"{{end}}>Bookings</a>
+    <a href="/admin/calendar"{{if hasPrefix . "/admin/calendar"}} class="active"{{end}}>Calendar</a>
+    <a href="/admin/invoices"{{if hasPrefix . "/admin/invoices"}} class="active"{{end}}>Invoices</a>
+    <a href="/admin/customers"{{if hasPrefix . "/admin/customers"}} class="active"{{end}}>Customers</a>
+    <a href="/admin#options"{{if eq . "/admin#options"}} class="active"{{end}}>Quote options</a>
+</div>
+{{end}}
+
+{{/* csrf: takes the session token */}}
+{{define "csrf"}}<input type="hidden" name="csrf" value="{{.}}">{{end}}
+
+{{/* flash: takes {OK, Err} */}}
+{{define "flash"}}
+{{if .OK}}<div class="admin-status admin-status--success admin-flash" role="status">{{.OK}}</div>{{end}}
+{{if .Err}}<div class="admin-status admin-status--error admin-flash" role="alert">{{.Err}}</div>{{end}}
+{{end}}
+
+{{/* badge: takes a status string */}}
+{{define "badge"}}<span class="status-badge status-badge--{{.}}">{{.}}</span>{{end}}

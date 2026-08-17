@@ -96,6 +96,13 @@ func Open(path string) error {
 		"ALTER TABLE quotes ADD COLUMN status TEXT NOT NULL DEFAULT 'paid'",
 		"ALTER TABLE quotes ADD COLUMN verify_token TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE quotes ADD COLUMN verified_at TEXT NOT NULL DEFAULT ''",
+		// bookings lifecycle columns (constant defaults only — SQLite ALTER can't use datetime('now'))
+		"ALTER TABLE bookings ADD COLUMN customer_id INTEGER NOT NULL DEFAULT 0",
+		"ALTER TABLE bookings ADD COLUMN start_at TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE bookings ADD COLUMN duration_min INTEGER NOT NULL DEFAULT 60",
+		"ALTER TABLE bookings ADD COLUMN admin_notes TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE bookings ADD COLUMN parent_booking_id INTEGER NOT NULL DEFAULT 0",
+		"ALTER TABLE bookings ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''",
 	} {
 		conn.Exec(stmt) // ignore "duplicate column" / "no such table" errors
 	}
@@ -114,7 +121,16 @@ func Open(path string) error {
 	if err := initOptions(); err != nil {
 		return fmt.Errorf("init options: %w", err)
 	}
+	if err := BackfillCustomers(); err != nil {
+		return fmt.Errorf("backfill customers: %w", err)
+	}
 	return nil
+}
+
+// parseUTC parses the datetime('now') text SQLite stores (UTC, no zone).
+func parseUTC(s string) time.Time {
+	t, _ := time.Parse("2006-01-02 15:04:05", s)
+	return t
 }
 
 func Close() error {
@@ -406,75 +422,4 @@ func initOptions() error {
 		}
 	}
 	return nil
-}
-
-// ── Bookings ──
-
-type Booking struct {
-	ID            int64
-	Name          string
-	Phone         string
-	Email         string
-	Suburb        string
-	ServiceSlug   string
-	Mode          string // onsite | remote | either
-	Issue         string
-	PreferredTime string
-	Status        string // new | contacted | booked | done | spam
-	IP            string
-	CreatedAt     time.Time
-}
-
-func InsertBooking(b *Booking) (int64, error) {
-	ctx := context.Background()
-	if err := q.InsertBooking(ctx, sqlc.InsertBookingParams{
-		Name:          b.Name,
-		Phone:         b.Phone,
-		Email:         b.Email,
-		Suburb:        b.Suburb,
-		ServiceSlug:   b.ServiceSlug,
-		Mode:          b.Mode,
-		Issue:         b.Issue,
-		PreferredTime: b.PreferredTime,
-		Ip:            b.IP,
-	}); err != nil {
-		return 0, fmt.Errorf("insert booking: %w", err)
-	}
-	row, err := q.GetLastBooking(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("get last booking: %w", err)
-	}
-	return row.ID, nil
-}
-
-func ListBookings() ([]Booking, error) {
-	rows, err := q.ListBookings(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Booking, len(rows))
-	for i, r := range rows {
-		out[i] = Booking{
-			ID:            r.ID,
-			Name:          r.Name,
-			Phone:         r.Phone,
-			Email:         r.Email,
-			Suburb:        r.Suburb,
-			ServiceSlug:   r.ServiceSlug,
-			Mode:          r.Mode,
-			Issue:         r.Issue,
-			PreferredTime: r.PreferredTime,
-			Status:        r.Status,
-			IP:            r.Ip,
-		}
-		out[i].CreatedAt, _ = time.Parse("2006-01-02 15:04:05", r.CreatedAt)
-	}
-	return out, nil
-}
-
-func UpdateBookingStatus(id int64, status string) error {
-	return q.UpdateBookingStatus(context.Background(), sqlc.UpdateBookingStatusParams{
-		Status: status,
-		ID:     id,
-	})
 }

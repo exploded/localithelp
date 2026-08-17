@@ -28,6 +28,10 @@ func TestTemplatesRender(t *testing.T) {
 		t.Fatal("no featured service")
 	}
 	email, _ := findService("email-outlook")
+	booked := db.Booking{ID: 1, CustomerID: 9, Name: "B <b>x</b>", Phone: "1", Email: "b@x", Suburb: "Donvale", ServiceSlug: "email-outlook",
+		Issue: "Broken", Status: "booked", StartAt: time.Date(2026, 8, 20, 9, 30, 0, 0, db.Melbourne), DurationMin: 60, CreatedAt: time.Now(), ParentBookingID: 1}
+	cust := &db.Customer{ID: 9, Name: "Ann", Email: "ann@x", Phone: "0400 000 000", Suburb: "Donvale", CreatedAt: time.Now()}
+	inv := sampleInvoiceView(db.InvoiceSent).Inv
 
 	cases := map[string]any{
 		"home": struct {
@@ -62,21 +66,65 @@ func TestTemplatesRender(t *testing.T) {
 		}}},
 		"quote-sent":   map[string]any{"Email": "a@b.co"},
 		"quote-result": map[string]any{"AIEstimate": template.HTML("<p>x</p>"), "Name": "A"},
-		"admin": struct {
-			GroupsJSON template.JS
-			BaseCost   int
-			Quotes     []db.Quote
-			Bookings   []db.Booking
-		}{"[]", 2000, []db.Quote{{ID: 1, Status: "paid", CreatedAt: time.Now()}}, []db.Booking{{ID: 1, Name: "B", Phone: "1", Email: "b@x", Status: "new", CreatedAt: time.Now()}}},
+		"admin": adminDashData{GroupsJSON: "[]", BaseCost: 2000,
+			Quotes: []db.Quote{{ID: 1, Status: "paid", CreatedAt: time.Now()}},
+			Week:   bookingRows([]db.Booking{booked}), NewCount: 2, Outstanding: 12345},
+		"admin-bookings": adminBookingsData{Flash: flash{OK: "saved"}, Status: "new", Statuses: db.BookingStatuses,
+			Counts: map[string]int{"new": 2}, Rows: bookingRows([]db.Booking{booked, {ID: 2, Name: "Unscheduled", PreferredTime: "arvo", Status: "new"}})},
+		"admin-booking": adminBookingData{Flash: flash{Err: "oops"}, B: &booked, Row: newBookingRow(booked), Cust: cust,
+			StartValue: "2026-08-20T09:30", Durations: durationChoices, Invoices: []db.Invoice{*inv}, Parent: &booked,
+			Children: bookingRows([]db.Booking{booked}), Statuses: db.BookingStatuses, CanInvoice: true, FollowupText: "Return"},
+		"admin-booking-nocust": adminBookingData{B: &db.Booking{ID: 3, Name: "X", Status: "new"}, Row: newBookingRow(db.Booking{ID: 3}), Durations: durationChoices, StartValue: "2026-08-20T09:30"},
+		"admin-calendar": calendarData{WeekStart: time.Now(), WeekLabel: "w", Prev: "p", Next: "n", ThisWeek: "t", Hours: []int{7, 8},
+			SlotPx: 14, ColPx: 672, ForID: 1, ForName: "Ann",
+			Days: []calDay{{Date: time.Now(), Label: "Mon 17", IsToday: true, Slots: []calSlot{{Time: "07:00", OnHour: true, Href: "/x"}, {Time: "07:15"}},
+				Events: []calEvent{{Row: newBookingRow(booked), Top: 10, Height: 56, Href: "/y", Label: "9:30 am – 10:30 am"}}}}},
+		"admin-invoices": adminInvoicesData{Status: "sent", Statuses: []string{"draft", "sent"}, Rows: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, TotalOut: 500},
+		"admin-invoice": func() adminInvoiceData {
+			v := sampleInvoiceView(db.InvoiceDraft)
+			return adminInvoiceData{V: v, Ref: "INV-1001", Total: "$229.50", TotalDollars: "229.50", Editable: true, CanSend: true, CanPay: true, CanVoid: true,
+				Lines: []invoiceLine{{"Fee", "1", "80.00", "$80.00"}}, Blank: 2, DueValue: "2026-08-27", PaidValue: "2026-08-20", Methods: db.PaymentMethods,
+				When: "Thu 20 Aug", BlockRate: "30", OnsiteFee: "80", HasCustEmail: true, PublicURL: v.PublicURL, BankConfigured: true}
+		}(),
+		"admin-invoice-sent": func() adminInvoiceData {
+			v := sampleInvoiceView(db.InvoicePaid)
+			return adminInvoiceData{V: v, Ref: "INV-1001", Total: "$229.50", TotalDollars: "229.50", CanResend: false,
+				Lines: []invoiceLine{{"Fee", "1", "80.00", "$80.00"}}, Methods: db.PaymentMethods, PaymentMethod: "Zeller payment link", PublicURL: v.PublicURL}
+		}(),
+		"admin-customers": adminCustomersData{Query: "ann", Rows: []db.Customer{*cust}},
+		"admin-customer":  adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}},
+		"invoice-public": func() invoicePublicData {
+			v := sampleInvoiceView(db.InvoiceSent)
+			return invoicePublicData{V: v, Ref: "INV-1001", Total: "$229.50", Lines: []invoiceLine{{"Fee", "1", "$80.00", "$80.00"}}, Issued: "20 Aug 2026", Due: "27 Aug 2026", When: "Thu 20 Aug"}
+		}(),
+		"invoice-public-paid": func() invoicePublicData {
+			v := sampleInvoiceView(db.InvoicePaid)
+			return invoicePublicData{V: v, Ref: "INV-1001", Total: "$229.50", Paid: "20 Aug 2026", Method: "Cash", Paidish: true}
+		}(),
+	}
+	// Variants (name suffix after the page) reuse the same template with different data.
+	pageOf := func(name string) string {
+		for _, p := range []string{"admin-booking-nocust", "admin-invoice-sent", "invoice-public-paid"} {
+			if name == p {
+				return name[:strings.LastIndex(name, "-")]
+			}
+		}
+		return name
+	}
+	for page := range pages {
+		if _, ok := cases[page]; !ok {
+			t.Errorf("page %q has no render test case", page)
+		}
 	}
 	for name, data := range cases {
+		name := pageOf(name)
 		tmpl, ok := pages[name]
 		if !ok {
 			t.Errorf("page %q not loaded", name)
 			continue
 		}
 		var buf bytes.Buffer
-		pd := pageData{Site: site, Path: "/" + name, PageData: data, User: &db.User{Name: "U", Email: "u@x"}, IsAdmin: true}
+		pd := pageData{Site: site, Path: "/" + name, PageData: data, User: &db.User{Name: "U", Email: "u@x"}, IsAdmin: true, CSRF: "csrf-token"}
 		if err := tmpl.ExecuteTemplate(&buf, "base", pd); err != nil {
 			t.Errorf("render %q: %v", name, err)
 			continue

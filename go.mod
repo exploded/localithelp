@@ -3,18 +3,19 @@ module mchugh.com.au
 go 1.25.0
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.43.6
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.36
+	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.66.6
+	github.com/go-pdf/fpdf v0.9.0
 	golang.org/x/oauth2 v0.36.0
 	modernc.org/sqlite v1.47.0
 )
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.43.6 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.36 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.37 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.37 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.38 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.66.6 // indirect
 	github.com/aws/smithy-go v1.27.8 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect

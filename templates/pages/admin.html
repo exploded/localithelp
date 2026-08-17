@@ -1,7 +1,7 @@
 {{template "base" .}}
 
 {{define "meta"}}
-    <title>Admin — Bookings &amp; Quotes</title>
+    <title>Admin — Dashboard</title>
     <meta name="robots" content="noindex">
 {{end}}
 
@@ -9,56 +9,59 @@
     <div class="page-header">
         <div class="container">
             <div class="section-label">Administration</div>
-            <h1 class="section-title">Admin Dashboard</h1>
-            <p class="page-header-intro">Booking requests, quotes and pricing options.</p>
+            <h1 class="section-title">Dashboard</h1>
+            {{template "admin-nav" .Path}}
         </div>
     </div>
 
     <section class="admin-section">
         <div class="container">
-            <h2 class="admin-heading">Booking Requests</h2>
-            {{if .PageData.Bookings}}
+            <div class="admin-stats">
+                <a class="admin-stat" href="/admin/bookings?status=new">
+                    <span class="admin-stat-n">{{.PageData.NewCount}}</span>
+                    <span class="admin-stat-l">New enquiries</span>
+                </a>
+                <a class="admin-stat" href="/admin/bookings?status=booked">
+                    <span class="admin-stat-n">{{.PageData.BookedCount}}</span>
+                    <span class="admin-stat-l">Booked</span>
+                </a>
+                <a class="admin-stat" href="/admin/bookings?status=done">
+                    <span class="admin-stat-n">{{.PageData.DoneCount}}</span>
+                    <span class="admin-stat-l">Done, to invoice</span>
+                </a>
+                <a class="admin-stat" href="/admin/invoices?status=sent">
+                    <span class="admin-stat-n">{{money .PageData.Outstanding}}</span>
+                    <span class="admin-stat-l">Outstanding ({{.PageData.SentCount}} invoiced)</span>
+                </a>
+            </div>
+
+            <h2 class="admin-heading">This week <a class="admin-heading-link" href="/admin/calendar">Calendar &#8594;</a></h2>
+            {{if .PageData.Week}}
             <div class="admin-quotes-table-wrap">
                 <table class="admin-quotes-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Date</th>
-                            <th>Name</th>
-                            <th>Contact</th>
-                            <th>Suburb</th>
-                            <th>Service</th>
-                            <th>Preferred</th>
-                            <th>Issue</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>When</th><th>Name</th><th>Suburb</th><th>Service</th><th>Status</th></tr></thead>
                     <tbody>
-                        {{range .PageData.Bookings}}
+                    {{range .PageData.Week}}
                         <tr>
-                            <td>{{.ID}}</td>
-                            <td>{{.CreatedAt.Format "02 Jan 15:04"}}</td>
+                            <td><a href="/admin/bookings/{{.ID}}">{{.When}}</a></td>
                             <td>{{.Name}}</td>
-                            <td>{{if .Phone}}<a href="tel:{{.Phone}}">{{.Phone}}</a>{{end}}{{if and .Phone .Email}}<br>{{end}}{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
                             <td>{{.Suburb}}</td>
-                            <td>{{.ServiceSlug}}</td>
-                            <td>{{.PreferredTime}}</td>
-                            <td class="td-wrap">{{.Issue}}</td>
-                            <td><span class="status-badge status-badge--{{.Status}}">{{.Status}}</span></td>
+                            <td>{{.ServiceTitle}}</td>
+                            <td>{{template "badge" .Status}}</td>
                         </tr>
-                        {{end}}
+                    {{end}}
                     </tbody>
                 </table>
             </div>
             {{else}}
-            <p class="admin-empty">No booking requests yet.</p>
+            <p class="admin-empty">Nothing booked this week.</p>
             {{end}}
         </div>
     </section>
 
     <section class="admin-section">
         <div class="container">
-            <h2 class="admin-heading">All Quotes</h2>
+            <h2 class="admin-heading">Software quotes</h2>
             {{if .PageData.Quotes}}
             <div class="admin-quotes-table-wrap">
                 <table class="admin-quotes-table">
@@ -80,9 +83,7 @@
                             <td>{{.Name}}</td>
                             <td>{{.Email}}</td>
                             <td>${{printf "%.0f" .TotalCost}}</td>
-                            <td>
-                                <span class="status-badge status-badge--{{.Status}}">{{.Status}}</span>
-                            </td>
+                            <td>{{template "badge" .Status}}</td>
                         </tr>
                         {{end}}
                     </tbody>
@@ -94,7 +95,7 @@
         </div>
     </section>
 
-    <section class="admin-section">
+    <section class="admin-section" id="options">
         <div class="container">
             <h2 class="admin-heading">Quote Options</h2>
             <div id="admin-app"></div>
@@ -108,6 +109,6 @@
         </div>
     </section>
 
-    <script>window.__GROUPS__ = {{.PageData.GroupsJSON}};window.__BASE_COST__ = {{.PageData.BaseCost}};</script>
+    <script>window.__GROUPS__ = {{.PageData.GroupsJSON}};window.__BASE_COST__ = {{.PageData.BaseCost}};window.__CSRF__ = {{.CSRF}};</script>
     <script src="/static/js/admin.js"></script>
 {{end}}

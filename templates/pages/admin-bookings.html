@@ -1,0 +1,67 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — Bookings</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Administration</div>
+            <h1 class="section-title">Bookings</h1>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{template "flash" $d.Flash}}
+
+            <div class="admin-filters">
+                <a href="/admin/bookings"{{if eq $d.Status ""}} class="active"{{end}}>All</a>
+                {{range $d.Statuses}}
+                <a href="/admin/bookings?status={{.}}"{{if eq $d.Status .}} class="active"{{end}}>{{.}}{{with index $d.Counts .}} <span class="admin-filter-n">{{.}}</span>{{end}}</a>
+                {{end}}
+            </div>
+
+            {{if $d.Rows}}
+            <div class="admin-quotes-table-wrap">
+                <table class="admin-quotes-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Received</th>
+                            <th>Name</th>
+                            <th>Contact</th>
+                            <th>Suburb</th>
+                            <th>Service</th>
+                            <th>Scheduled</th>
+                            <th>Issue</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range $d.Rows}}
+                        <tr>
+                            <td><a href="/admin/bookings/{{.ID}}">#{{.ID}}</a></td>
+                            <td>{{.CreatedAt.Format "02 Jan"}}</td>
+                            <td><a href="/admin/bookings/{{.ID}}">{{.Name}}</a>{{if .ParentBookingID}} <span class="admin-muted">(follow-up)</span>{{end}}</td>
+                            <td>{{if .Phone}}<a href="tel:{{.Phone}}">{{.Phone}}</a>{{end}}{{if and .Phone .Email}}<br>{{end}}{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
+                            <td>{{.Suburb}}</td>
+                            <td>{{.ServiceTitle}}</td>
+                            <td>{{if .When}}{{.When}}{{else}}<span class="admin-muted">{{.PreferredTime}}</span>{{end}}</td>
+                            <td class="td-wrap">{{.Preview}}</td>
+                            <td>{{template "badge" .Status}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="admin-empty">No bookings{{if $d.Status}} with status “{{$d.Status}}”{{end}}.</p>
+            {{end}}
+        </div>
+    </section>
+{{end}}

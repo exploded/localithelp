@@ -261,7 +261,13 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	customerID, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.Suburb)
+	if err != nil {
+		log.Printf("booking: customer upsert failed: %v", err)
+		// Not fatal: the booking is still recorded; the boot-time backfill will link it later.
+	}
 	b := &db.Booking{
+		CustomerID:    customerID,
 		Name:          f.Name,
 		Phone:         f.Phone,
 		Email:         f.Email,

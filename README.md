@@ -14,10 +14,14 @@ that is a separate static landing page (repo `exploded/mchugh-au`, served from
 - `cmd/server/main.go` — server, routes, Google sign-in for `/admin` only, site config
 - `cmd/server/quote.go` — software quote flow (public, no login/payment): Turnstile → email verification → AI estimate; `turnstile.go` — Cloudflare Turnstile check
 - `cmd/server/services.go` — **the service catalogue** (titles, copy, prices, suburbs, software packages). Edit this to change what the site offers.
-- `cmd/server/pages.go` — service pages + booking form handlers
+- `cmd/server/pages.go` — service pages + booking form handlers (an enquiry creates/links a `customers` row)
+- `cmd/server/auth.go` — `requireAdmin` (Google sign-in + `ADMIN_EMAIL` + per-session CSRF on POSTs), money/date helpers
+- `cmd/server/admin_bookings.go` — admin bookings list/detail, schedule/reschedule/cancel/notes/follow-up, week calendar
+- `cmd/server/admin_invoices.go` — invoices (draft → sent → paid | void), public tokenised `/invoice/{token}` (+`/pdf`), customers
+- `cmd/server/pdf.go` — invoice/receipt PDF (go-pdf/fpdf, pure Go); `mail_billing.go` — booking/invoice emails + `.ics`
 - `templates/layouts/base.html` — nav/footer/meta; `partials.html` — pricing, guarantees, areas, service card, book CTA
-- `templates/pages/*.html` — one file per page (`home`, `services`, `service`, `software-development`, `book`, `book-thanks`, `portfolio`, `quote*`, `admin`)
-- `db/schema.sql` (embedded), `db/queries.sql` → `sqlc generate` → `db/sqlc/`; wrappers in `db/db.go`
+- `templates/pages/*.html` — one file per page (`home`, `services`, `service`, `software-development`, `book`, `book-thanks`, `portfolio`, `quote*`, `admin*`, `invoice-public`)
+- `db/schema.sql` (embedded), `db/queries.sql` → `sqlc generate` → `db/sqlc/`; wrappers in `db/db.go`, `bookings.go`, `customers.go`, `invoices.go`
 
 ## Run locally
 
@@ -36,7 +40,9 @@ go run ./cmd/server          # http://localhost:8080
 | `BASE_URL` | `https://mchugh.com.au` if PROD else `http://localhost:PORT` | canonical origin; OAuth redirect + quote verification links |
 | `PHONE` | empty | display phone; empty hides all phone UI |
 | `CONTACT_EMAIL` | `james@mchugh.com.au` | contact email; also the SES sender (must be a verified identity) and where booking / verified-quote notifications go |
-| `ONSITE_FEE` / `BLOCK_RATE` | `80` / `30` | published pricing (AUD) |
+| `ONSITE_FEE` / `BLOCK_RATE` | `80` / `30` | published pricing (AUD); also prefill invoice lines |
+| `ABN` | `14 723 053 435` | printed on invoices |
+| `BANK_ACCOUNT_NAME` / `BANK_BSB` / `BANK_ACCOUNT_NO` | `James McHugh` / – / – | bank-transfer details on invoices; BSB empty = hidden |
 | `ADMIN_EMAIL` | `james67@gmail.com` | Google account allowed into `/admin` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | – | Google sign-in — admin only; customers never sign in |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | – | Cloudflare Turnstile on the quote form (empty = check skipped, logged at startup; dev test pair `1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) |
@@ -52,6 +58,35 @@ estimate is generated, emailed to them, and `CONTACT_EMAIL` is notified. One ver
 quote per email address; a resubmission replaces an unconfirmed one. Without SES
 the verification link is printed to the log (handy locally). Sends run in the
 background and failures are only logged — the request is already saved. See `cmd/server/mail.go` and `mailer/`.
+
+## Bookings → invoices (admin workflow)
+
+Everything is under `/admin` (Google sign-in, `ADMIN_EMAIL` only). Customers never
+log in — they get emails with tokenised links.
+
+1. **Enquiry** (`/book`) creates a `bookings` row (status `new`) and finds/creates a
+   `customers` row by email (fallback: phone digits). Legacy bookings are linked at
+   boot (`db.BackfillCustomers`, idempotent).
+2. **Schedule** on the booking page (or pick a slot on `/admin/calendar?for=ID`):
+   sets start + duration, status → `booked`, emails the customer a confirmation
+   with an `.ics` invite. Rescheduling re-sends; **Cancel** emails a cancellation.
+3. After the visit mark it **Done**, then **Create invoice** — a draft prefilled with
+   the service fee and labour (duration ÷ 15 min × `BLOCK_RATE`); add hardware lines.
+   Numbers start at `INV-1000` and are never reused (void keeps its number).
+4. **Zeller:** the invoice page shows the amount and `INV-####` with copy buttons —
+   create a Payment Link in the Zeller app with those and paste it in. There is no
+   public Zeller API for this. Bank-transfer details (`BANK_*`) are shown too.
+5. **Send** emails the PDF (SES attachment) + a link to `/invoice/{token}`; invoice
+   → `sent`, booking → `invoiced`. **Resend** is available afterwards.
+6. **Mark paid** (Zeller link / bank / card on the day / cash) → `paid`, booking →
+   `paid`, and the receipt PDF is emailed. Paid on the day? Create the invoice and
+   mark it paid — the customer just gets the receipt.
+7. **Follow-up** creates a new booking on the same customer (e.g. returning a
+   repaired machine) linked via `parent_booking_id`.
+
+Booking statuses: `new → contacted → booked → done → invoiced → paid`, plus
+`cancelled`, `spam`. Invoice statuses: `draft → sent → paid`, plus `void`. Times
+are Australia/Melbourne (`time/tzdata` is embedded). Money is integer cents; no GST.
 
 ### Email (Amazon SES) setup
 
