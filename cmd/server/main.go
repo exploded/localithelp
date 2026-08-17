@@ -133,6 +133,7 @@ func main() {
 	mux.HandleFunc("GET /admin/customers", requireAdmin(handleAdminCustomers))
 	mux.HandleFunc("GET /admin/customers/{id}", requireAdmin(handleAdminCustomer))
 	mux.HandleFunc("POST /admin/customers/{id}", requireAdmin(handleAdminCustomerSave))
+	mux.HandleFunc("POST /admin/customers/{id}/bookings", requireAdmin(handleAdminCustomerBooking))
 
 	log.Printf("listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {

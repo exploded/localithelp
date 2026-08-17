@@ -599,6 +599,7 @@ type adminCustomerData struct {
 	C        *db.Customer
 	Bookings []bookingRow
 	Invoices []invoiceRow
+	Services []Service
 }
 
 func handleAdminCustomer(w http.ResponseWriter, r *http.Request) {
@@ -609,7 +610,36 @@ func handleAdminCustomer(w http.ResponseWriter, r *http.Request) {
 	}
 	bs, _ := db.ListBookingsByCustomer(c.ID)
 	invs, _ := db.ListInvoicesByCustomer(c.ID)
-	render(w, r, "admin-customer", adminCustomerData{Flash: readFlash(r), C: c, Bookings: bookingRows(bs), Invoices: invoiceRows(invs)})
+	render(w, r, "admin-customer", adminCustomerData{Flash: readFlash(r), C: c, Bookings: bookingRows(bs), Invoices: invoiceRows(invs), Services: services})
+}
+
+// handleAdminCustomerBooking creates a new unscheduled booking for the
+// customer (e.g. a phone enquiry) and sends the admin to it to pick a time.
+func handleAdminCustomerBooking(w http.ResponseWriter, r *http.Request) {
+	c, err := db.GetCustomer(pathID(r))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	back := "/admin/customers/" + strconv.FormatInt(c.ID, 10)
+	slug := strings.TrimSpace(r.FormValue("service"))
+	if _, ok := findService(slug); !ok {
+		slug = ""
+	}
+	issue := strings.TrimSpace(r.FormValue("issue"))
+	if rs := []rune(issue); len(rs) > 5000 {
+		issue = string(rs[:5000])
+	}
+	if issue == "" {
+		issue = "Booking created by admin"
+	}
+	id, err := db.CreateForCustomer(c, slug, issue)
+	if err != nil {
+		log.Printf("new booking for customer #%d: %v", c.ID, err)
+		redirectMsg(w, r, back, "err", "Could not create the booking.")
+		return
+	}
+	redirectMsg(w, r, "/admin/bookings/"+strconv.FormatInt(id, 10), "ok", "Booking created — pick a time below.")
 }
 
 func handleAdminCustomerSave(w http.ResponseWriter, r *http.Request) {

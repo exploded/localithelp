@@ -57,6 +57,7 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	mux.HandleFunc("GET /admin/customers", requireAdmin(handleAdminCustomers))
 	mux.HandleFunc("GET /admin/customers/{id}", requireAdmin(handleAdminCustomer))
 	mux.HandleFunc("POST /admin/customers/{id}", requireAdmin(handleAdminCustomerSave))
+	mux.HandleFunc("POST /admin/customers/{id}/bookings", requireAdmin(handleAdminCustomerBooking))
 
 	do := func(method, path string, form url.Values, admin bool) *httptest.ResponseRecorder {
 		t.Helper()
@@ -239,6 +240,22 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	post(cpath, url.Values{"name": {"Zoë O'Brien"}, "email": {"zoe@example.test"}, "phone": {"0400 000 001"}, "address": {"1 Test St"}, "suburb": {"Donvale"}, "notes": {"Lovely dog."}})
 	if !strings.Contains(get(cpath), "1 Test St") || !strings.Contains(get("/admin/customers?q=0400"), "Zoë") {
 		t.Fatal("customer edit/search")
+	}
+	// New booking straight from the customer page: unscheduled, linked, uses saved details.
+	loc = post(cpath+"/bookings", url.Values{"service": {"email-outlook"}, "issue": {"Outlook won't open"}})
+	nid := lastSeg(strings.SplitN(loc, "?", 2)[0])
+	nb, _ := db.GetBooking(nid)
+	if nb == nil || nb.CustomerID != b.CustomerID || nb.Status != db.BookingNew || nb.ServiceSlug != "email-outlook" ||
+		nb.Name != "Zoë O'Brien" || nb.Email != "zoe@example.test" || nb.Suburb != "Donvale" || !nb.StartAt.IsZero() {
+		t.Fatalf("customer booking: %+v", nb)
+	}
+	if !strings.Contains(get(cpath), "/admin/bookings/"+itoa(nid)) {
+		t.Fatal("customer page should list the new booking")
+	}
+	// Unknown service slug is dropped, not rejected.
+	loc = post(cpath+"/bookings", url.Values{"service": {"nope"}, "issue": {"x"}})
+	if nb, _ = db.GetBooking(lastSeg(strings.SplitN(loc, "?", 2)[0])); nb == nil || nb.ServiceSlug != "" {
+		t.Fatalf("bad slug should be blanked: %+v", nb)
 	}
 	// Cancel the follow-up with an email (nil mailer).
 	post("/admin/bookings/"+itoa(fid)+"/status", url.Values{"status": {"cancelled"}, "notify": {"1"}, "reason": {"customer away"}})

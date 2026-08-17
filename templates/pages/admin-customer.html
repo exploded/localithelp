@@ -44,6 +44,19 @@
                             {{range $d.Bookings}}<li><a href="/admin/bookings/{{.ID}}">#{{.ID}}</a> {{if .When}}{{.When}}{{else}}{{.CreatedAt.Format "2 Jan 2006"}}{{end}}{{if .ServiceTitle}} — {{.ServiceTitle}}{{end}} {{template "badge" .Status}}</li>{{end}}
                         </ul>
                         {{else}}<p class="admin-empty">None yet.</p>{{end}}
+                        <form method="POST" action="/admin/customers/{{$c.ID}}/bookings" class="admin-form-stack">
+                            {{template "csrf" $csrf}}
+                            <div class="admin-form-inline">
+                                <div class="admin-field"><label for="service">Service</label>
+                                    <select class="admin-input" id="service" name="service">
+                                        <option value="">Not sure / something else</option>
+                                        {{range $d.Services}}<option value="{{.Slug}}">{{.Title}}</option>{{end}}
+                                    </select>
+                                </div>
+                                <div class="admin-field admin-field--wide"><label for="issue">What's needed</label><input class="admin-input" id="issue" name="issue" maxlength="500" placeholder="e.g. Laptop won't boot"></div>
+                            </div>
+                            <div><button class="btn btn--ghost btn--sm" type="submit">New booking</button></div>
+                        </form>
                     </div>
                     <div class="admin-card">
                         <h2 class="admin-card-title">Invoices</h2>

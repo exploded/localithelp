@@ -95,6 +95,15 @@ func CreateFollowup(parent *Booking, issue string) (int64, error) {
 	})
 }
 
+// CreateForCustomer creates a new unscheduled booking for an existing
+// customer (admin-initiated, e.g. a phone enquiry) and returns its id.
+func CreateForCustomer(c *Customer, serviceSlug, issue string) (int64, error) {
+	return InsertBooking(&Booking{
+		CustomerID: c.ID, Name: c.Name, Phone: c.Phone, Email: c.Email, Suburb: c.Suburb,
+		ServiceSlug: serviceSlug, Mode: "onsite", Issue: issue,
+	})
+}
+
 func GetBooking(id int64) (*Booking, error) {
 	r, err := q.GetBooking(context.Background(), id)
 	if err != nil {
