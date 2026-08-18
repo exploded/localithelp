@@ -7,6 +7,20 @@
     <meta property="og:description" content="{{.PageData.A.MetaDesc}}">
 {{end}}
 
+{{define "og-image"}}
+    {{if .PageData.Image}}
+    <meta property="og:image" content="{{.Site.BaseURL}}{{.PageData.Image}}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="675">
+    <meta property="og:image:alt" content="{{.PageData.A.Name}}, Victoria">
+    {{else}}
+    <meta property="og:image" content="{{.Site.BaseURL}}/static/img/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="James McHugh — computer help at your place, Donvale &amp; Melbourne's east">
+    {{end}}
+{{end}}
+
 {{define "head"}}
     {{$a := .PageData.A}}
     {{template "ld-breadcrumbs" (crumbs "Home" "/" "Service areas" "/areas" $a.Name $a.URL)}}
@@ -17,7 +31,8 @@
       "name": "At-home computer help in {{$a.Name}}",
       "serviceType": "Computer repair and IT support",
       "description": "{{$a.MetaDesc}}",
-      "url": "{{.Site.BaseURL}}{{$a.URL}}",
+      "url": "{{.Site.BaseURL}}{{$a.URL}}",{{if .PageData.Image}}
+      "image": "{{.Site.BaseURL}}{{.PageData.Image}}",{{end}}
       "provider": {"@id": "{{.Site.BaseURL}}/#business"},
       "areaServed": {"@type": "City", "name": "{{$a.Name}}", "address": {"@type": "PostalAddress", "addressLocality": "{{$a.Name}}", "postalCode": "{{$a.Postcode}}", "addressRegion": "VIC", "addressCountry": "AU"}},
       "offers": {"@type": "Offer", "priceCurrency": "AUD", "price": "{{.Site.OnsiteFee}}", "description": "Onsite service fee; time billed at ${{.Site.BlockRate}} per 15 minutes. No fix, no fee."}
@@ -37,6 +52,12 @@
 
     <section class="service-section">
         <div class="container">
+            {{if .PageData.Image}}
+            <figure class="area-photo">
+                <img src="{{.PageData.Image}}" alt="{{$a.Name}}, Victoria — in the service area for at-home computer help" width="1200" height="675" decoding="async">
+                {{with $a.Photo}}<figcaption>Photo: <a href="{{.Source}}" rel="noopener nofollow" target="_blank">{{.Artist}}</a>{{if .LicenceURL}}, <a href="{{.LicenceURL}}" rel="noopener nofollow" target="_blank">{{.Licence}}</a>{{else}}, {{.Licence}}{{end}}, via Wikimedia Commons</figcaption>{{end}}
+            </figure>
+            {{end}}
             <div class="help-banner help-banner--slim reveal">
                 <div><strong>About {{$a.DriveMin}} minutes from Donvale.</strong> {{$a.Name}} is well inside the service area, so there's no call-out or travel fee — just the standard visit rate, and no fix, no fee.</div>
                 <div class="help-banner-actions">

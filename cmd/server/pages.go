@@ -4,6 +4,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -130,6 +132,7 @@ func handleArea(w http.ResponseWriter, r *http.Request) {
 
 type areaPage struct {
 	A        *Suburb
+	Image    string // "/static/img/areas/{slug}.jpg" when the file exists, else ""
 	Services []Service
 	Guides   []*Guide
 	Nearby   []*Suburb
@@ -143,7 +146,19 @@ func areaPageData(s *Suburb) areaPage {
 		}
 		gs = append(gs, &guides[i])
 	}
-	return areaPage{A: s, Services: services, Guides: gs, Nearby: s.Nearby()}
+	return areaPage{A: s, Image: areaImage(s), Services: services, Guides: gs, Nearby: s.Nearby()}
+}
+
+// staticDir is where /static/ is served from; set by newMux so handlers can check for optional assets.
+var staticDir = "static"
+
+// areaImage returns the URL of the suburb's photo if static/img/areas/{slug}.jpg exists.
+// Photos are optional and file-driven: drop one in (see tools/areaphoto) and it appears.
+func areaImage(s *Suburb) string {
+	if _, err := os.Stat(filepath.Join(staticDir, "img", "areas", s.Slug+".jpg")); err != nil {
+		return ""
+	}
+	return "/static/img/areas/" + s.Slug + ".jpg"
 }
 
 // ── Booking ──

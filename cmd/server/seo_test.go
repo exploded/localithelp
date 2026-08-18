@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -195,6 +196,19 @@ func TestSuburbs(t *testing.T) {
 		if n := s.Nearby(); len(n) == 0 || len(n) > 6 {
 			t.Errorf("%s: nearby=%d", s.Name, len(n))
 		}
+		// A photo credit must point at a real file; the file itself is optional (own photos need no credit).
+		_, statErr := os.Stat(filepath.Join("../../static/img/areas", s.Slug+".jpg"))
+		if s.Photo != nil {
+			if statErr != nil {
+				t.Errorf("%s: has Photo credit but static/img/areas/%s.jpg is missing", s.Name, s.Slug)
+			}
+			if s.Photo.Artist == "" || s.Photo.Licence == "" || !strings.HasPrefix(s.Photo.Source, "https://") {
+				t.Errorf("%s: incomplete photo credit %+v", s.Name, *s.Photo)
+			}
+			if strings.HasPrefix(s.Photo.Licence, "CC") && s.Photo.LicenceURL == "" {
+				t.Errorf("%s: CC licence needs a LicenceURL", s.Name)
+			}
+		}
 	}
 	if len(suburbs) != len(suburbList) {
 		t.Errorf("suburbs names slice out of sync: %d vs %d", len(suburbs), len(suburbList))
@@ -253,8 +267,20 @@ func TestJSONLD(t *testing.T) {
 			t.Errorf("%s: indexable page is noindex", path)
 		}
 	}
-	// Service links hard-coded on the area page must resolve.
+	// Suburb photo: page with a file gets the figure + credit + its own og:image; page without falls back.
 	body := get(mux, "/areas/donvale").Body.String()
+	for _, want := range []string{`<figure class="area-photo">`, `src="/static/img/areas/donvale.jpg"`, `property="og:image" content="https://example.test/static/img/areas/donvale.jpg"`, `via Wikimedia Commons`, `"image": "https:\/\/example.test\/static\/img\/areas\/donvale.jpg"`} { // html/template escapes "/" inside <script>
+		if !strings.Contains(body, want) {
+			t.Errorf("/areas/donvale missing %s", want)
+		}
+	}
+	if rr := get(mux, "/static/img/areas/donvale.jpg"); rr.Code != 200 {
+		t.Errorf("suburb photo not served: %d", rr.Code)
+	}
+	if noPhoto := get(mux, "/areas/vermont").Body.String(); strings.Contains(noPhoto, "area-photo") || !strings.Contains(noPhoto, `og:image" content="https://example.test/static/img/og.png"`) {
+		t.Errorf("/areas/vermont should fall back to the site og:image and render no figure")
+	}
+	// Service links hard-coded on the area page must resolve.
 	for _, m := range regexp.MustCompile(`href="(/services/[a-z0-9-]+)"`).FindAllStringSubmatch(body, -1) {
 		if rr := get(mux, m[1]); rr.Code != 200 {
 			t.Errorf("area page links to %s → %d", m[1], rr.Code)

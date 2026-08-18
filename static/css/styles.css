@@ -2187,3 +2187,26 @@ a.area-chip:hover { border-color: var(--brand); color: var(--brand); }
 .notfound-grid .service-card { opacity: 1; transform: none; }
 .aside-note a { color: var(--brand); text-decoration: none; }
 .aside-note a:hover { text-decoration: underline; }
+.area-photo {
+    margin: 0 0 2rem;
+}
+.area-photo img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    max-height: 420px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+}
+.area-photo figcaption {
+    margin-top: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-align: right;
+}
+.area-photo figcaption a { color: inherit; }
+.area-photo figcaption a:hover { color: var(--brand); }

@@ -92,9 +92,10 @@ func main() {
 // real router (see TestSitemap).
 func newMux(dir string) *http.ServeMux {
 	mux := http.NewServeMux()
+	staticDir = filepath.Join(dir, "static")
 
 	// Static files with cache headers
-	fs := http.FileServer(http.Dir(filepath.Join(dir, "static")))
+	fs := http.FileServer(http.Dir(staticDir))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", cacheStatic(fs)))
 
 	mux.HandleFunc("GET /robots.txt", handleRobots)
