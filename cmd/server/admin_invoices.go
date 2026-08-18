@@ -168,6 +168,7 @@ type adminInvoiceData struct {
 	CanPay         bool
 	CanVoid        bool
 	CanResend      bool
+	CanResendRcpt  bool // paid: re-email the receipt (PAID-stamped PDF)
 	Lines          []invoiceLine
 	Blank          int // extra blank rows for the editor
 	DueValue       string
@@ -209,7 +210,8 @@ func handleAdminInvoice(w http.ResponseWriter, r *http.Request) {
 		Editable:       inv.Status == db.InvoiceDraft,
 		CanSend:        inv.Status == db.InvoiceDraft,
 		CanResend:      inv.Status == db.InvoiceSent,
-		CanPay:         inv.Status == db.InvoiceDraft || inv.Status == db.InvoiceSent,
+		CanResendRcpt:  inv.Status == db.InvoicePaid,
+		CanPay:        inv.Status == db.InvoiceDraft || inv.Status == db.InvoiceSent,
 		CanVoid:        inv.Status == db.InvoiceDraft || inv.Status == db.InvoiceSent,
 		DueValue:       db.FormatDate(inv.DueAt),
 		PaidValue:      db.FormatDate(db.Today()),
@@ -341,13 +343,18 @@ func handleAdminInvoiceLink(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAdminInvoiceSend emails the invoice PDF. Draft → sent (state flips
-// first, guarded, so a double-click can't send twice); sent → resend.
+// first, guarded, so a double-click can't send twice); sent → resend;
+// paid → resend the receipt (the PAID-stamped PDF).
 func handleAdminInvoiceSend(w http.ResponseWriter, r *http.Request) {
 	inv := loadInvoice(w, r)
 	if inv == nil {
 		return
 	}
 	back := "/admin/invoices/" + strconv.FormatInt(inv.ID, 10)
+	if inv.Status == db.InvoicePaid {
+		resendReceipt(w, r, inv, back)
+		return
+	}
 	switch inv.Status {
 	case db.InvoiceDraft:
 		if inv.PaymentLink == "" && r.FormValue("no_link_ok") == "" && site.BankBSB == "" {
@@ -401,6 +408,32 @@ func handleAdminInvoiceSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirectMsg(w, r, back, "ok", inv.Ref()+" emailed to "+v.Cust.Email+".")
+}
+
+// resendReceipt re-emails the receipt for a paid invoice (same email and
+// PAID-stamped PDF as the one sent when it was marked paid).
+func resendReceipt(w http.ResponseWriter, r *http.Request, inv *db.Invoice, back string) {
+	v, err := loadInvoiceView(inv)
+	if err != nil {
+		redirectMsg(w, r, back, "err", "The invoice could not be loaded for emailing.")
+		return
+	}
+	if v.Cust == nil || v.Cust.Email == "" {
+		redirectMsg(w, r, back, "err", "The customer has no email address.")
+		return
+	}
+	pdf, err := invoicePDF(v)
+	if err != nil {
+		log.Printf("receipt pdf #%d: %v", inv.ID, err)
+		redirectMsg(w, r, back, "err", "The PDF failed to render: "+err.Error())
+		return
+	}
+	if err := sendReceiptEmail(v, pdf); err != nil {
+		logMailErr("receipt resend", err)
+		redirectMsg(w, r, back, "err", "The receipt email failed: "+err.Error())
+		return
+	}
+	redirectMsg(w, r, back, "ok", "Receipt for "+inv.Ref()+" emailed to "+v.Cust.Email+".")
 }
 
 func handleAdminInvoicePaid(w http.ResponseWriter, r *http.Request) {

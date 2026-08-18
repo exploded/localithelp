@@ -121,6 +121,21 @@
                     </div>
                     {{end}}
 
+                    {{if $d.CanResendRcpt}}
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Resend receipt</h2>
+                        {{if $d.HasCustEmail}}
+                        <form method="POST" action="/admin/invoices/{{$inv.ID}}/send">
+                            {{template "csrf" $csrf}}
+                            <p class="admin-muted">Emails <strong>{{$v.Cust.Email}}</strong> the receipt again — the paid invoice PDF stamped PAID.</p>
+                            <button class="btn btn--primary btn--sm" type="submit">Resend receipt</button>
+                        </form>
+                        {{else}}
+                        <p class="admin-muted">The customer has no email address — <a href="/admin/customers/{{$inv.CustomerID}}">add one</a> to email the receipt, or hand over a printed <a href="/admin/invoices/{{$inv.ID}}/pdf" target="_blank" rel="noopener">PDF</a>.</p>
+                        {{end}}
+                    </div>
+                    {{end}}
+
                     {{if $d.CanPay}}
                     <div class="admin-card">
                         <h2 class="admin-card-title">3. Mark paid</h2>

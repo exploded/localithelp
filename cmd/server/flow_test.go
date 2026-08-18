@@ -220,6 +220,16 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	if !strings.Contains(pub.Body.String(), "Receipt") {
 		t.Fatal("public page should show receipt")
 	}
+	// Paid: the receipt can be re-emailed; status stays paid.
+	if page := get(invPath); !strings.Contains(page, "Resend receipt") {
+		t.Fatal("paid invoice page should offer Resend receipt")
+	}
+	if loc := post(invPath+"/send", nil); !strings.Contains(loc, "Receipt") {
+		t.Fatalf("resend receipt: %s", loc)
+	}
+	if inv, _ = db.GetInvoice(invID); inv.Status != db.InvoicePaid {
+		t.Fatalf("resend receipt changed status: %s", inv.Status)
+	}
 
 	// 6. Follow-up booking on the same customer, unscheduled; second invoice numbers 1001.
 	loc = post(bpath+"/followup", url.Values{"issue": {"Return the repaired laptop"}})
