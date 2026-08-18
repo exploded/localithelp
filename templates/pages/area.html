@@ -43,21 +43,26 @@
 {{define "content"}}
     {{$a := .PageData.A}}
     <div class="page-header">
-        <div class="container">
-            <div class="section-label"><a href="/areas" class="crumb">Service areas</a> &middot; {{$a.LGA}} &middot; {{$a.Postcode}}</div>
-            <h1 class="section-title">Computer help in {{$a.Name}},<br><em>at your place.</em></h1>
-            <p class="page-header-intro">{{$a.Blurb}}</p>
+        <div class="container area-hero{{if .PageData.Image}} area-hero--photo{{end}}">
+            <div class="area-hero-text">
+                <div class="section-label"><a href="/areas" class="crumb">Service areas</a> &middot; {{$a.LGA}} &middot; {{$a.Postcode}}</div>
+                <h1 class="section-title">Computer help in {{$a.Name}},<br><em>at your place.</em></h1>
+                <p class="page-header-intro">{{$a.Blurb}}</p>
+            </div>
+            {{if .PageData.Image}}
+            <figure class="area-photo">
+                <div class="area-photo-frame">
+                    <img src="{{.PageData.Image}}" alt="{{$a.Name}}, Victoria — in the service area for at-home computer help" width="1200" height="675" decoding="async" fetchpriority="high">
+                    <span class="area-photo-tag">{{$a.Name}} &middot; {{$a.Postcode}}</span>
+                </div>
+                {{with $a.Photo}}<figcaption>Photo: <a href="{{.Source}}" rel="noopener nofollow" target="_blank">{{.Artist}}</a>{{if .LicenceURL}} &middot; <a href="{{.LicenceURL}}" rel="noopener nofollow" target="_blank">{{.Licence}}</a>{{else}} &middot; {{.Licence}}{{end}}<span class="area-photo-via"> &middot; Wikimedia Commons</span></figcaption>{{end}}
+            </figure>
+            {{end}}
         </div>
     </div>
 
     <section class="service-section">
         <div class="container">
-            {{if .PageData.Image}}
-            <figure class="area-photo">
-                <img src="{{.PageData.Image}}" alt="{{$a.Name}}, Victoria — in the service area for at-home computer help" width="1200" height="675" decoding="async">
-                {{with $a.Photo}}<figcaption>Photo: <a href="{{.Source}}" rel="noopener nofollow" target="_blank">{{.Artist}}</a>{{if .LicenceURL}}, <a href="{{.LicenceURL}}" rel="noopener nofollow" target="_blank">{{.Licence}}</a>{{else}}, {{.Licence}}{{end}}, via Wikimedia Commons</figcaption>{{end}}
-            </figure>
-            {{end}}
             <div class="help-banner help-banner--slim reveal">
                 <div><strong>About {{$a.DriveMin}} minutes from Donvale.</strong> {{$a.Name}} is well inside the service area, so there's no call-out or travel fee — just the standard visit rate, and no fix, no fee.</div>
                 <div class="help-banner-actions">

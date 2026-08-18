@@ -269,7 +269,7 @@ func TestJSONLD(t *testing.T) {
 	}
 	// Suburb photo: page with a file gets the figure + credit + its own og:image; page without falls back.
 	body := get(mux, "/areas/donvale").Body.String()
-	for _, want := range []string{`<figure class="area-photo">`, `src="/static/img/areas/donvale.jpg"`, `property="og:image" content="https://example.test/static/img/areas/donvale.jpg"`, `via Wikimedia Commons`, `"image": "https:\/\/example.test\/static\/img\/areas\/donvale.jpg"`} { // html/template escapes "/" inside <script>
+	for _, want := range []string{`<figure class="area-photo">`, `src="/static/img/areas/donvale.jpg"`, `property="og:image" content="https://example.test/static/img/areas/donvale.jpg"`, `Wikimedia Commons`, `"image": "https:\/\/example.test\/static\/img\/areas\/donvale.jpg"`} { // html/template escapes "/" inside <script>
 		if !strings.Contains(body, want) {
 			t.Errorf("/areas/donvale missing %s", want)
 		}
