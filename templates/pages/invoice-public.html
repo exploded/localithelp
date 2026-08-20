@@ -1,7 +1,7 @@
 {{template "base" .}}
 
 {{define "meta"}}
-    <title>{{if .PageData.Paidish}}Receipt{{else}}Invoice{{end}} {{.PageData.Ref}} — James McHugh</title>
+    <title>{{if .PageData.Paidish}}Receipt{{else}}Invoice{{end}} {{.PageData.Ref}} — Local IT Help</title>
     <meta name="robots" content="noindex, nofollow">
 {{end}}
 
@@ -25,7 +25,7 @@
                         <div class="inv-parties">
                             <div>
                                 <div class="section-label">From</div>
-                                <p><strong>James McHugh</strong><br>Local computer help — Donvale VIC<br>ABN {{.Site.ABN}}<br><a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a>{{if .Site.Phone}}<br><a href="{{.Site.PhoneHref}}">{{.Site.Phone}}</a>{{end}}</p>
+                                <p><strong>Local IT Help</strong><br>James McHugh — Donvale VIC<br>ABN {{.Site.ABN}}<br><a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a>{{if .Site.Phone}}<br><a href="{{.Site.PhoneHref}}">{{.Site.Phone}}</a>{{end}}</p>
                             </div>
                             {{if $v.Cust}}
                             <div>

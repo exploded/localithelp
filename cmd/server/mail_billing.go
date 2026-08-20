@@ -140,7 +140,7 @@ func sendBookingCancellation(b *db.Booking, reason string) error {
 	}
 	text := fmt.Sprintf("Hi %s — your visit%s has been cancelled%s.\n\nTo rebook, reply to this email or visit %s/book.\n\n— James\n",
 		b.Name, map[bool]string{true: " on " + d.When, false: ""}[d.When != ""], map[bool]string{true: ": " + reason, false: ""}[reason != ""], site.BaseURL)
-	return sendNow(b.Email, "Your visit has been cancelled — James McHugh", html, text, site.Email)
+	return sendNow(b.Email, "Your visit has been cancelled — Local IT Help", html, text, site.Email)
 }
 
 // bookingICS builds a minimal VCALENDAR invite for the visit (UTC times).
@@ -148,18 +148,18 @@ func bookingICS(b *db.Booking, serviceTitle string) string {
 	const layout = "20060102T150405Z"
 	start := b.StartAt.UTC()
 	end := b.EndAt().UTC()
-	summary := "James McHugh — computer help"
+	summary := "Local IT Help — computer help"
 	if serviceTitle != "" {
-		summary = "James McHugh — " + serviceTitle
+		summary = "Local IT Help — " + serviceTitle
 	}
 	desc := strings.ReplaceAll(strings.ReplaceAll(b.Issue, "\r", ""), "\n", "\\n")
 	loc := ""
 	if b.Suburb != "" {
 		loc = "LOCATION:" + icsEscape(b.Suburb) + "\r\n"
 	}
-	return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//mchugh.com.au//bookings//EN\r\nMETHOD:PUBLISH\r\n" +
+	return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//localithelp.com.au//bookings//EN\r\nMETHOD:PUBLISH\r\n" +
 		"BEGIN:VEVENT\r\n" +
-		fmt.Sprintf("UID:booking-%d@mchugh.com.au\r\n", b.ID) +
+		fmt.Sprintf("UID:booking-%d@localithelp.com.au\r\n", b.ID) +
 		"DTSTAMP:" + time.Now().UTC().Format(layout) + "\r\n" +
 		"DTSTART:" + start.Format(layout) + "\r\n" +
 		"DTEND:" + end.Format(layout) + "\r\n" +
@@ -210,7 +210,7 @@ func sendInvoiceEmail(v *invoiceView, pdf []byte) error {
 	if err != nil {
 		return fmt.Errorf("render invoice-send: %w", err)
 	}
-	text := fmt.Sprintf("Invoice %s from James McHugh\n\nAmount due: %s\nDue: %s\nReference: %s\n", d.Ref, fmtCents(v.Inv.TotalCents), d.Due, d.Ref)
+	text := fmt.Sprintf("Invoice %s from Local IT Help\n\nAmount due: %s\nDue: %s\nReference: %s\n", d.Ref, fmtCents(v.Inv.TotalCents), d.Due, d.Ref)
 	if v.Inv.PaymentLink != "" {
 		text += "\nPay by card online: " + v.Inv.PaymentLink + "\n"
 	}
@@ -219,7 +219,7 @@ func sendInvoiceEmail(v *invoiceView, pdf []byte) error {
 	}
 	text += "\nView online: " + d.Link + "\n\n— James\n"
 	att := mailer.Attachment{Filename: d.Ref + ".pdf", ContentType: "application/pdf", Data: pdf}
-	return sendNow(v.Cust.Email, fmt.Sprintf("Invoice %s from James McHugh — %s", d.Ref, fmtCents(v.Inv.TotalCents)), html, text, site.Email, att)
+	return sendNow(v.Cust.Email, fmt.Sprintf("Invoice %s from Local IT Help — %s", d.Ref, fmtCents(v.Inv.TotalCents)), html, text, site.Email, att)
 }
 
 // sendReceiptEmail emails the paid invoice (receipt) with the PDF attached.
@@ -235,7 +235,7 @@ func sendReceiptEmail(v *invoiceView, pdf []byte) error {
 	text := fmt.Sprintf("Receipt for %s — thank you.\n\nAmount paid: %s\nPaid on: %s\nMethod: %s\n\nView online: %s\n\n— James\n",
 		d.Ref, fmtCents(v.Inv.TotalCents), d.Paid, d.Method, d.Link)
 	att := mailer.Attachment{Filename: d.Ref + "-receipt.pdf", ContentType: "application/pdf", Data: pdf}
-	return sendNow(v.Cust.Email, fmt.Sprintf("Receipt for %s — James McHugh", d.Ref), html, text, site.Email, att)
+	return sendNow(v.Cust.Email, fmt.Sprintf("Receipt for %s — Local IT Help", d.Ref), html, text, site.Email, att)
 }
 
 // logMailErr is a tiny helper for handlers that surface mail failures.

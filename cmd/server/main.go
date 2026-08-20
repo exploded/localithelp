@@ -517,7 +517,7 @@ func jsonError(w http.ResponseWriter, msg string, code int) {
 
 // siteConfig holds global, environment-driven settings exposed to every template as .Site.
 type siteConfig struct {
-	BaseURL   string       // canonical origin, no trailing slash, e.g. https://mchugh.com.au
+	BaseURL   string       // canonical origin, no trailing slash, e.g. https://localithelp.com.au
 	Phone     string       // display phone, empty hides all phone UI
 	PhoneHref template.URL // tel: link (+61 form); template.URL so html/template keeps the tel: scheme
 	Email     string       // contact email
@@ -537,14 +537,14 @@ func initSiteConfig(port string) {
 	base := strings.TrimRight(os.Getenv("BASE_URL"), "/")
 	if base == "" {
 		if os.Getenv("PROD") != "" {
-			base = "https://mchugh.com.au"
+			base = "https://localithelp.com.au"
 		} else {
 			base = "http://localhost:" + port
 		}
 	}
 	email := os.Getenv("CONTACT_EMAIL")
 	if email == "" {
-		email = "james@mchugh.com.au"
+		email = "james@localithelp.com.au"
 	}
 	site = siteConfig{
 		BaseURL:   base,

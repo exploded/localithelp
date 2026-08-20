@@ -86,7 +86,7 @@ func handleSitemap(w http.ResponseWriter, r *http.Request) {
 // ── canonical host ──
 
 // canonicalHost 301s any request whose Host doesn't match BASE_URL's host (e.g.
-// www.mchugh.com.au → mchugh.com.au) so there is exactly one indexable origin.
+// www.localithelp.com.au → localithelp.com.au) so there is exactly one indexable origin.
 // Local/loopback hosts and requests with no Host are passed through untouched so
 // dev and tests are unaffected. Caddy forwards the original Host header.
 func canonicalHost(next http.Handler) http.Handler {

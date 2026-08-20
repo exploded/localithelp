@@ -1,13 +1,41 @@
-# mchugh.com.au
+# LOCAL IT HELP (localithelp.com.au)
 
-Site for James McHugh — local computer help around Donvale VIC (email, printers,
-Wi-Fi, scams, repairs, setups…) with software development as a featured service.
-Go + `html/template` + SQLite (sqlc). Live at https://mchugh.com.au
+Site for **Local IT Help** (James McHugh, ABN 14 723 053 435) — local computer
+help around Donvale VIC (email, printers, Wi-Fi, scams, repairs, setups…) with
+software development as a featured service. Go + `html/template` + SQLite (sqlc).
+Canonical domain: https://localithelp.com.au (rebranded from mchugh.com.au —
+see "Domain cutover" below).
 
-Repo: `exploded/mchugh-com-au`. Not to be confused with **https://mchugh.au** —
-that is a separate static landing page (repo `exploded/mchugh-au`, served from
+Repo: `exploded/mchugh-com-au` (pre-rebrand name; Go module is still
+`mchugh.com.au`). Not to be confused with **https://mchugh.au** — that is a
+separate static landing page (repo `exploded/mchugh-au`, served from
 `/var/www/mchugh.au`, source in `C:\Projects\php\mchugh.au`). This app lives at
 `/var/www/mchugh.com.au` as systemd unit `mchugh-com-au`.
+
+## Domain cutover (rebrand → localithelp.com.au)
+
+The code now defaults to the new domain (`PROD` ⇒ `BASE_URL=https://localithelp.com.au`,
+and `canonicalHost` 301s every other host there). **Do not deploy until the new
+domain serves traffic**, or set `BASE_URL=https://mchugh.com.au` in the server
+`.env` to hold the old canonical. One-off steps:
+
+1. Register `localithelp.com.au`, add the zone to Cloudflare (or use registrar DNS):
+   `A @` / `A www` → `172.105.178.43`, `AAAA @` / `AAAA www` →
+   `2400:8907::f03c:92ff:fe4b:43ea`, DNS-only (grey cloud).
+2. Caddy: add a `localithelp.com.au` block (apex → reverse proxy to this app's
+   port 8181, `www.` → 301 to apex), and change the old `mchugh.com.au` /
+   `www.mchugh.com.au` blocks to 301 to `https://localithelp.com.au{uri}` so old
+   links and Google juice carry over. `sudo systemctl reload caddy`.
+3. SES: verify the `localithelp.com.au` domain identity + `james@localithelp.com.au`
+   sender (re-run `scripts/ses-setup.sh` pointed at the new domain, or do it in
+   the console), create the mailbox/forward for `james@localithelp.com.au`, then
+   set `CONTACT_EMAIL=james@localithelp.com.au` in the server `.env`.
+4. Google Cloud Console: add `https://localithelp.com.au/auth/google/callback`
+   to the OAuth client's authorised redirect URIs.
+5. Turnstile: add `localithelp.com.au` to the widget's allowed hostnames.
+6. Search Console: add the new property, submit
+   `https://localithelp.com.au/sitemap.xml`, and use Change of Address from the
+   mchugh.com.au property.
 
 ## Structure
 
@@ -40,9 +68,9 @@ go run ./cmd/server          # http://localhost:8080
 |---|---|---|
 | `PORT` | `8080` | listen port |
 | `PROD` | – | set in production (affects BASE_URL default) |
-| `BASE_URL` | `https://mchugh.com.au` if PROD else `http://localhost:PORT` | canonical origin; OAuth redirect + quote verification links |
+| `BASE_URL` | `https://localithelp.com.au` if PROD else `http://localhost:PORT` | canonical origin; OAuth redirect + quote verification links |
 | `PHONE` | empty | display phone; empty hides all phone UI |
-| `CONTACT_EMAIL` | `james@mchugh.com.au` | contact email; also the SES sender (must be a verified identity) and where booking / verified-quote notifications go |
+| `CONTACT_EMAIL` | `james@localithelp.com.au` | contact email; also the SES sender (must be a verified identity) and where booking / verified-quote notifications go |
 | `ONSITE_FEE` / `BLOCK_RATE` | `80` / `30` | published pricing (AUD); also prefill invoice lines |
 | `ABN` | `14 723 053 435` | printed on invoices |
 | `BANK_ACCOUNT_NAME` / `BANK_BSB` / `BANK_ACCOUNT_NO` | `James McHugh` / – / – | bank-transfer details on invoices; BSB empty = hidden |

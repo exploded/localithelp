@@ -229,17 +229,17 @@ func softGlow(dst *image.RGBA, cx, cy, radius float64, col color.RGBA, maxAlpha 
 
 func icon(size int) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, size, size))
-	// Transparent background; a brand-blue rounded tile with "JM".
+	// Transparent background; a brand-blue rounded tile with "IT".
 	roundedRect(img, img.Bounds(), float64(size)*0.22, brand)
 	fc := face(gobold.TTF, float64(size)*0.5)
-	w := textWidth(fc, "JM")
+	w := textWidth(fc, "IT")
 	m := fc.Metrics()
 	// Vertically centre using cap height approximation (ascent*0.72).
 	capH := m.Ascent.Ceil() * 72 / 100
 	x := (size - w) / 2
 	y := (size+capH)/2 - size/40
-	text(img, fc, "JM", x, y, white)
-	// Small amber dot after the M — the wordmark's full stop — only when there's room.
+	text(img, fc, "IT", x, y, white)
+	// Small amber dot after the T — the wordmark's full stop — only when there's room.
 	if size >= 48 {
 		r := float64(size) * 0.055
 		cx, cy := float64(x+w)+r*1.6, float64(y)-r
@@ -270,7 +270,7 @@ func ogImage() *image.RGBA {
 	text(img, kicker, "COMPUTER HELP  ·  DONVALE & MELBOURNE'S EAST", x, card.Min.Y+84, textMute)
 
 	// Wordmark with brand-coloured full stop
-	end := text(img, title, "James McHugh", x, card.Min.Y+200, textPri)
+	end := text(img, title, "LOCAL IT HELP", x, card.Min.Y+200, textPri)
 	text(img, title, ".", end, card.Min.Y+200, brand)
 
 	text(img, sub, "Friendly computer help, at your place.", x, card.Min.Y+262, textSec)
@@ -288,6 +288,6 @@ func ogImage() *image.RGBA {
 		text(img, small, c, cx+18, y, textPri)
 		cx += w + 36 + 14
 	}
-	text(img, kicker, "mchugh.com.au", card.Max.X-64-textWidth(kicker, "mchugh.com.au"), y, brand)
+	text(img, kicker, "localithelp.com.au", card.Max.X-64-textWidth(kicker, "localithelp.com.au"), y, brand)
 	return img
 }

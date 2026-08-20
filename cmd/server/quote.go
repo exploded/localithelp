@@ -231,7 +231,7 @@ func generateEstimate(quote *db.Quote) string {
 
 func buildEstimatePrompt(data map[string]any) string {
 	var b strings.Builder
-	b.WriteString("You are a project estimation assistant for an Australian web development business (James McHugh, ABN 14 723 053 435). ")
+	b.WriteString("You are a project estimation assistant for an Australian web development business (Local IT Help, ABN 14 723 053 435). ")
 	b.WriteString("Based on the following project requirements, provide a concise estimate including:\n")
 	b.WriteString("1. A recommended total cost range (in AUD)\n")
 	b.WriteString("2. Estimated turnaround time\n")

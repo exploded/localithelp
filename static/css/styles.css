@@ -124,7 +124,8 @@ nav {
     font-size: 1.35rem;
     color: var(--text-primary);
     text-decoration: none;
-    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 .nav-brand span { color: var(--brand); }
 .nav-links { display: flex; gap: 2rem; align-items: center; }

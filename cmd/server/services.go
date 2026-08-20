@@ -172,7 +172,7 @@ var services = []Service{
 		},
 		PriceNote: "Most email problems take 30–60 minutes.",
 		Related:   []string{"scam-virus-security", "new-computer-setup", "one-on-one-help"},
-		MetaTitle: "Email & Outlook Help — Donvale, Doncaster & Melbourne's East | James McHugh",
+		MetaTitle: "Email & Outlook Help — Donvale, Doncaster & Melbourne's East | Local IT Help",
 		MetaDesc:  "Outlook won't open, can't send or receive, moving to Microsoft 365? Same-day email fixes at your place around Donvale VIC. No fix, no fee.",
 	},
 	{
@@ -194,7 +194,7 @@ var services = []Service{
 		},
 		PriceNote: "Typical printer fix is 30–45 minutes onsite.",
 		Related:   []string{"wifi-internet-networking", "new-computer-setup", "small-business-it"},
-		MetaTitle: "Printer Not Printing? Printer & Scanner Setup — Donvale & Eastern Suburbs | James McHugh",
+		MetaTitle: "Printer Not Printing? Printer & Scanner Setup — Donvale & Eastern Suburbs | Local IT Help",
 		MetaDesc:  "Printer offline, won't print after a router change, or new printer setup. Onsite printer and scanner help around Donvale, Doncaster and Ringwood. No fix, no fee.",
 	},
 	{
@@ -219,7 +219,7 @@ var services = []Service{
 		},
 		PriceNote: "A full clean-up and secure is usually 1–1.5 hours. Written confirmation included.",
 		Related:   []string{"email-outlook", "one-on-one-help", "phone-tablet-tv"},
-		MetaTitle: "Virus & Scam Clean-up, Security Checks — Donvale & Melbourne's East | James McHugh",
+		MetaTitle: "Virus & Scam Clean-up, Security Checks — Donvale & Melbourne's East | Local IT Help",
 		MetaDesc:  "Remote-access scam, fake pop-ups, hacked email? Malware removal, account lock-down, 2FA and a written all-clear for your bank. Onsite around Donvale VIC.",
 	},
 	{
@@ -242,7 +242,7 @@ var services = []Service{
 		},
 		PriceNote: "Most Wi-Fi and modem jobs are 45–90 minutes onsite.",
 		Related:   []string{"printers-scanners", "phone-tablet-tv", "small-business-it"},
-		MetaTitle: "Wi-Fi & Internet Problems Fixed — Donvale, Templestowe, Ringwood | James McHugh",
+		MetaTitle: "Wi-Fi & Internet Problems Fixed — Donvale, Templestowe, Ringwood | Local IT Help",
 		MetaDesc:  "No internet, patchy Wi-Fi, new modem setup, network drives. Onsite home and small-office networking help around Donvale VIC. No fix, no fee.",
 	},
 	{
@@ -266,7 +266,7 @@ var services = []Service{
 		},
 		PriceNote: "Diagnosis onsite; you'll get a clear yes/no and a price before parts are ordered.",
 		Related:   []string{"data-recovery-backup", "new-computer-setup", "linux-custom-builds"},
-		MetaTitle: "Computer & Laptop Repairs at Your Place — Donvale & Melbourne's East | James McHugh",
+		MetaTitle: "Computer & Laptop Repairs at Your Place — Donvale & Melbourne's East | Local IT Help",
 		MetaDesc:  "PC won't turn on, won't boot, stuck on update, running slow? Onsite desktop, laptop and gaming PC repairs around Donvale, Doncaster and Ringwood. No fix, no fee.",
 	},
 	{
@@ -289,7 +289,7 @@ var services = []Service{
 		},
 		PriceNote: "Setup with data transfer is typically 1.5–2.5 hours depending on how much is coming across.",
 		Related:   []string{"email-outlook", "data-recovery-backup", "printers-scanners"},
-		MetaTitle: "New Computer Setup & Data Transfer — Donvale, Doncaster & Surrounds | James McHugh",
+		MetaTitle: "New Computer Setup & Data Transfer — Donvale, Doncaster & Surrounds | Local IT Help",
 		MetaDesc:  "New PC or laptop setup, data and Outlook transfer, Windows 11 upgrades and Office install, done at your place around Donvale VIC.",
 	},
 	{
@@ -311,7 +311,7 @@ var services = []Service{
 		},
 		PriceNote: "Simple recoveries are usually 1–2 hours. No data recovered, no labour charged.",
 		Related:   []string{"computer-repairs", "new-computer-setup"},
-		MetaTitle: "Data Recovery & Backup Setup — Donvale & Melbourne's East | James McHugh",
+		MetaTitle: "Data Recovery & Backup Setup — Donvale & Melbourne's East | Local IT Help",
 		MetaDesc:  "Get photos and files off a computer that won't start, and set up backups that actually run. Onsite around Donvale, Doncaster and Eltham. No data, no fee.",
 	},
 	{
@@ -333,7 +333,7 @@ var services = []Service{
 		},
 		PriceNote: "Often 30–45 minutes; can be combined with a computer visit.",
 		Related:   []string{"email-outlook", "scam-virus-security", "one-on-one-help"},
-		MetaTitle: "iPhone, Android, Tablet & Smart TV Help — Donvale & Surrounds | James McHugh",
+		MetaTitle: "iPhone, Android, Tablet & Smart TV Help — Donvale & Surrounds | Local IT Help",
 		MetaDesc:  "Phone email not working, pop-ups after a bad link, apps on the smart TV. Patient device help at home around Donvale VIC.",
 	},
 	{
@@ -355,7 +355,7 @@ var services = []Service{
 		},
 		PriceNote: "Book a one-hour session; longer or regular sessions available.",
 		Related:   []string{"scam-virus-security", "phone-tablet-tv", "new-computer-setup"},
-		MetaTitle: "Patient Computer Help for Seniors & Beginners — Donvale & Melbourne's East | James McHugh",
+		MetaTitle: "Patient Computer Help for Seniors & Beginners — Donvale & Melbourne's East | Local IT Help",
 		MetaDesc:  "One-on-one computer tuition at home: what's safe to click, bookmarks, new apps, video calls. Patient help around Donvale, Doncaster and Ringwood.",
 	},
 	{
@@ -377,7 +377,7 @@ var services = []Service{
 		},
 		PriceNote: "Same rates as home visits. Ask about a bundle for multiple machines.",
 		Related:   []string{"software-development", "email-outlook", "wifi-internet-networking"},
-		MetaTitle: "Small Business IT Support — Donvale, Doncaster & Melbourne's East | James McHugh",
+		MetaTitle: "Small Business IT Support — Donvale, Doncaster & Melbourne's East | Local IT Help",
 		MetaDesc:  "Microsoft 365, business email, staff laptops, printers and networks for small businesses around Donvale VIC. Onsite, no retainer.",
 	},
 	{
@@ -397,7 +397,7 @@ var services = []Service{
 		},
 		PriceNote: "Standard rates; part installs are usually 45–90 minutes.",
 		Related:   []string{"computer-repairs", "wifi-internet-networking", "software-development"},
-		MetaTitle: "Linux Installs & Custom PC Builds — Donvale & Melbourne's East | James McHugh",
+		MetaTitle: "Linux Installs & Custom PC Builds — Donvale & Melbourne's East | Local IT Help",
 		MetaDesc:  "Ubuntu/Kubuntu installs, dual-boot, custom PC assembly and part upgrades, done at your place around Donvale VIC.",
 	},
 	{
@@ -421,7 +421,7 @@ var services = []Service{
 		},
 		PriceNote: "Hourly work " + softwareHourly + "; fixed-price packages from $600. Larger projects: get a written proposal via the quote tool.",
 		Related:   []string{"small-business-it", "one-on-one-help"},
-		MetaTitle: "Software Development — Shopify, Websites & Custom Web Apps | James McHugh",
+		MetaTitle: "Software Development — Shopify, Websites & Custom Web Apps | Local IT Help",
 		MetaDesc:  "Shopify setup, small-business websites, custom web apps and legacy app rewrites, built and hosted in Melbourne's east. Fixed packages or $120/hr.",
 	},
 }

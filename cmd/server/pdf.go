@@ -18,7 +18,7 @@ func invoicePDF(v *invoiceView) ([]byte, error) {
 	paid := inv.Status == db.InvoicePaid
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetTitle(inv.Ref(), true)
-	pdf.SetAuthor("James McHugh", true)
+	pdf.SetAuthor("Local IT Help", true)
 	pdf.SetMargins(20, 18, 20)
 	pdf.SetAutoPageBreak(true, 20)
 	pdf.AddPage()
@@ -28,10 +28,10 @@ func invoicePDF(v *invoiceView) ([]byte, error) {
 	// ── Header: business (left) / document title (right) ──
 	y0 := pdf.GetY()
 	pdf.SetFont("Helvetica", "B", 15)
-	pdf.CellFormat(100, 7, "James McHugh", "", 1, "L", false, 0, "")
+	pdf.CellFormat(100, 7, "LOCAL IT HELP", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.SetTextColor(90, 90, 90)
-	pdf.CellFormat(100, 4.5, "Local computer help - Donvale VIC", "", 1, "L", false, 0, "")
+	pdf.CellFormat(100, 4.5, "James McHugh - local computer help, Donvale VIC", "", 1, "L", false, 0, "")
 	if site.ABN != "" {
 		pdf.CellFormat(100, 4.5, "ABN "+site.ABN, "", 1, "L", false, 0, "")
 	}

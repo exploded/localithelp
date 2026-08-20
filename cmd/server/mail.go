@@ -29,7 +29,7 @@ func initMail() {
 	}
 	// Sender and notification target both derive from CONTACT_EMAIL; the
 	// address must be a verified SES identity.
-	from := "James McHugh <" + site.Email + ">"
+	from := "Local IT Help <" + site.Email + ">"
 	notifyEmail = site.Email
 	mail = mailer.New(region, os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), from)
 	if mail.Enabled() {
@@ -71,7 +71,7 @@ const mailTmplSrc = `
 {{define "wrap"}}<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#1c1c1c;margin:0;padding:24px;background:#f6f5f2">
 <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e6e3dc;border-radius:8px;padding:28px">
 {{.}}
-<p style="margin-top:32px;font-size:12px;color:#777">James McHugh — local computer help, Donvale VIC · <a href="{{site.BaseURL}}" style="color:#777">{{site.BaseURL}}</a></p>
+<p style="margin-top:32px;font-size:12px;color:#777">Local IT Help — James McHugh, Donvale VIC · <a href="{{site.BaseURL}}" style="color:#777">{{site.BaseURL}}</a></p>
 </div></body></html>{{end}}
 
 {{define "row"}}<tr><td style="padding:6px 12px 6px 0;color:#666;white-space:nowrap;vertical-align:top">{{.K}}</td><td style="padding:6px 0;vertical-align:top">{{.V}}</td></tr>{{end}}
@@ -204,7 +204,7 @@ func notifyBooking(id int64, b *db.Booking, suspicious bool) {
 	}
 	text = fmt.Sprintf("Thanks %s — I've got your request and will be in touch shortly (usually within a couple of hours during the day).\n\nWhat you sent:\n%s\n\n— James\n%s\n",
 		b.Name, b.Issue, site.BaseURL)
-	send(b.Email, "Got your booking request — James McHugh", html, text, site.Email)
+	send(b.Email, "Got your booking request — Local IT Help", html, text, site.Email)
 }
 
 // sendQuoteVerification emails the customer the link that confirms their
@@ -220,7 +220,7 @@ func sendQuoteVerification(q *db.Quote, link string) {
 	}
 	text := fmt.Sprintf("Hi %s — confirm your email to get your instant quote:\n\n%s\n\nThe link is valid for 48 hours. If you didn't request a quote from %s you can ignore this email.\n\n— James\n",
 		q.Name, link, site.BaseURL)
-	send(q.Email, "Confirm your email to get your quote — James McHugh", html, text, site.Email)
+	send(q.Email, "Confirm your email to get your quote — Local IT Help", html, text, site.Email)
 }
 
 // notifyQuoteVerified runs once a quote's email is verified and the estimate
@@ -247,5 +247,5 @@ func notifyQuoteVerified(q *db.Quote, link string) {
 	}
 	text := fmt.Sprintf("Thanks for confirming your email, %s. Your instant quote is ready — view it here:\n\n%s\n\nI'll review your requirements personally and follow up with a detailed proposal within 2 business days.\n\n— James\n",
 		q.Name, link)
-	send(q.Email, "Your quote is ready — James McHugh", html, text, site.Email)
+	send(q.Email, "Your quote is ready — Local IT Help", html, text, site.Email)
 }
