@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-# One-time Amazon SES setup for mchugh.com.au (run from your machine, not the server).
+# One-time Amazon SES setup for localithelp.com.au (run from your machine, not
+# the server). Originally written for mchugh.com.au; the send policy keeps the
+# old domain's identities so the pre-rebrand sender keeps working during the
+# transition.
 #
 # What it does (idempotent — safe to re-run):
 #   1. Creates IAM user `mchugh-au-mailer` with a send-only policy limited to
-#      the mchugh.com.au SES identities (plus any configuration set, since a
-#      default set attached to an identity is also authorised on send), and an
-#      access key for it.
-#   2. Ensures the SES domain identity `mchugh.com.au` exists (Easy DKIM).
+#      the localithelp.com.au + mchugh.com.au SES identities (plus any
+#      configuration set, since a default set attached to an identity is also
+#      authorised on send), and an access key for it.
+#   2. Ensures the SES domain identity `localithelp.com.au` exists (Easy DKIM).
 #   3. If CF_TOKEN is set (Cloudflare API token with Zone:DNS:Edit on
-#      mchugh.com.au), adds the 3 DKIM CNAME records; otherwise prints them.
+#      localithelp.com.au), adds the 3 DKIM CNAME records; otherwise prints them.
 #   4. Prints the lines to append to /var/www/mchugh.com.au/.env on the server.
 #
 # Requirements: aws CLI v2 with an admin profile, curl, jq.
@@ -17,8 +20,10 @@
 set -euo pipefail
 
 REGION=${AWS_REGION:-ap-southeast-2}
-DOMAIN=mchugh.com.au
-FROM_ADDR=james@mchugh.com.au
+DOMAIN=localithelp.com.au
+FROM_ADDR=james@localithelp.com.au
+OLD_DOMAIN=mchugh.com.au
+OLD_FROM_ADDR=james@mchugh.com.au
 USER_NAME=mchugh-au-mailer
 POLICY_NAME=ses-send-mchugh-com-au
 CF_ZONE_NAME=$DOMAIN
@@ -43,6 +48,8 @@ POLICY_DOC=$(cat <<JSON
     "Resource": [
       "arn:aws:ses:${REGION}:${ACCOUNT}:identity/${FROM_ADDR}",
       "arn:aws:ses:${REGION}:${ACCOUNT}:identity/${DOMAIN}",
+      "arn:aws:ses:${REGION}:${ACCOUNT}:identity/${OLD_FROM_ADDR}",
+      "arn:aws:ses:${REGION}:${ACCOUNT}:identity/${OLD_DOMAIN}",
       "arn:aws:ses:${REGION}:${ACCOUNT}:configuration-set/*"
     ]
   }]
@@ -103,11 +110,12 @@ fi
 # ── 4. Server .env lines ────────────────────────────────────────────────────
 cat <<ENV
 
-Append to /var/www/mchugh.com.au/.env on the server, then: sudo systemctl restart mchugh-com-au
+On the server, /var/www/mchugh.com.au/.env needs (then: sudo systemctl restart mchugh-com-au):
 
 # Email notifications via Amazon SES
 AWS_REGION=$REGION
 AWS_ACCESS_KEY_ID=$AKID
 AWS_SECRET_ACCESS_KEY=$SECRET
-# Sender + notifications use CONTACT_EMAIL (default $FROM_ADDR)
+# Sender + notifications use CONTACT_EMAIL — flip to $FROM_ADDR once DKIM shows SUCCESS
+CONTACT_EMAIL=$FROM_ADDR
 ENV
