@@ -251,6 +251,59 @@ func handleAdminBookingNotes(w http.ResponseWriter, r *http.Request) {
 	redirectMsg(w, r, back, "ok", "Notes saved.")
 }
 
+// handleAdminBookingAddress saves a verified street address against the
+// booking's customer (invoices read it from there) and syncs the booking's
+// suburb. The hidden addr_* fields are only filled in when a suggestion is
+// picked (and cleared again on manual edits), so a hand-typed line is
+// rejected — a complete, real address is mandatory.
+func handleAdminBookingAddress(w http.ResponseWriter, r *http.Request) {
+	b := loadBooking(w, r)
+	if b == nil {
+		return
+	}
+	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
+	street := strings.TrimSpace(r.FormValue("addr_street"))
+	suburb := strings.TrimSpace(r.FormValue("addr_suburb"))
+	state := strings.ToUpper(strings.TrimSpace(r.FormValue("addr_state")))
+	postcode := strings.TrimSpace(r.FormValue("addr_postcode"))
+	if reason, ok := validAddressParts(street, suburb, state, postcode); !ok {
+		redirectMsg(w, r, back, "err", reason)
+		return
+	}
+	full := street + ", " + suburb + " " + state + " " + postcode
+	if len(full) > 200 {
+		full = full[:200]
+	}
+	if b.CustomerID == 0 {
+		id, err := db.FindOrCreateCustomer(b.Name, b.Email, b.Phone, suburb)
+		if err == nil {
+			err = db.SetBookingCustomer(b.ID, id)
+		}
+		if err != nil {
+			log.Printf("booking #%d address: link customer: %v", b.ID, err)
+			redirectMsg(w, r, back, "err", "Could not link a customer to save the address against.")
+			return
+		}
+		b.CustomerID = id
+	}
+	c, err := db.GetCustomer(b.CustomerID)
+	if err != nil {
+		log.Printf("booking #%d address: load customer: %v", b.ID, err)
+		redirectMsg(w, r, back, "err", "Could not load the customer record.")
+		return
+	}
+	if err := db.UpdateBookingAddress(b.ID, full, suburb); err != nil {
+		log.Printf("booking #%d address: %v", b.ID, err)
+		redirectMsg(w, r, back, "err", "Could not save the address.")
+		return
+	}
+	c.Address, c.Suburb = full, suburb
+	if err := db.UpdateCustomer(c); err != nil {
+		log.Printf("booking #%d address: sync customer: %v", b.ID, err)
+	}
+	redirectMsg(w, r, back, "ok", "Address saved: "+full)
+}
+
 func handleAdminBookingFollowup(w http.ResponseWriter, r *http.Request) {
 	b := loadBooking(w, r)
 	if b == nil {
@@ -267,6 +320,82 @@ func handleAdminBookingFollowup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirectMsg(w, r, "/admin/bookings/"+strconv.FormatInt(id, 10), "ok", "Follow-up booking created — pick a time below.")
+}
+
+// ── Admin: new booking (phone enquiry) ──
+
+// phoneBookingForm holds the new-booking form values for re-rendering on error.
+type phoneBookingForm struct {
+	Name, Phone, Email, Suburb, Service, Issue string
+}
+
+type adminBookingNewData struct {
+	Flash    flash
+	Form     phoneBookingForm
+	Errors   map[string]string
+	Services []Service
+}
+
+func handleAdminBookingNew(w http.ResponseWriter, r *http.Request) {
+	render(w, r, "admin-booking-new", adminBookingNewData{
+		Flash: readFlash(r), Services: services, Errors: map[string]string{},
+	})
+}
+
+// handleAdminBookingCreate records a booking taken over the phone. The caller
+// is matched to an existing customer by email or phone (or a new customer is
+// created), then the admin lands on the booking page to pick a time.
+func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
+	trim := func(k string) string { return strings.TrimSpace(r.FormValue(k)) }
+	f := phoneBookingForm{
+		Name: trim("name"), Phone: trim("phone"), Email: trim("email"),
+		Suburb: trim("suburb"), Service: trim("service"), Issue: trim("issue"),
+	}
+	errs := map[string]string{}
+	if n := len([]rune(f.Name)); n < 2 || n > 100 {
+		errs["name"] = "Please enter the caller's name."
+	}
+	if f.Phone == "" && f.Email == "" {
+		errs["contact"] = "A phone number or an email address is needed to reach them."
+	}
+	if len(f.Phone) > 40 {
+		errs["phone"] = "That phone number looks too long."
+	}
+	if f.Email != "" && (len(f.Email) > 120 || !validEmail(f.Email)) {
+		errs["email"] = "That email address doesn't look right."
+	}
+	if len([]rune(f.Suburb)) > 80 {
+		errs["suburb"] = "Suburb is too long."
+	}
+	if rs := []rune(f.Issue); len(rs) > 5000 {
+		f.Issue = string(rs[:5000])
+	}
+	if _, ok := findService(f.Service); !ok {
+		f.Service = ""
+	}
+	if len(errs) > 0 {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		render(w, r, "admin-booking-new", adminBookingNewData{Form: f, Errors: errs, Services: services})
+		return
+	}
+	if f.Issue == "" {
+		f.Issue = "Phone enquiry"
+	}
+	customerID, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.Suburb)
+	if err != nil {
+		// Not fatal — the booking is still recorded; the boot-time backfill links it later.
+		log.Printf("phone booking: customer upsert: %v", err)
+	}
+	id, err := db.InsertBooking(&db.Booking{
+		CustomerID: customerID, Name: f.Name, Phone: f.Phone, Email: f.Email,
+		Suburb: f.Suburb, ServiceSlug: f.Service, Mode: "onsite", Issue: f.Issue,
+	})
+	if err != nil {
+		log.Printf("phone booking: insert: %v", err)
+		redirectMsg(w, r, "/admin/bookings/new", "err", "Could not save the booking.")
+		return
+	}
+	redirectMsg(w, r, "/admin/bookings/"+strconv.FormatInt(id, 10), "ok", "Booking created — pick a time below.")
 }
 
 // ── Admin: calendar ──

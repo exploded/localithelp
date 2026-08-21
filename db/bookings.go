@@ -33,6 +33,7 @@ type Booking struct {
 	Phone           string
 	Email           string
 	Suburb          string
+	Address         string // full street address, e.g. "12 Smith St, Donvale VIC 3111"
 	ServiceSlug     string
 	Mode            string // onsite | remote | either
 	Issue           string
@@ -58,7 +59,7 @@ func (b Booking) EndAt() time.Time {
 func sqlcBooking(r sqlc.Booking) Booking {
 	return Booking{
 		ID: r.ID, CustomerID: r.CustomerID, Name: r.Name, Phone: r.Phone, Email: r.Email, Suburb: r.Suburb,
-		ServiceSlug: r.ServiceSlug, Mode: r.Mode, Issue: r.Issue, PreferredTime: r.PreferredTime,
+		Address: r.Address, ServiceSlug: r.ServiceSlug, Mode: r.Mode, Issue: r.Issue, PreferredTime: r.PreferredTime,
 		Status: r.Status, IP: r.Ip, StartAt: ParseStartAt(r.StartAt), DurationMin: int(r.DurationMin),
 		AdminNotes: r.AdminNotes, ParentBookingID: r.ParentBookingID,
 		CreatedAt: parseUTC(r.CreatedAt), UpdatedAt: parseUTC(r.UpdatedAt),
@@ -80,8 +81,9 @@ func sqlcBookings(rows []sqlc.Booking, err error) ([]Booking, error) {
 // already be set (see FindOrCreateCustomer).
 func InsertBooking(b *Booking) (int64, error) {
 	return q.InsertBooking(context.Background(), sqlc.InsertBookingParams{
-		Name: b.Name, Phone: b.Phone, Email: b.Email, Suburb: b.Suburb, ServiceSlug: b.ServiceSlug,
-		Mode: b.Mode, Issue: b.Issue, PreferredTime: b.PreferredTime, Ip: b.IP, CustomerID: b.CustomerID,
+		Name: b.Name, Phone: b.Phone, Email: b.Email, Suburb: b.Suburb, Address: b.Address,
+		ServiceSlug: b.ServiceSlug, Mode: b.Mode, Issue: b.Issue, PreferredTime: b.PreferredTime,
+		Ip: b.IP, CustomerID: b.CustomerID,
 	})
 }
 
@@ -90,7 +92,7 @@ func InsertBooking(b *Booking) (int64, error) {
 func CreateFollowup(parent *Booking, issue string) (int64, error) {
 	return q.InsertFollowupBooking(context.Background(), sqlc.InsertFollowupBookingParams{
 		Name: parent.Name, Phone: parent.Phone, Email: parent.Email, Suburb: parent.Suburb,
-		ServiceSlug: parent.ServiceSlug, Mode: parent.Mode, Issue: issue,
+		Address: parent.Address, ServiceSlug: parent.ServiceSlug, Mode: parent.Mode, Issue: issue,
 		CustomerID: parent.CustomerID, ParentBookingID: parent.ID,
 	})
 }
@@ -100,7 +102,7 @@ func CreateFollowup(parent *Booking, issue string) (int64, error) {
 func CreateForCustomer(c *Customer, serviceSlug, issue string) (int64, error) {
 	return InsertBooking(&Booking{
 		CustomerID: c.ID, Name: c.Name, Phone: c.Phone, Email: c.Email, Suburb: c.Suburb,
-		ServiceSlug: serviceSlug, Mode: "onsite", Issue: issue,
+		Address: c.Address, ServiceSlug: serviceSlug, Mode: "onsite", Issue: issue,
 	})
 }
 
@@ -163,4 +165,14 @@ func ScheduleBooking(id int64, start time.Time, durationMin int) error {
 
 func UpdateBookingNotes(id int64, notes string) error {
 	return q.UpdateBookingNotes(context.Background(), sqlc.UpdateBookingNotesParams{AdminNotes: notes, ID: id})
+}
+
+// SetBookingCustomer links a booking to a customer record.
+func SetBookingCustomer(id, customerID int64) error {
+	return q.SetBookingCustomer(context.Background(), sqlc.SetBookingCustomerParams{CustomerID: customerID, ID: id})
+}
+
+// UpdateBookingAddress sets the booking's street address and suburb.
+func UpdateBookingAddress(id int64, address, suburb string) error {
+	return q.UpdateBookingAddress(context.Background(), sqlc.UpdateBookingAddressParams{Address: address, Suburb: suburb, ID: id})
 }

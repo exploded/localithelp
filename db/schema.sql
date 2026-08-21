@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     duration_min      INTEGER NOT NULL DEFAULT 60,
     admin_notes       TEXT    NOT NULL DEFAULT '',
     parent_booking_id INTEGER NOT NULL DEFAULT 0,   -- follow-up visits point at the original booking
-    updated_at        TEXT    NOT NULL DEFAULT ''
+    updated_at        TEXT    NOT NULL DEFAULT '',
+    address           TEXT    NOT NULL DEFAULT ''   -- full street address, e.g. '12 Smith St, Donvale VIC 3111'
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookings_start_at ON bookings(start_at);

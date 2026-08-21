@@ -82,6 +82,7 @@ func TestTemplatesRender(t *testing.T) {
 			StartValue: "2026-08-20T09:30", Durations: durationChoices, Invoices: []db.Invoice{*inv}, Parent: &booked,
 			Children: bookingRows([]db.Booking{booked}), Statuses: db.BookingStatuses, CanInvoice: true, FollowupText: "Return"},
 		"admin-booking-nocust": adminBookingData{B: &db.Booking{ID: 3, Name: "X", Status: "new"}, Row: newBookingRow(db.Booking{ID: 3}), Durations: durationChoices, StartValue: "2026-08-20T09:30"},
+		"admin-booking-new":    adminBookingNewData{Flash: flash{OK: "x"}, Form: phoneBookingForm{Name: "Ann"}, Errors: map[string]string{"contact": "y"}, Services: services},
 		"admin-calendar": calendarData{WeekStart: time.Now(), WeekLabel: "w", Prev: "p", Next: "n", ThisWeek: "t", Hours: []int{7, 8},
 			SlotPx: 14, ColPx: 672, ForID: 1, ForName: "Ann",
 			Days: []calDay{{Date: time.Now(), Label: "Mon 17", IsToday: true, Slots: []calSlot{{Time: "07:00", OnHour: true, Href: "/x"}, {Time: "07:15"}},

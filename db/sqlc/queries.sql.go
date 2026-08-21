@@ -112,7 +112,7 @@ func (q *Queries) DeletePendingByEmail(ctx context.Context, email string) error 
 
 const getBooking = `-- name: GetBooking :one
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE id = ?
 `
 
@@ -138,6 +138,7 @@ func (q *Queries) GetBooking(ctx context.Context, id int64) (Booking, error) {
 		&i.AdminNotes,
 		&i.ParentBookingID,
 		&i.UpdatedAt,
+		&i.Address,
 	)
 	return i, err
 }
@@ -377,8 +378,8 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 
 const insertBooking = `-- name: InsertBooking :one
 
-INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip, customer_id, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 RETURNING id
 `
 
@@ -387,6 +388,7 @@ type InsertBookingParams struct {
 	Phone         string `json:"phone"`
 	Email         string `json:"email"`
 	Suburb        string `json:"suburb"`
+	Address       string `json:"address"`
 	ServiceSlug   string `json:"service_slug"`
 	Mode          string `json:"mode"`
 	Issue         string `json:"issue"`
@@ -402,6 +404,7 @@ func (q *Queries) InsertBooking(ctx context.Context, arg InsertBookingParams) (i
 		arg.Phone,
 		arg.Email,
 		arg.Suburb,
+		arg.Address,
 		arg.ServiceSlug,
 		arg.Mode,
 		arg.Issue,
@@ -448,8 +451,8 @@ func (q *Queries) InsertCustomer(ctx context.Context, arg InsertCustomerParams) 
 }
 
 const insertFollowupBooking = `-- name: InsertFollowupBooking :one
-INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, status, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, 'new', datetime('now'))
+INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, status, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, 'new', datetime('now'))
 RETURNING id
 `
 
@@ -458,6 +461,7 @@ type InsertFollowupBookingParams struct {
 	Phone           string `json:"phone"`
 	Email           string `json:"email"`
 	Suburb          string `json:"suburb"`
+	Address         string `json:"address"`
 	ServiceSlug     string `json:"service_slug"`
 	Mode            string `json:"mode"`
 	Issue           string `json:"issue"`
@@ -471,6 +475,7 @@ func (q *Queries) InsertFollowupBooking(ctx context.Context, arg InsertFollowupB
 		arg.Phone,
 		arg.Email,
 		arg.Suburb,
+		arg.Address,
 		arg.ServiceSlug,
 		arg.Mode,
 		arg.Issue,
@@ -624,7 +629,7 @@ func (q *Queries) InsertQuote(ctx context.Context, arg InsertQuoteParams) (int64
 
 const listBookings = `-- name: ListBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings ORDER BY id DESC
 `
 
@@ -656,6 +661,7 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 			&i.AdminNotes,
 			&i.ParentBookingID,
 			&i.UpdatedAt,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -672,7 +678,7 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 
 const listBookingsBetween = `-- name: ListBookingsBetween :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam')
 ORDER BY start_at
@@ -711,6 +717,7 @@ func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetwe
 			&i.AdminNotes,
 			&i.ParentBookingID,
 			&i.UpdatedAt,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -727,7 +734,7 @@ func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetwe
 
 const listBookingsByCustomer = `-- name: ListBookingsByCustomer :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE customer_id = ? ORDER BY id DESC
 `
 
@@ -759,6 +766,7 @@ func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) 
 			&i.AdminNotes,
 			&i.ParentBookingID,
 			&i.UpdatedAt,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -775,7 +783,7 @@ func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) 
 
 const listBookingsByStatus = `-- name: ListBookingsByStatus :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE status = ? ORDER BY id DESC
 `
 
@@ -807,6 +815,7 @@ func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Bo
 			&i.AdminNotes,
 			&i.ParentBookingID,
 			&i.UpdatedAt,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -823,7 +832,7 @@ func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Bo
 
 const listChildBookings = `-- name: ListChildBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE parent_booking_id = ? ORDER BY id
 `
 
@@ -855,6 +864,7 @@ func (q *Queries) ListChildBookings(ctx context.Context, parentBookingID int64) 
 			&i.AdminNotes,
 			&i.ParentBookingID,
 			&i.UpdatedAt,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -1246,7 +1256,7 @@ func (q *Queries) ListQuotes(ctx context.Context) ([]Quote, error) {
 
 const listUnlinkedBookings = `-- name: ListUnlinkedBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id
 `
 
@@ -1278,6 +1288,7 @@ func (q *Queries) ListUnlinkedBookings(ctx context.Context) ([]Booking, error) {
 			&i.AdminNotes,
 			&i.ParentBookingID,
 			&i.UpdatedAt,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -1464,6 +1475,21 @@ func (q *Queries) TouchCustomerContact(ctx context.Context, arg TouchCustomerCon
 		arg.Suburb,
 		arg.ID,
 	)
+	return err
+}
+
+const updateBookingAddress = `-- name: UpdateBookingAddress :exec
+UPDATE bookings SET address = ?, suburb = ?, updated_at = datetime('now') WHERE id = ?
+`
+
+type UpdateBookingAddressParams struct {
+	Address string `json:"address"`
+	Suburb  string `json:"suburb"`
+	ID      int64  `json:"id"`
+}
+
+func (q *Queries) UpdateBookingAddress(ctx context.Context, arg UpdateBookingAddressParams) error {
+	_, err := q.db.ExecContext(ctx, updateBookingAddress, arg.Address, arg.Suburb, arg.ID)
 	return err
 }
 

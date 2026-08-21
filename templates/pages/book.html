@@ -53,11 +53,18 @@
                                 <input type="email" id="email" name="email" maxlength="120" autocomplete="email" placeholder="you@example.com" value="{{$f.Email}}">
                                 {{with $e.email}}<span class="field-error">{{.}}</span>{{end}}
                             </div>
-                            <div class="quote-field{{if $e.suburb}} quote-field--error{{end}}">
-                                <label for="suburb">Suburb</label>
-                                <input type="text" id="suburb" name="suburb" maxlength="80" autocomplete="address-level2" placeholder="e.g. Donvale" value="{{$f.Suburb}}">
-                                {{with $e.suburb}}<span class="field-error">{{.}}</span>{{end}}
+                            <div class="quote-field quote-field--full addr-wrap{{if $e.address}} quote-field--error{{end}}">
+                                <label for="address">Address <span class="addr-verified{{if $f.AddrStreet}} visible{{end}}">&#10003; verified</span></label>
+                                <input type="text" id="address" name="address" required maxlength="200"
+                                       placeholder="Start typing your address&#8230;" autocomplete="one-time-code"
+                                       data-search-url="/book/address-search" class="addr-input" value="{{$f.Address}}">
+                                <ul class="addr-suggestions" hidden></ul>
+                                {{with $e.address}}<span class="field-error">{{.}}</span>{{end}}
                             </div>
+                            <input type="hidden" name="addr_street" value="{{$f.AddrStreet}}">
+                            <input type="hidden" name="addr_suburb" value="{{$f.AddrSuburb}}">
+                            <input type="hidden" name="addr_state" value="{{$f.AddrState}}">
+                            <input type="hidden" name="addr_postcode" value="{{$f.AddrPostcode}}">
                         </div>
                     </div>
 
@@ -111,4 +118,5 @@
             </div>
         </div>
     </section>
+    <script src="/static/js/address.js" defer></script>
 {{end}}

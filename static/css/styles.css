@@ -120,6 +120,8 @@ nav {
     transition: background 0.3s;
 }
 .nav-brand {
+    display: inline-flex;
+    align-items: center;
     font-family: 'Instrument Serif', serif;
     font-size: 1.35rem;
     color: var(--text-primary);
@@ -128,6 +130,14 @@ nav {
     letter-spacing: 0.02em;
 }
 .nav-brand span { color: var(--brand); }
+.nav-brand-icon {
+    display: block;
+    width: 26px;
+    height: 26px;
+    margin-right: 0.6rem;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.nav-brand:hover .nav-brand-icon { transform: rotate(-8deg) scale(1.08); }
 .nav-links { display: flex; gap: 2rem; align-items: center; }
 .nav-links a {
     font-family: 'JetBrains Mono', monospace;
@@ -980,9 +990,12 @@ footer {
     gap: 1rem;
 }
 .footer-copy {
+    display: inline-flex;
+    align-items: center;
     font-size: 0.85rem;
     color: var(--text-muted);
 }
+.footer-icon { display: block; width: 20px; height: 20px; margin-right: 0.6rem; opacity: 0.9; }
 .footer-links {
     display: flex;
     flex-wrap: wrap;
@@ -1023,6 +1036,7 @@ footer {
 @media (max-width: 768px) {
     nav { padding: 0.75rem 1.25rem; flex-wrap: wrap; row-gap: 0.5rem; }
     .nav-brand { white-space: nowrap; font-size: 1.25rem; }
+    .nav-brand-icon { width: 23px; height: 23px; margin-right: 0.5rem; }
     /* Brand on row one, links on their own row underneath */
     .nav-links { order: 3; width: 100%; gap: 0.5rem 1rem; flex-wrap: wrap; }
     .nav-links a { font-size: 0.7rem; }
@@ -2068,6 +2082,7 @@ a.service-card {
 }
 .admin-filters a.active { background: var(--brand); border-color: var(--brand); color: #fff; }
 .admin-filter-n { opacity: 0.7; }
+.admin-filters a.admin-filters-new { margin-left: auto; color: var(--brand); border-color: var(--brand); font-weight: 600; }
 
 .admin-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
 .admin-grid--wide { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
@@ -2096,6 +2111,29 @@ a.service-card {
 .btn--danger:hover { background: #fef2f2; }
 textarea.admin-input { resize: vertical; }
 select.admin-input { min-height: 2.15rem; }
+
+/* Address autocomplete (admin) */
+.addr-wrap { position: relative; }
+.addr-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    list-style: none;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    max-height: 240px;
+    overflow-y: auto;
+}
+.addr-suggestion { padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.8rem; }
+.addr-suggestion:hover, .addr-suggestion.addr-active { background: rgba(0, 0, 0, 0.06); }
+.addr-verified { display: none; color: #15803d; text-transform: none; letter-spacing: normal; }
+.addr-verified.visible { display: inline; }
 
 .td-num { text-align: right; white-space: nowrap; }
 .inv-lines th, .inv-lines td { padding-left: 0.4rem; padding-right: 0.4rem; }
@@ -2129,12 +2167,12 @@ select.admin-input { min-height: 2.15rem; }
     min-width: 860px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
 }
 .cal-head { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); border-left: 1px solid var(--border); text-align: center; }
-.cal-head.cal-today { color: var(--brand); background: var(--brand-tint); }
+.cal-head.cal-today { color: #fff; background: var(--brand); }
 .cal-gutter { border-left: 0 !important; }
 .cal-hours { position: relative; height: var(--col-px); }
 .cal-hour { height: calc(var(--slot-px) * 4); font-size: 0.65rem; color: var(--text-muted); text-align: right; padding-right: 0.4rem; font-family: 'JetBrains Mono', monospace; transform: translateY(-0.5em); }
 .cal-col { position: relative; height: var(--col-px); border-left: 1px solid var(--border); }
-.cal-col.cal-today { background: rgba(29, 78, 216, 0.03); }
+.cal-col.cal-today { background: var(--brand-tint); box-shadow: inset 1px 0 0 var(--brand), inset -1px 0 0 var(--brand); }
 .cal-slot { display: block; height: var(--slot-px); border-top: 1px solid rgba(15,23,42,0.035); box-sizing: border-box; }
 .cal-slot--hour { border-top-color: var(--border); }
 a.cal-slot:hover { background: rgba(180, 83, 9, 0.12); cursor: pointer; }

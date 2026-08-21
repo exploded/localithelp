@@ -29,7 +29,7 @@
     <link rel="manifest" href="/static/site.webmanifest">
     <link rel="preload" href="/static/fonts/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/static/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css?v=2">
     {{block "head" .}}{{end}}
 </head>
 <body>
@@ -41,7 +41,7 @@
 
     <!-- Navigation -->
     <nav>
-        <a href="/" class="nav-brand">Local IT Help<span>.</span></a>
+        <a href="/" class="nav-brand"><img src="/static/img/icon-192.png" alt="" width="26" height="26" class="nav-brand-icon">Local IT Help<span>.</span></a>
         <div class="nav-links">
             <a href="/services"{{if hasPrefix .Path "/services"}} class="active"{{end}}>Services</a>
             <a href="/software-development"{{if hasPrefix .Path "/software-development"}} class="active"{{end}}>Software</a>
@@ -71,7 +71,7 @@
     <!-- Footer -->
     <footer>
         <div class="footer-inner">
-            <div class="footer-copy">&copy; 2026 Local IT Help &middot; James McHugh, Donvale VIC &middot; ABN 14 723 053 435</div>
+            <div class="footer-copy"><img src="/static/img/icon-192.png" alt="" width="20" height="20" class="footer-icon">&copy; 2026 Local IT Help &middot; James McHugh, Donvale VIC &middot; ABN 14 723 053 435</div>
             <div class="footer-links">
                 <a href="/services">Services</a>
                 <a href="/software-development">Software</a>

@@ -1,0 +1,71 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — New booking</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}{{$f := $d.Form}}{{$e := $d.Errors}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label"><a href="/admin/bookings">Bookings</a> / new</div>
+            <h1 class="section-title">New booking</h1>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{template "flash" $d.Flash}}
+            <div class="admin-grid">
+                <div class="admin-col">
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Take a booking over the phone</h2>
+                        <p class="admin-muted">If they've called before, the booking is linked to their existing customer record automatically (matched by email, then phone). You'll pick a time on the next screen.</p>
+                        <form method="POST" action="/admin/bookings/new" class="admin-form-stack">
+                            {{template "csrf" $.CSRF}}
+                            <div class="admin-field">
+                                <label for="name">Name</label>
+                                <input class="admin-input" id="name" name="name" value="{{$f.Name}}" maxlength="100" required autofocus>
+                                {{with $e.name}}<span class="field-error">{{.}}</span>{{end}}
+                            </div>
+                            <div class="admin-form-inline">
+                                <div class="admin-field">
+                                    <label for="phone">Phone</label>
+                                    <input class="admin-input" id="phone" name="phone" type="tel" value="{{$f.Phone}}" maxlength="40">
+                                </div>
+                                <div class="admin-field admin-field--wide">
+                                    <label for="email">Email (optional)</label>
+                                    <input class="admin-input" id="email" name="email" type="email" value="{{$f.Email}}" maxlength="120">
+                                </div>
+                            </div>
+                            {{with $e.contact}}<span class="field-error">{{.}}</span>{{end}}
+                            {{with $e.phone}}<span class="field-error">{{.}}</span>{{end}}
+                            {{with $e.email}}<span class="field-error">{{.}}</span>{{end}}
+                            <div class="admin-form-inline">
+                                <div class="admin-field">
+                                    <label for="suburb">Suburb</label>
+                                    <input class="admin-input" id="suburb" name="suburb" value="{{$f.Suburb}}" maxlength="80">
+                                    {{with $e.suburb}}<span class="field-error">{{.}}</span>{{end}}
+                                </div>
+                                <div class="admin-field admin-field--wide">
+                                    <label for="service">Service</label>
+                                    <select class="admin-input" id="service" name="service">
+                                        <option value="">Not sure / something else</option>
+                                        {{range $d.Services}}<option value="{{.Slug}}"{{if eq .Slug $f.Service}} selected{{end}}>{{.Title}}</option>{{end}}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="admin-field">
+                                <label for="issue">What's the problem?</label>
+                                <textarea class="admin-input" id="issue" name="issue" rows="4" maxlength="5000" placeholder="e.g. Laptop won't start, blue screen on boot">{{$f.Issue}}</textarea>
+                            </div>
+                            <div><button class="btn btn--primary btn--sm" type="submit">Create booking &amp; pick a time &#8594;</button></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+{{end}}

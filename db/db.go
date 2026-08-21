@@ -103,6 +103,7 @@ func Open(path string) error {
 		"ALTER TABLE bookings ADD COLUMN admin_notes TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE bookings ADD COLUMN parent_booking_id INTEGER NOT NULL DEFAULT 0",
 		"ALTER TABLE bookings ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE bookings ADD COLUMN address TEXT NOT NULL DEFAULT ''",
 	} {
 		conn.Exec(stmt) // ignore "duplicate column" / "no such table" errors
 	}

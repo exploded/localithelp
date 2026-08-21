@@ -29,7 +29,12 @@
                                 <div class="admin-field"><label for="phone">Phone</label><input class="admin-input" id="phone" name="phone" value="{{$c.Phone}}" maxlength="40"></div>
                                 <div class="admin-field admin-field--wide"><label for="email">Email</label><input class="admin-input" id="email" name="email" type="email" value="{{$c.Email}}" maxlength="120"></div>
                             </div>
-                            <div class="admin-field"><label for="address">Address (shown on invoices)</label><input class="admin-input" id="address" name="address" value="{{$c.Address}}" maxlength="200"></div>
+                            <div class="admin-field addr-wrap">
+                                <label for="address">Address (shown on invoices) <span class="addr-verified">&#10003; verified</span></label>
+                                <input class="admin-input addr-input" id="address" name="address" value="{{$c.Address}}" maxlength="200"
+                                       placeholder="Start typing the address&#8230;" autocomplete="one-time-code" data-suburb-target="#suburb">
+                                <ul class="addr-suggestions" hidden></ul>
+                            </div>
                             <div class="admin-field"><label for="suburb">Suburb</label><input class="admin-input" id="suburb" name="suburb" value="{{$c.Suburb}}" maxlength="80"></div>
                             <div class="admin-field"><label for="notes">Notes (private)</label><textarea class="admin-input" id="notes" name="notes" rows="4">{{$c.Notes}}</textarea></div>
                             <div><button class="btn btn--primary btn--sm" type="submit">Save</button></div>
@@ -70,4 +75,5 @@
             </div>
         </div>
     </section>
+    <script src="/static/js/address.js" defer></script>
 {{end}}

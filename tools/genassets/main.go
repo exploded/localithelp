@@ -61,6 +61,10 @@ func main() {
 		must(writePNG(filepath.Join(out, name), icon(sz)))
 	}
 	must(writeICO(filepath.Join(out, "favicon.ico"), icon(16), icon(32), icon(48)))
+	if out == "static/img" {
+		// The invoice/receipt PDF embeds its own copy of the icon.
+		must(writePNG("cmd/server/logo.png", icon(512)))
+	}
 	fmt.Println("wrote assets to", out)
 }
 

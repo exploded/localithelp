@@ -167,7 +167,11 @@ type bookForm struct {
 	Name          string
 	Phone         string
 	Email         string
-	Suburb        string
+	Address       string // the visible autocomplete field, as typed or picked
+	AddrStreet    string // hidden structured parts, filled only when a suggestion is picked
+	AddrSuburb    string
+	AddrState     string
+	AddrPostcode  string
 	Service       string
 	Issue         string
 	PreferredTime string
@@ -184,9 +188,6 @@ func handleBookForm(w http.ResponseWriter, r *http.Request) {
 	f := bookForm{Service: r.URL.Query().Get("service")}
 	if _, ok := findService(f.Service); !ok {
 		f.Service = ""
-	}
-	if s, ok := findSuburbByName(r.URL.Query().Get("suburb")); ok {
-		f.Suburb = s.Name
 	}
 	render(w, r, "book", bookPageData{
 		Services: services,
@@ -252,7 +253,11 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 		Name:          trim("name"),
 		Phone:         trim("phone"),
 		Email:         trim("email"),
-		Suburb:        trim("suburb"),
+		Address:       trim("address"),
+		AddrStreet:    trim("addr_street"),
+		AddrSuburb:    trim("addr_suburb"),
+		AddrState:     strings.ToUpper(trim("addr_state")),
+		AddrPostcode:  trim("addr_postcode"),
 		Service:       trim("service"),
 		Issue:         trim("issue"),
 		PreferredTime: trim("preferred_time"),
@@ -293,8 +298,8 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 	} else if n > 2000 {
 		errs["issue"] = "Please keep the description under 2,000 characters."
 	}
-	if len([]rune(f.Suburb)) > 80 {
-		errs["suburb"] = "Suburb is too long."
+	if reason, ok := validAddressParts(f.AddrStreet, f.AddrSuburb, f.AddrState, f.AddrPostcode); !ok {
+		errs["address"] = reason
 	}
 	if len([]rune(f.PreferredTime)) > 200 {
 		errs["preferred_time"] = "Please keep this short."
@@ -315,17 +320,32 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	customerID, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.Suburb)
+	fullAddress := f.AddrStreet + ", " + f.AddrSuburb + " " + f.AddrState + " " + f.AddrPostcode
+	if len(fullAddress) > 200 {
+		fullAddress = fullAddress[:200]
+	}
+	customerID, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.AddrSuburb)
 	if err != nil {
 		log.Printf("booking: customer upsert failed: %v", err)
 		// Not fatal: the booking is still recorded; the boot-time backfill will link it later.
+	}
+	if customerID != 0 {
+		// Fill in a blank customer address, but never overwrite one from a
+		// public form — the admin address editor is the authority there.
+		if c, err := db.GetCustomer(customerID); err == nil && c.Address == "" {
+			c.Address, c.Suburb = fullAddress, f.AddrSuburb
+			if err := db.UpdateCustomer(c); err != nil {
+				log.Printf("booking: fill customer address: %v", err)
+			}
+		}
 	}
 	b := &db.Booking{
 		CustomerID:    customerID,
 		Name:          f.Name,
 		Phone:         f.Phone,
 		Email:         f.Email,
-		Suburb:        f.Suburb,
+		Suburb:        f.AddrSuburb,
+		Address:       fullAddress,
 		ServiceSlug:   f.Service,
 		Mode:          "onsite",
 		Issue:         f.Issue,

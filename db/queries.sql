@@ -84,50 +84,50 @@ SELECT COUNT(*) FROM quote_settings WHERE key = ?;
 -- Bookings
 
 -- name: InsertBooking :one
-INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip, customer_id, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 RETURNING id;
 
 -- name: InsertFollowupBooking :one
-INSERT INTO bookings (name, phone, email, suburb, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, status, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, 'new', datetime('now'))
+INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, status, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, 'new', datetime('now'))
 RETURNING id;
 
 -- name: GetBooking :one
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE id = ?;
 
 -- name: ListBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings ORDER BY id DESC;
 
 -- name: ListBookingsByStatus :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE status = ? ORDER BY id DESC;
 
 -- name: ListBookingsBetween :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam')
 ORDER BY start_at;
 
 -- name: ListBookingsByCustomer :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE customer_id = ? ORDER BY id DESC;
 
 -- name: ListChildBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE parent_booking_id = ? ORDER BY id;
 
 -- name: ListUnlinkedBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
 FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id;
 
 -- name: CountBookingsByStatus :many
@@ -144,6 +144,9 @@ UPDATE bookings SET admin_notes = ?, updated_at = datetime('now') WHERE id = ?;
 
 -- name: SetBookingCustomer :exec
 UPDATE bookings SET customer_id = ? WHERE id = ?;
+
+-- name: UpdateBookingAddress :exec
+UPDATE bookings SET address = ?, suburb = ?, updated_at = datetime('now') WHERE id = ?;
 
 -- Customers
 

@@ -40,11 +40,14 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	mux.HandleFunc("GET /invoice/{token}/pdf", handleInvoicePublicPDF)
 	mux.HandleFunc("GET /admin", requireAdmin(handleAdmin))
 	mux.HandleFunc("GET /admin/bookings", requireAdmin(handleAdminBookings))
+	mux.HandleFunc("GET /admin/bookings/new", requireAdmin(handleAdminBookingNew))
+	mux.HandleFunc("POST /admin/bookings/new", requireAdmin(handleAdminBookingCreate))
 	mux.HandleFunc("GET /admin/bookings/{id}", requireAdmin(handleAdminBooking))
 	mux.HandleFunc("POST /admin/bookings/{id}/schedule", requireAdmin(handleAdminBookingSchedule))
 	mux.HandleFunc("POST /admin/bookings/{id}/status", requireAdmin(handleAdminBookingStatus))
 	mux.HandleFunc("POST /admin/bookings/{id}/notes", requireAdmin(handleAdminBookingNotes))
 	mux.HandleFunc("POST /admin/bookings/{id}/followup", requireAdmin(handleAdminBookingFollowup))
+	mux.HandleFunc("POST /admin/bookings/{id}/address", requireAdmin(handleAdminBookingAddress))
 	mux.HandleFunc("GET /admin/calendar", requireAdmin(handleAdminCalendar))
 	mux.HandleFunc("GET /admin/invoices", requireAdmin(handleAdminInvoices))
 	mux.HandleFunc("POST /admin/invoices/new", requireAdmin(handleAdminInvoiceNew))
@@ -103,9 +106,21 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 		return loc
 	}
 
-	// 1. Public enquiry (timestamp old enough to not be flagged).
+	// 1. Public enquiry (timestamp old enough to not be flagged). Without a
+	// picked address (no addr_* fields) the form re-renders with an error.
 	rr := do("POST", "/book", url.Values{
-		"name": {"Zoë O'Brien"}, "phone": {"0400 000 001"}, "email": {"Zoe@Example.test"}, "suburb": {"Donvale"},
+		"name": {"Zoë O'Brien"}, "phone": {"0400 000 001"}, "email": {"Zoe@Example.test"},
+		"address": {"12 Sample St typed by hand"},
+		"service": {"email-outlook"}, "issue": {"Outlook keeps asking for my password and won't send."},
+		"preferred_time": {"Tue morning"}, "ts": {itoa(time.Now().Unix() - 10)},
+	}, false)
+	if rr.Code != http.StatusUnprocessableEntity || !strings.Contains(rr.Body.String(), "pick the address") {
+		t.Fatalf("enquiry without picked address should 422: %d", rr.Code)
+	}
+	rr = do("POST", "/book", url.Values{
+		"name": {"Zoë O'Brien"}, "phone": {"0400 000 001"}, "email": {"Zoe@Example.test"},
+		"address": {"12 Sample St, Donvale VIC 3111"}, "addr_street": {"12 Sample St"},
+		"addr_suburb": {"Donvale"}, "addr_state": {"VIC"}, "addr_postcode": {"3111"},
 		"service": {"email-outlook"}, "issue": {"Outlook keeps asking for my password and won't send."},
 		"preferred_time": {"Tue morning"}, "ts": {itoa(time.Now().Unix() - 10)},
 	}, false)
@@ -118,12 +133,44 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	}
 	b := bs[0]
 	bid := b.ID
+	if b.Address != "12 Sample St, Donvale VIC 3111" || b.Suburb != "Donvale" {
+		t.Fatalf("enquiry address not stored: %q / %q", b.Address, b.Suburb)
+	}
+	// The new customer's blank address is filled from the enquiry.
+	if c, _ := db.GetCustomer(b.CustomerID); c.Address != "12 Sample St, Donvale VIC 3111" || c.Suburb != "Donvale" {
+		t.Fatalf("customer address not filled from enquiry: %+v", c)
+	}
 	bpath := "/admin/bookings/" + itoa(bid)
 	if l := get("/admin/bookings"); !strings.Contains(l, "Zoë") {
 		t.Fatalf("bookings list missing content: %s", l)
 	}
 	if p := get(bpath); !strings.Contains(p, "Schedule the visit") {
 		t.Fatalf("booking page missing content: %s", p)
+	}
+	// Address: hand-typed (no structured addr_* fields) is rejected; a picked
+	// suggestion saves to the customer and syncs the booking's suburb.
+	rr = do("POST", bpath+"/address", url.Values{"address": {"12 Nowhere St"}}, true)
+	if loc := rr.Header().Get("Location"); rr.Code != http.StatusSeeOther || !strings.Contains(loc, "err=") {
+		t.Fatalf("hand-typed address should be rejected: %d %s", rr.Code, loc)
+	}
+	// Outside Victoria is outside the service area.
+	rr = do("POST", bpath+"/address", url.Values{
+		"address": {"1 Pitt St, Sydney NSW 2000"}, "addr_street": {"1 Pitt St"},
+		"addr_suburb": {"Sydney"}, "addr_state": {"NSW"}, "addr_postcode": {"2000"},
+	}, true)
+	if loc := rr.Header().Get("Location"); rr.Code != http.StatusSeeOther || !strings.Contains(loc, "err=") {
+		t.Fatalf("interstate address should be rejected: %d %s", rr.Code, loc)
+	}
+	post(bpath+"/address", url.Values{
+		"address": {"1 Example Ct, Doncaster East VIC 3109"}, "addr_street": {"1 Example Ct"},
+		"addr_suburb": {"Doncaster East"}, "addr_state": {"VIC"}, "addr_postcode": {"3109"},
+	})
+	if nb, _ := db.GetBooking(bid); nb.Address != "1 Example Ct, Doncaster East VIC 3109" || nb.Suburb != "Doncaster East" {
+		t.Fatalf("booking address not saved: %q / %q", nb.Address, nb.Suburb)
+	}
+	// The admin edit overwrites the customer's address too (invoices read it).
+	if c, _ := db.GetCustomer(b.CustomerID); c.Address != "1 Example Ct, Doncaster East VIC 3109" || c.Suburb != "Doncaster East" {
+		t.Fatalf("customer address not synced: %+v", c)
 	}
 	get("/admin")
 	get("/admin/customers?q=zoe")
@@ -272,6 +319,34 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	if fb, _ = db.GetBooking(fid); fb.Status != db.BookingCancelled {
 		t.Fatal("cancel")
 	}
+	// 8. Phone booking: /admin/bookings/new takes a caller's details directly.
+	if p := get("/admin/bookings/new"); !strings.Contains(p, "Take a booking over the phone") {
+		t.Fatalf("new-booking form missing content: %s", p)
+	}
+	// No name and no contact details → form re-renders with errors.
+	if rr := do("POST", "/admin/bookings/new", url.Values{"csrf": {"csrf1"}, "issue": {"?"}}, true); rr.Code != http.StatusUnprocessableEntity ||
+		!strings.Contains(rr.Body.String(), "caller&#39;s name") {
+		t.Fatalf("empty phone booking should 422: %d %s", rr.Code, rr.Body.String())
+	}
+	// A brand-new caller creates a new customer.
+	loc = post("/admin/bookings/new", url.Values{
+		"name": {"Rex Kramer"}, "phone": {"0400 000 099"}, "suburb": {"Ringwood"},
+		"service": {"email-outlook"}, "issue": {"NBN dropouts every evening"},
+	})
+	pid := lastSeg(strings.SplitN(loc, "?", 2)[0])
+	pb, _ := db.GetBooking(pid)
+	if pb == nil || pb.CustomerID == 0 || pb.CustomerID == b.CustomerID || pb.Status != db.BookingNew ||
+		pb.Mode != "onsite" || pb.ServiceSlug != "email-outlook" || pb.Suburb != "Ringwood" || !pb.StartAt.IsZero() {
+		t.Fatalf("phone booking: %+v", pb)
+	}
+	// A repeat caller (same phone digits) is linked to the existing customer;
+	// a blank issue gets a placeholder.
+	loc = post("/admin/bookings/new", url.Values{"name": {"Zoë O'Brien"}, "phone": {"0400 000 001"}})
+	pb, _ = db.GetBooking(lastSeg(strings.SplitN(loc, "?", 2)[0]))
+	if pb == nil || pb.CustomerID != b.CustomerID || pb.Issue != "Phone enquiry" {
+		t.Fatalf("repeat caller not linked: %+v", pb)
+	}
+
 	// Anonymous admin access is redirected; CSRF-less POST refused.
 	if rr := do("GET", "/admin/bookings", nil, false); rr.Code != http.StatusSeeOther {
 		t.Fatalf("anon admin: %d", rr.Code)

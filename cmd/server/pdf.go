@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,12 @@ import (
 
 	"mchugh.com.au/db"
 )
+
+// logoPNG is a copy of static/img/icon-512.png, embedded so the PDF renders
+// the logo regardless of working directory. tools/genassets regenerates both.
+//
+//go:embed logo.png
+var logoPNG []byte
 
 // invoicePDF renders an A4 invoice (or receipt, when paid) with fpdf's built-in
 // Helvetica. Non-Latin-1 characters are folded by the cp1252 translator so
@@ -25,8 +32,13 @@ func invoicePDF(v *invoiceView) ([]byte, error) {
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
 	const w = 170.0 // printable width
 
-	// ── Header: business (left) / document title (right) ──
+	// ── Header: logo + business (left) / document title (right) ──
 	y0 := pdf.GetY()
+	const logoSize = 13.0
+	pdf.RegisterImageOptionsReader("logo", fpdf.ImageOptions{ImageType: "PNG"}, bytes.NewReader(logoPNG))
+	pdf.ImageOptions("logo", 20, y0, logoSize, logoSize, false, fpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+	pdf.SetLeftMargin(20 + logoSize + 5)
+	pdf.SetX(20 + logoSize + 5)
 	pdf.SetFont("Helvetica", "B", 15)
 	pdf.CellFormat(100, 7, "LOCAL IT HELP", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
@@ -40,6 +52,7 @@ func invoicePDF(v *invoiceView) ([]byte, error) {
 		pdf.CellFormat(100, 4.5, site.Phone, "", 1, "L", false, 0, "")
 	}
 	pdf.CellFormat(100, 4.5, strings.TrimPrefix(strings.TrimPrefix(site.BaseURL, "https://"), "http://"), "", 1, "L", false, 0, "")
+	pdf.SetLeftMargin(20)
 	yLeft := pdf.GetY()
 
 	pdf.SetXY(120, y0)

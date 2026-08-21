@@ -23,6 +23,7 @@ type Booking struct {
 	AdminNotes      string `json:"admin_notes"`
 	ParentBookingID int64  `json:"parent_booking_id"`
 	UpdatedAt       string `json:"updated_at"`
+	Address         string `json:"address"`
 }
 
 type Customer struct {

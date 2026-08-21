@@ -83,7 +83,7 @@ const mailTmplSrc = `
 {{template "row" (kv "Name" .B.Name)}}
 {{template "row" (kv "Phone" .B.Phone)}}
 {{template "row" (kv "Email" .B.Email)}}
-{{template "row" (kv "Suburb" .B.Suburb)}}
+{{template "row" (kv "Address" .B.Address)}}
 {{template "row" (kv "Service" .ServiceTitle)}}
 {{template "row" (kv "Preferred time" .B.PreferredTime)}}
 {{template "row" (kv "IP" .B.IP)}}
@@ -99,7 +99,7 @@ const mailTmplSrc = `
 <p style="margin:20px 0 6px;color:#666">What you sent:</p>
 <table style="border-collapse:collapse;margin:0 0 20px">
 {{if .ServiceTitle}}{{template "row" (kv "Service" .ServiceTitle)}}{{end}}
-{{if .B.Suburb}}{{template "row" (kv "Suburb" .B.Suburb)}}{{end}}
+{{if .B.Address}}{{template "row" (kv "Address" .B.Address)}}{{else if .B.Suburb}}{{template "row" (kv "Suburb" .B.Suburb)}}{{end}}
 {{if .B.PreferredTime}}{{template "row" (kv "Preferred time" .B.PreferredTime)}}{{end}}
 </table>
 <blockquote style="margin:0 0 20px;padding:12px 16px;border-left:3px solid #d9d5cc;background:#faf9f6;white-space:pre-wrap">{{.B.Issue}}</blockquote>
@@ -189,8 +189,8 @@ func notifyBooking(id int64, b *db.Booking, suspicious bool) {
 		log.Printf("email: render booking-admin: %v", err)
 		return
 	}
-	text := fmt.Sprintf("New booking request #%d\n\nName: %s\nPhone: %s\nEmail: %s\nSuburb: %s\nService: %s\nPreferred time: %s\n\n%s\n\n%s/admin\n",
-		id, b.Name, b.Phone, b.Email, b.Suburb, svcTitle, b.PreferredTime, b.Issue, site.BaseURL)
+	text := fmt.Sprintf("New booking request #%d\n\nName: %s\nPhone: %s\nEmail: %s\nAddress: %s\nService: %s\nPreferred time: %s\n\n%s\n\n%s/admin\n",
+		id, b.Name, b.Phone, b.Email, b.Address, svcTitle, b.PreferredTime, b.Issue, site.BaseURL)
 	send(notifyEmail, subj, html, text, b.Email)
 
 	// Customer confirmation

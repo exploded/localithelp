@@ -24,6 +24,7 @@
                 {{range $d.Statuses}}
                 <a href="/admin/bookings?status={{.}}"{{if eq $d.Status .}} class="active"{{end}}>{{.}}{{with index $d.Counts .}} <span class="admin-filter-n">{{.}}</span>{{end}}</a>
                 {{end}}
+                <a href="/admin/bookings/new" class="admin-filters-new">&#43; New booking</a>
             </div>
 
             {{if $d.Rows}}

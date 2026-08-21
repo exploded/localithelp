@@ -37,6 +37,26 @@
                     </div>
 
                     <div class="admin-card">
+                        <h2 class="admin-card-title">Address</h2>
+                        <form method="POST" action="/admin/bookings/{{$b.ID}}/address" class="admin-form-stack" autocomplete="off">
+                            {{template "csrf" $csrf}}
+                            <div class="admin-field addr-wrap">
+                                <label for="address">Street address <span class="addr-verified">&#10003; verified</span></label>
+                                <input class="admin-input addr-input" type="text" id="address" name="address"
+                                       value="{{if $b.Address}}{{$b.Address}}{{else if $d.Cust}}{{$d.Cust.Address}}{{end}}" maxlength="200"
+                                       placeholder="Start typing the address&#8230;" autocomplete="one-time-code" required>
+                                <ul class="addr-suggestions" hidden></ul>
+                            </div>
+                            <input type="hidden" name="addr_street">
+                            <input type="hidden" name="addr_suburb">
+                            <input type="hidden" name="addr_state">
+                            <input type="hidden" name="addr_postcode">
+                            <div class="admin-row-actions"><button class="btn btn--ghost btn--sm" type="submit">Save address</button></div>
+                        </form>
+                        <p class="admin-muted">Pick from the suggestions — a complete Victorian address is required. Saved to the customer record (shown on invoices).</p>
+                    </div>
+
+                    <div class="admin-card">
                         <h2 class="admin-card-title">The problem</h2>
                         {{if $b.PreferredTime}}<p class="admin-muted">Preferred: {{$b.PreferredTime}}</p>{{end}}
                         <blockquote class="admin-quote">{{$b.Issue}}</blockquote>
@@ -139,4 +159,5 @@
             </div>
         </div>
     </section>
+    <script src="/static/js/address.js" defer></script>
 {{end}}
