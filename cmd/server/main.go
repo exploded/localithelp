@@ -101,6 +101,9 @@ func newMux(dir string) *http.ServeMux {
 	mux.HandleFunc("GET /robots.txt", handleRobots)
 	mux.HandleFunc("GET /sitemap.xml", handleSitemap)
 	mux.HandleFunc("GET /llms.txt", handleLlmsTxt)
+	if site.IndexNowKey != "" {
+		mux.HandleFunc("GET /"+site.IndexNowKey+".txt", handleIndexNowKey)
+	}
 	mux.HandleFunc("GET /api/pricing", handleAPIPricing)
 	mux.HandleFunc("GET /favicon.ico", handleFavicon(dir))
 
@@ -546,19 +549,20 @@ func jsonError(w http.ResponseWriter, msg string, code int) {
 
 // siteConfig holds global, environment-driven settings exposed to every template as .Site.
 type siteConfig struct {
-	BaseURL    string       // canonical origin, no trailing slash, e.g. https://localithelp.com.au
-	Phone      string       // display phone, empty hides all phone UI
-	PhoneHref  template.URL // tel: link (+61 form); template.URL so html/template keeps the tel: scheme
-	Email      string       // contact email
-	OnsiteFee  int          // flat visit fee, includes travel (AUD)
-	BlockRate  int          // per 15-minute block (AUD)
-	SeniorsPct int          // Seniors Card discount, % off the total (0 hides it)
-	Suburbs    []string     // service area (display names)
-	Areas      []Suburb     // service area with slugs, for /areas/{slug} links
-	ABN        string       // shown on invoices
-	BankName   string       // bank transfer details on invoices (BSB empty = hidden)
-	BankBSB    string
-	BankAcct   string
+	BaseURL     string       // canonical origin, no trailing slash, e.g. https://localithelp.com.au
+	Phone       string       // display phone, empty hides all phone UI
+	PhoneHref   template.URL // tel: link (+61 form); template.URL so html/template keeps the tel: scheme
+	Email       string       // contact email
+	OnsiteFee   int          // flat visit fee, includes travel (AUD)
+	BlockRate   int          // per 15-minute block (AUD)
+	SeniorsPct  int          // Seniors Card discount, % off the total (0 hides it)
+	Suburbs     []string     // service area (display names)
+	Areas       []Suburb     // service area with slugs, for /areas/{slug} links
+	ABN         string       // shown on invoices
+	IndexNowKey string       // IndexNow API key; empty disables the /{key}.txt route
+	BankName    string       // bank transfer details on invoices (BSB empty = hidden)
+	BankBSB     string
+	BankAcct    string
 }
 
 var site siteConfig
@@ -577,18 +581,19 @@ func initSiteConfig(port string) {
 		email = "james@localithelp.com.au"
 	}
 	site = siteConfig{
-		BaseURL:    base,
-		Phone:      strings.TrimSpace(os.Getenv("PHONE")),
-		Email:      email,
-		OnsiteFee:  envInt("ONSITE_FEE", 80),
-		BlockRate:  envInt("BLOCK_RATE", 30),
-		SeniorsPct: envInt("SENIORS_DISCOUNT_PCT", 20),
-		Suburbs:    suburbs,
-		Areas:      suburbList,
-		ABN:        envOr("ABN", "14 723 053 435"),
-		BankName:   envOr("BANK_ACCOUNT_NAME", "James McHugh"),
-		BankBSB:    strings.TrimSpace(os.Getenv("BANK_BSB")),
-		BankAcct:   strings.TrimSpace(os.Getenv("BANK_ACCOUNT_NO")),
+		BaseURL:     base,
+		Phone:       strings.TrimSpace(os.Getenv("PHONE")),
+		Email:       email,
+		OnsiteFee:   envInt("ONSITE_FEE", 80),
+		BlockRate:   envInt("BLOCK_RATE", 30),
+		SeniorsPct:  envInt("SENIORS_DISCOUNT_PCT", 20),
+		Suburbs:     suburbs,
+		Areas:       suburbList,
+		ABN:         envOr("ABN", "14 723 053 435"),
+		IndexNowKey: strings.TrimSpace(os.Getenv("INDEXNOW_KEY")),
+		BankName:    envOr("BANK_ACCOUNT_NAME", "James McHugh"),
+		BankBSB:     strings.TrimSpace(os.Getenv("BANK_BSB")),
+		BankAcct:    strings.TrimSpace(os.Getenv("BANK_ACCOUNT_NO")),
 	}
 	site.PhoneHref = template.URL(telHref(site.Phone))
 	applySeniorsNote(site.SeniorsPct)

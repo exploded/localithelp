@@ -26,7 +26,7 @@ func seoTestSetup(t *testing.T) *http.ServeMux {
 	if err != nil {
 		t.Fatal(err)
 	}
-	site = siteConfig{BaseURL: "https://example.test", Email: "me@example.test", OnsiteFee: 80, BlockRate: 30, SeniorsPct: 20, Suburbs: suburbs, Areas: suburbList}
+	site = siteConfig{BaseURL: "https://example.test", Email: "me@example.test", OnsiteFee: 80, BlockRate: 30, SeniorsPct: 20, Suburbs: suburbs, Areas: suburbList, IndexNowKey: "testindexnowkey0123456789abcdef0"}
 	return newMux("../..")
 }
 

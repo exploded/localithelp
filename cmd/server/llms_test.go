@@ -66,6 +66,17 @@ func TestLlmsTxt(t *testing.T) {
 	}
 }
 
+func TestIndexNowKey(t *testing.T) {
+	mux := seoTestSetup(t) // seoTestSetup sets IndexNowKey before newMux registers the route
+	rr := get(mux, "/"+site.IndexNowKey+".txt")
+	if rr.Code != 200 || !strings.HasPrefix(rr.Header().Get("Content-Type"), "text/plain") {
+		t.Fatalf("indexnow key file: %d %s", rr.Code, rr.Header().Get("Content-Type"))
+	}
+	if rr.Body.String() != site.IndexNowKey {
+		t.Errorf("key file body = %q, want the bare key", rr.Body.String())
+	}
+}
+
 func TestAPIPricing(t *testing.T) {
 	mux := seoTestSetup(t)
 	rr := get(mux, "/api/pricing")

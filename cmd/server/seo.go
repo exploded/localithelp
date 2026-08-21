@@ -51,6 +51,16 @@ func handleRobots(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(b.String()))
 }
 
+// ── IndexNow ──
+
+// handleIndexNowKey serves the ownership-proof file IndexNow fetches at
+// /{key}.txt. The key comes from INDEXNOW_KEY, so rotating it is an env
+// change + restart, with nothing committed to git.
+func handleIndexNowKey(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(site.IndexNowKey))
+}
+
 // ── sitemap.xml ──
 
 // sitemapURLs is the single source of truth for every indexable public path.
