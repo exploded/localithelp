@@ -7,3 +7,4 @@ mchugh-com-au.exe
 *.db
 .local/
 *.exe
+*.exe~

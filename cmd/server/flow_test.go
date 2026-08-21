@@ -328,23 +328,40 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 		!strings.Contains(rr.Body.String(), "caller&#39;s name") {
 		t.Fatalf("empty phone booking should 422: %d %s", rr.Code, rr.Body.String())
 	}
-	// A brand-new caller creates a new customer.
+	// A hand-typed address (no picked addr_* fields) is rejected.
+	if rr := do("POST", "/admin/bookings/new", url.Values{"csrf": {"csrf1"},
+		"name": {"Rex Kramer"}, "phone": {"0400 000 099"}, "address": {"9 Typed St, Ringwood"},
+	}, true); rr.Code != http.StatusUnprocessableEntity || !strings.Contains(rr.Body.String(), "pick the address") {
+		t.Fatalf("hand-typed address should 422: %d", rr.Code)
+	}
+	// A brand-new caller with a picked address creates a new customer with the
+	// address filled in; the booking carries the address and its suburb.
 	loc = post("/admin/bookings/new", url.Values{
-		"name": {"Rex Kramer"}, "phone": {"0400 000 099"}, "suburb": {"Ringwood"},
+		"name": {"Rex Kramer"}, "phone": {"0400 000 099"},
+		"address": {"9 Sample St, Ringwood VIC 3134"}, "addr_street": {"9 Sample St"},
+		"addr_suburb": {"Ringwood"}, "addr_state": {"VIC"}, "addr_postcode": {"3134"},
 		"service": {"email-outlook"}, "issue": {"NBN dropouts every evening"},
 	})
 	pid := lastSeg(strings.SplitN(loc, "?", 2)[0])
 	pb, _ := db.GetBooking(pid)
 	if pb == nil || pb.CustomerID == 0 || pb.CustomerID == b.CustomerID || pb.Status != db.BookingNew ||
-		pb.Mode != "onsite" || pb.ServiceSlug != "email-outlook" || pb.Suburb != "Ringwood" || !pb.StartAt.IsZero() {
+		pb.Mode != "onsite" || pb.ServiceSlug != "email-outlook" || pb.Suburb != "Ringwood" ||
+		pb.Address != "9 Sample St, Ringwood VIC 3134" || !pb.StartAt.IsZero() {
 		t.Fatalf("phone booking: %+v", pb)
 	}
+	if pc, _ := db.GetCustomer(pb.CustomerID); pc.Address != "9 Sample St, Ringwood VIC 3134" || pc.Suburb != "Ringwood" {
+		t.Fatalf("phone booking customer address: %+v", pc)
+	}
 	// A repeat caller (same phone digits) is linked to the existing customer;
-	// a blank issue gets a placeholder.
-	loc = post("/admin/bookings/new", url.Values{"name": {"Zoë O'Brien"}, "phone": {"0400 000 001"}})
+	// no address given is fine, a blank issue gets a placeholder, and the
+	// saved customer address is not overwritten.
+	loc = post("/admin/bookings/new", url.Values{"name": {"Zoë O'Brien"}, "phone": {"0400 000 001"}, "suburb": {"Donvale"}})
 	pb, _ = db.GetBooking(lastSeg(strings.SplitN(loc, "?", 2)[0]))
-	if pb == nil || pb.CustomerID != b.CustomerID || pb.Issue != "Phone enquiry" {
+	if pb == nil || pb.CustomerID != b.CustomerID || pb.Issue != "Phone enquiry" || pb.Address != "" {
 		t.Fatalf("repeat caller not linked: %+v", pb)
+	}
+	if pc, _ := db.GetCustomer(b.CustomerID); pc.Address != "1 Test St" {
+		t.Fatalf("repeat caller should not change address: %+v", pc)
 	}
 
 	// Anonymous admin access is redirected; CSRF-less POST refused.

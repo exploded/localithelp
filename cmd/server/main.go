@@ -173,6 +173,7 @@ func loadTemplates(dir string) (map[string]*template.Template, error) {
 		"seq":       seq,
 		"crumbs":    crumbs,
 		"stripTags": stripTags,
+		"asset":     asset,
 	}
 	base := template.New("").Funcs(funcMap)
 	base = template.Must(base.ParseGlob(filepath.Join(dir, "layouts", "*.html")))
@@ -631,6 +632,17 @@ func loadEnv(path string) {
 			os.Setenv(key, val)
 		}
 	}
+}
+
+// asset returns the /static/ URL for p (e.g. "js/address.js") with a
+// cache-busting version derived from the file's modification time, so
+// browsers pick up changed files despite the max-age on /static/.
+func asset(p string) string {
+	url := "/static/" + p
+	if fi, err := os.Stat(filepath.Join(staticDir, filepath.FromSlash(p))); err == nil {
+		url += "?v=" + strconv.FormatInt(fi.ModTime().Unix(), 10)
+	}
+	return url
 }
 
 func cacheStatic(h http.Handler) http.Handler {

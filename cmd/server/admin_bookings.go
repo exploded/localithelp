@@ -327,6 +327,9 @@ func handleAdminBookingFollowup(w http.ResponseWriter, r *http.Request) {
 // phoneBookingForm holds the new-booking form values for re-rendering on error.
 type phoneBookingForm struct {
 	Name, Phone, Email, Suburb, Service, Issue string
+	Address                                    string // the visible autocomplete field
+	AddrStreet, AddrSuburb                     string // hidden structured parts, set only when a suggestion is picked
+	AddrState, AddrPostcode                    string
 }
 
 type adminBookingNewData struct {
@@ -350,6 +353,8 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 	f := phoneBookingForm{
 		Name: trim("name"), Phone: trim("phone"), Email: trim("email"),
 		Suburb: trim("suburb"), Service: trim("service"), Issue: trim("issue"),
+		Address: trim("address"), AddrStreet: trim("addr_street"), AddrSuburb: trim("addr_suburb"),
+		AddrState: strings.ToUpper(trim("addr_state")), AddrPostcode: trim("addr_postcode"),
 	}
 	errs := map[string]string{}
 	if n := len([]rune(f.Name)); n < 2 || n > 100 {
@@ -363,6 +368,15 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if f.Email != "" && (len(f.Email) > 120 || !validEmail(f.Email)) {
 		errs["email"] = "That email address doesn't look right."
+	}
+	// Address is optional on the phone (it can be added on the booking page
+	// later), but anything typed must be picked from the Mappify suggestions.
+	if f.Address != "" {
+		if reason, ok := validAddressParts(f.AddrStreet, f.AddrSuburb, f.AddrState, f.AddrPostcode); !ok {
+			errs["address"] = reason
+		} else {
+			f.Suburb = f.AddrSuburb
+		}
 	}
 	if len([]rune(f.Suburb)) > 80 {
 		errs["suburb"] = "Suburb is too long."
@@ -381,14 +395,31 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 	if f.Issue == "" {
 		f.Issue = "Phone enquiry"
 	}
+	fullAddress := ""
+	if f.Address != "" {
+		fullAddress = f.AddrStreet + ", " + f.AddrSuburb + " " + f.AddrState + " " + f.AddrPostcode
+		if len(fullAddress) > 200 {
+			fullAddress = fullAddress[:200]
+		}
+	}
 	customerID, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.Suburb)
 	if err != nil {
 		// Not fatal — the booking is still recorded; the boot-time backfill links it later.
 		log.Printf("phone booking: customer upsert: %v", err)
 	}
+	if customerID != 0 && fullAddress != "" {
+		// Fill in a blank customer address; corrections go through the booking
+		// page's address editor, which is allowed to overwrite.
+		if c, err := db.GetCustomer(customerID); err == nil && c.Address == "" {
+			c.Address, c.Suburb = fullAddress, f.AddrSuburb
+			if err := db.UpdateCustomer(c); err != nil {
+				log.Printf("phone booking: fill customer address: %v", err)
+			}
+		}
+	}
 	id, err := db.InsertBooking(&db.Booking{
 		CustomerID: customerID, Name: f.Name, Phone: f.Phone, Email: f.Email,
-		Suburb: f.Suburb, ServiceSlug: f.Service, Mode: "onsite", Issue: f.Issue,
+		Suburb: f.Suburb, Address: fullAddress, ServiceSlug: f.Service, Mode: "onsite", Issue: f.Issue,
 	})
 	if err != nil {
 		log.Printf("phone booking: insert: %v", err)

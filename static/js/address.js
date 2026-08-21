@@ -1,4 +1,6 @@
-// Address autocomplete (Mappify, proxied via /admin/address-search).
+// Address autocomplete (Mappify, proxied through the server). Each input's
+// data-search-url names its endpoint (/book/address-search on the public
+// booking form, /admin/address-search in admin).
 // Attaches to every input.addr-input inside an .addr-wrap. Picking a
 // suggestion fills the input with the full address, fills the form's hidden
 // addr_* fields (when present), fills the input named by data-suburb-target

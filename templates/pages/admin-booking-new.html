@@ -22,7 +22,7 @@
                 <div class="admin-col">
                     <div class="admin-card">
                         <h2 class="admin-card-title">Take a booking over the phone</h2>
-                        <p class="admin-muted">If they've called before, the booking is linked to their existing customer record automatically (matched by email, then phone). You'll pick a time on the next screen.</p>
+                        <p class="admin-muted">If they've called before, the booking is linked to their existing customer record automatically (matched by email, then phone). Pick the address from the suggestions and it's saved for invoicing; leave it blank to add later. You'll pick a time on the next screen.</p>
                         <form method="POST" action="/admin/bookings/new" class="admin-form-stack">
                             {{template "csrf" $.CSRF}}
                             <div class="admin-field">
@@ -43,6 +43,17 @@
                             {{with $e.contact}}<span class="field-error">{{.}}</span>{{end}}
                             {{with $e.phone}}<span class="field-error">{{.}}</span>{{end}}
                             {{with $e.email}}<span class="field-error">{{.}}</span>{{end}}
+                            <div class="admin-field addr-wrap">
+                                <label for="address">Address (optional) <span class="addr-verified{{if $f.AddrStreet}} visible{{end}}">&#10003; verified</span></label>
+                                <input class="admin-input addr-input" type="text" id="address" name="address" value="{{$f.Address}}" maxlength="200"
+                                       placeholder="Start typing the address&#8230;" autocomplete="one-time-code" data-suburb-target="#suburb">
+                                <ul class="addr-suggestions" hidden></ul>
+                                {{with $e.address}}<span class="field-error">{{.}}</span>{{end}}
+                            </div>
+                            <input type="hidden" name="addr_street" value="{{$f.AddrStreet}}">
+                            <input type="hidden" name="addr_suburb" value="{{$f.AddrSuburb}}">
+                            <input type="hidden" name="addr_state" value="{{$f.AddrState}}">
+                            <input type="hidden" name="addr_postcode" value="{{$f.AddrPostcode}}">
                             <div class="admin-form-inline">
                                 <div class="admin-field">
                                     <label for="suburb">Suburb</label>
@@ -68,4 +79,5 @@
             </div>
         </div>
     </section>
+    <script src="{{asset "js/address.js"}}" defer></script>
 {{end}}
