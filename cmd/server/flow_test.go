@@ -211,16 +211,30 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	if loc2 := post("/admin/invoices/new", url.Values{"booking": {itoa(bid)}}); !strings.HasPrefix(loc2, invPath) {
 		t.Fatalf("second create should reuse draft: %s", loc2)
 	}
-	// Edit: add hardware, paste link.
+	// Edit: add hardware and a seniors discount (negative unit), paste link.
 	post(invPath+"/items", url.Values{
-		"desc": {"Onsite service fee", "Labour — 5 × 15 min", "Crucial 1 TB SSD", ""},
-		"qty":  {"1", "5", "1", "1"},
-		"unit": {"80", "30", "129.95", ""},
+		"desc": {"Visit fee — includes travel", "Labour — 5 × 15 min", "Crucial 1 TB SSD", "Seniors Card discount — 20%", ""},
+		"qty":  {"1", "5", "1", "1", "1"},
+		"unit": {"80", "30", "129.95", "-58.00", ""},
 		"due":  {"2026-09-01"}, "notes": {"Thanks!"}, "payment_link": {"https://pay.example/zeller/abc"},
 	})
 	inv, _ := db.GetInvoice(invID)
-	if inv.TotalCents != 8000+15000+12995 || inv.PaymentLink != "https://pay.example/zeller/abc" || inv.Status != db.InvoiceDraft {
+	if inv.TotalCents != 8000+15000+12995-5800 || inv.PaymentLink != "https://pay.example/zeller/abc" || inv.Status != db.InvoiceDraft {
 		t.Fatalf("after edit: %+v", inv)
+	}
+	// The editor renders the negative unit bare ("-58.00") and it must survive a
+	// re-save unchanged (fmtCents-style "-$58.00" once round-tripped the editor).
+	if pg := get(invPath); !strings.Contains(pg, `value="-58.00"`) || !strings.Contains(pg, "-$58.00") {
+		t.Fatalf("discount line not rendered:\n%s", pg)
+	}
+	post(invPath+"/items", url.Values{
+		"desc": {"Visit fee — includes travel", "Labour — 5 × 15 min", "Crucial 1 TB SSD", "Seniors Card discount — 20%", ""},
+		"qty":  {"1", "5", "1", "1", "1"},
+		"unit": {"80", "30", "129.95", "-$58.00", ""},
+		"due":  {"2026-09-01"}, "notes": {"Thanks!"}, "payment_link": {"https://pay.example/zeller/abc"},
+	})
+	if inv, _ = db.GetInvoice(invID); inv.TotalCents != 8000+15000+12995-5800 {
+		t.Fatalf("negative unit did not round-trip: %+v", inv)
 	}
 	// Bad link rejected.
 	if rr := do("POST", invPath+"/items", url.Values{"csrf": {"csrf1"}, "desc": {"x"}, "qty": {"1"}, "unit": {"1"}, "payment_link": {"javascript:alert(1)"}}, true); !strings.Contains(rr.Header().Get("Location"), "err=") {
@@ -238,7 +252,7 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 		t.Fatal("sent invoice should not be editable")
 	}
 	pub := do("GET", "/invoice/"+inv.ViewToken, nil, false)
-	if pub.Code != 200 || !strings.Contains(pub.Body.String(), "INV-1000") || !strings.Contains(pub.Body.String(), "https://pay.example/zeller/abc") || !strings.Contains(pub.Body.String(), "$359.95") {
+	if pub.Code != 200 || !strings.Contains(pub.Body.String(), "INV-1000") || !strings.Contains(pub.Body.String(), "https://pay.example/zeller/abc") || !strings.Contains(pub.Body.String(), "$301.95") || !strings.Contains(pub.Body.String(), "-$58.00") {
 		t.Fatalf("public invoice: %d\n%s", pub.Code, pub.Body.String())
 	}
 	if do("GET", "/invoice/"+strings.Repeat("b", 64), nil, false).Code != 404 || do("GET", "/invoice/short", nil, false).Code != 404 {

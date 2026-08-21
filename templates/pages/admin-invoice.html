@@ -59,6 +59,7 @@
                             <div class="admin-btn-row">
                                 <button type="button" class="btn btn--ghost btn--sm" id="inv-add">+ Line</button>
                                 <button type="button" class="btn btn--ghost btn--sm" id="inv-add-labour" data-rate="{{$d.BlockRate}}">+ Labour (15 min blocks @ ${{$d.BlockRate}})</button>
+                                {{if ne $d.SeniorsPct "0"}}<button type="button" class="btn btn--ghost btn--sm" id="inv-add-seniors" data-pct="{{$d.SeniorsPct}}">+ Seniors discount (&minus;{{$d.SeniorsPct}}%)</button>{{end}}
                             </div>
                             <div class="admin-form-inline" style="margin-top:1rem">
                                 <div class="admin-field"><label for="due">Due date</label><input class="admin-input" type="date" id="due" name="due" value="{{$d.DueValue}}"></div>
@@ -74,7 +75,7 @@
                         <table class="admin-quotes-table inv-lines">
                             <thead><tr><th>Description</th><th class="td-num">Qty</th><th class="td-num">Unit</th><th class="td-num">Amount</th></tr></thead>
                             <tbody>
-                            {{range $d.Lines}}<tr><td>{{.Description}}</td><td class="td-num">{{.Qty}}</td><td class="td-num">${{.Unit}}</td><td class="td-num">{{.Line}}</td></tr>{{end}}
+                            {{range $d.Lines}}<tr><td>{{.Description}}</td><td class="td-num">{{.Qty}}</td><td class="td-num">{{.UnitFmt}}</td><td class="td-num">{{.Line}}</td></tr>{{end}}
                             </tbody>
                             <tfoot><tr><td colspan="3" class="td-num"><strong>Total</strong></td><td class="td-num"><strong>{{$d.Total}}</strong></td></tr></tfoot>
                         </table>

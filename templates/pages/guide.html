@@ -84,13 +84,11 @@
                         <a href="{{.URL}}" class="btn btn--ghost aside-btn">About this service &#8594;</a>
                     </div>
                     {{end}}
-                    <div class="price-card price-card--highlight">
-                        <div class="price-card-kicker">If you'd rather I did it</div>
-                        <div class="price-card-amount">${{$.Site.OnsiteFee}} <span class="price-card-plus">+ ${{$.Site.BlockRate}} / 15 min</span></div>
-                        <p class="price-card-note">At your place, no call-out fee in the service area, and no fix, no fee.</p>
-                        <a href="/book{{with $g.RelatedService}}?service={{.Slug}}{{end}}" class="btn btn--primary aside-btn">Book a visit &#8594;</a>
-                        {{if $.Site.Phone}}<a href="{{$.Site.PhoneHref}}" class="btn btn--ghost aside-btn">Call {{$.Site.Phone}}</a>{{end}}
-                    </div>
+                    {{$burl := "/book"}}{{with $g.RelatedService}}{{$burl = printf "/book?service=%s" .Slug}}{{end}}
+                    {{template "price-card" (dict "Site" $.Site
+                        "Kicker" "If you'd rather I did it"
+                        "Note" "At your place, travel included in the visit fee — and no fix, no fee."
+                        "BookURL" $burl)}}
                     {{if .PageData.Others}}
                     <div class="aside-links">
                         <div class="price-card-kicker">More {{$g.Kicker}} guides</div>

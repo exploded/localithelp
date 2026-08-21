@@ -21,14 +21,23 @@
           "logo": "{{.Site.BaseURL}}/static/img/icon-512.png",
           "email": "{{.Site.Email}}",{{if .Site.Phone}}
           "telephone": "{{.Site.Phone}}",{{end}}
-          "priceRange": "$$",
+          "priceRange": "${{.Site.OnsiteFee}} flat visit fee plus ${{.Site.BlockRate}} per 15 minutes (AUD)",
           "address": {"@type": "PostalAddress", "addressLocality": "Donvale", "addressRegion": "VIC", "postalCode": "3111", "addressCountry": "AU"},
           "geo": {"@type": "GeoCoordinates", "latitude": -37.79, "longitude": 145.18},
           "areaServed": [{{range $i, $s := .Site.Suburbs}}{{if $i}}, {{end}}{"@type": "City", "name": "{{$s}}"}{{end}}],
           "knowsAbout": ["Computer repair", "Wi-Fi and home networking", "Email and Outlook", "Printers", "Scam and virus removal", "New computer setup", "Data recovery", "Software development", "Shopify"],
           "paymentAccepted": "Visa, Mastercard, Amex, PayID, Apple Pay, Google Pay",
           "openingHours": "Mo-Fr 09:00-17:00",
-          "founder": {"@type": "Person", "name": "James McHugh"}
+          "founder": {"@type": "Person", "name": "James McHugh"},
+          "potentialAction": {
+            "@type": "ReserveAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "{{.Site.BaseURL}}/book",
+              "actionPlatform": ["https://schema.org/DesktopWebPlatform", "https://schema.org/MobileWebPlatform"]
+            },
+            "result": {"@type": "Reservation", "name": "On-site IT help visit"}
+          }
         },
         {
           "@type": "WebSite",
@@ -61,8 +70,8 @@
                     <a href="/software-development" class="btn btn--ghost">Software development &#8594;</a>
                 </div>
                 <ul class="hero-points">
-                    <li>${{.Site.OnsiteFee}} service fee + ${{.Site.BlockRate}} per 15 min</li>
-                    <li>No call-out fee in the service area</li>
+                    <li>${{.Site.OnsiteFee}} visit fee + ${{.Site.BlockRate}} per 15 min</li>
+                    <li>Travel included anywhere in the service area</li>
                     <li>14-day work guarantee</li>
                 </ul>
             </div>

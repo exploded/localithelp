@@ -55,7 +55,7 @@ func main() {
 	initMail()
 	initTurnstile()
 
-	if err := db.Open(filepath.Join(dir, "quotes.db")); err != nil {
+	if err := db.Open(filepath.Join(dir, "app.db")); err != nil {
 		log.Fatalf("database: %v", err)
 	}
 	defer db.Close()
@@ -100,12 +100,15 @@ func newMux(dir string) *http.ServeMux {
 
 	mux.HandleFunc("GET /robots.txt", handleRobots)
 	mux.HandleFunc("GET /sitemap.xml", handleSitemap)
+	mux.HandleFunc("GET /llms.txt", handleLlmsTxt)
+	mux.HandleFunc("GET /api/pricing", handleAPIPricing)
 	mux.HandleFunc("GET /favicon.ico", handleFavicon(dir))
 
 	mux.HandleFunc("GET /{$}", handleHome)
 	mux.HandleFunc("GET /services", handleServices)
 	mux.HandleFunc("GET /services/{slug}", handleService)
 	mux.HandleFunc("GET /software-development", handleSoftwareDev)
+	mux.HandleFunc("GET /pricing", handlePricing)
 	mux.HandleFunc("GET /fix-it-yourself", handleGuides)
 	mux.HandleFunc("GET /fix-it-yourself/{slug}", handleGuide)
 	mux.HandleFunc("GET /areas", handleAreas)
@@ -163,6 +166,25 @@ func newMux(dir string) *http.ServeMux {
 	return mux
 }
 
+// dict builds a map from key/value pairs for passing multiple values to a
+// template partial: {{template "price-card" (dict "Site" .Site "Kicker" "…")}}.
+// Errors (odd arg count, non-string key) fail the template render, so mistakes
+// surface in TestTemplatesRender rather than as silently missing data.
+func dict(pairs ...any) (map[string]any, error) {
+	if len(pairs)%2 != 0 {
+		return nil, fmt.Errorf("dict: odd number of arguments (%d)", len(pairs))
+	}
+	m := make(map[string]any, len(pairs)/2)
+	for i := 0; i < len(pairs); i += 2 {
+		k, ok := pairs[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict: key %d is %T, want string", i/2, pairs[i])
+		}
+		m[k] = pairs[i+1]
+	}
+	return m, nil
+}
+
 func loadTemplates(dir string) (map[string]*template.Template, error) {
 	funcMap := template.FuncMap{
 		"safeHTML":  func(s string) template.HTML { return template.HTML(s) },
@@ -170,6 +192,7 @@ func loadTemplates(dir string) (map[string]*template.Template, error) {
 		"add":       func(a, b int) int { return a + b },
 		"mul":       func(a, b int) int { return a * b },
 		"money":     fmtCents,
+		"dict":      dict,
 		"seq":       seq,
 		"crumbs":    crumbs,
 		"stripTags": stripTags,
@@ -523,18 +546,19 @@ func jsonError(w http.ResponseWriter, msg string, code int) {
 
 // siteConfig holds global, environment-driven settings exposed to every template as .Site.
 type siteConfig struct {
-	BaseURL   string       // canonical origin, no trailing slash, e.g. https://localithelp.com.au
-	Phone     string       // display phone, empty hides all phone UI
-	PhoneHref template.URL // tel: link (+61 form); template.URL so html/template keeps the tel: scheme
-	Email     string       // contact email
-	OnsiteFee int          // onsite service fee (AUD)
-	BlockRate int          // per 15-minute block (AUD)
-	Suburbs   []string     // service area (display names)
-	Areas     []Suburb     // service area with slugs, for /areas/{slug} links
-	ABN       string       // shown on invoices
-	BankName  string       // bank transfer details on invoices (BSB empty = hidden)
-	BankBSB   string
-	BankAcct  string
+	BaseURL    string       // canonical origin, no trailing slash, e.g. https://localithelp.com.au
+	Phone      string       // display phone, empty hides all phone UI
+	PhoneHref  template.URL // tel: link (+61 form); template.URL so html/template keeps the tel: scheme
+	Email      string       // contact email
+	OnsiteFee  int          // flat visit fee, includes travel (AUD)
+	BlockRate  int          // per 15-minute block (AUD)
+	SeniorsPct int          // Seniors Card discount, % off the total (0 hides it)
+	Suburbs    []string     // service area (display names)
+	Areas      []Suburb     // service area with slugs, for /areas/{slug} links
+	ABN        string       // shown on invoices
+	BankName   string       // bank transfer details on invoices (BSB empty = hidden)
+	BankBSB    string
+	BankAcct   string
 }
 
 var site siteConfig
@@ -553,19 +577,21 @@ func initSiteConfig(port string) {
 		email = "james@localithelp.com.au"
 	}
 	site = siteConfig{
-		BaseURL:   base,
-		Phone:     strings.TrimSpace(os.Getenv("PHONE")),
-		Email:     email,
-		OnsiteFee: envInt("ONSITE_FEE", 80),
-		BlockRate: envInt("BLOCK_RATE", 30),
-		Suburbs:   suburbs,
-		Areas:     suburbList,
-		ABN:       envOr("ABN", "14 723 053 435"),
-		BankName:  envOr("BANK_ACCOUNT_NAME", "James McHugh"),
-		BankBSB:   strings.TrimSpace(os.Getenv("BANK_BSB")),
-		BankAcct:  strings.TrimSpace(os.Getenv("BANK_ACCOUNT_NO")),
+		BaseURL:    base,
+		Phone:      strings.TrimSpace(os.Getenv("PHONE")),
+		Email:      email,
+		OnsiteFee:  envInt("ONSITE_FEE", 80),
+		BlockRate:  envInt("BLOCK_RATE", 30),
+		SeniorsPct: envInt("SENIORS_DISCOUNT_PCT", 20),
+		Suburbs:    suburbs,
+		Areas:      suburbList,
+		ABN:        envOr("ABN", "14 723 053 435"),
+		BankName:   envOr("BANK_ACCOUNT_NAME", "James McHugh"),
+		BankBSB:    strings.TrimSpace(os.Getenv("BANK_BSB")),
+		BankAcct:   strings.TrimSpace(os.Getenv("BANK_ACCOUNT_NO")),
 	}
 	site.PhoneHref = template.URL(telHref(site.Phone))
+	applySeniorsNote(site.SeniorsPct)
 }
 
 func envOr(key, def string) string {

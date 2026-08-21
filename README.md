@@ -59,7 +59,7 @@ domain serves traffic**, or set `BASE_URL=https://mchugh.com.au` in the server
 ```
 sqlc generate
 go run ./cmd/server          # http://localhost:8080
-# or build.bat (deletes quotes.db, regenerates, builds, runs)
+# or build.bat (deletes app.db, regenerates, builds, runs)
 ```
 
 ## Environment (`.env` in the app dir)
@@ -71,7 +71,8 @@ go run ./cmd/server          # http://localhost:8080
 | `BASE_URL` | `https://localithelp.com.au` if PROD else `http://localhost:PORT` | canonical origin; OAuth redirect + quote verification links |
 | `PHONE` | empty | display phone; empty hides all phone UI |
 | `CONTACT_EMAIL` | `james@localithelp.com.au` | contact email; also the SES sender (must be a verified identity) and where booking / verified-quote notifications go |
-| `ONSITE_FEE` / `BLOCK_RATE` | `80` / `30` | published pricing (AUD); also prefill invoice lines |
+| `ONSITE_FEE` / `BLOCK_RATE` | `80` / `30` | published pricing (AUD): flat visit fee + per-15-min rate; also prefill invoice lines |
+| `SENIORS_DISCOUNT_PCT` | `20` | Seniors Card discount (% off the total) shown site-wide and on the invoice editor's discount button; `0` hides it |
 | `ABN` | `14 723 053 435` | printed on invoices |
 | `BANK_ACCOUNT_NAME` / `BANK_BSB` / `BANK_ACCOUNT_NO` | `James McHugh` / – / – | bank-transfer details on invoices; BSB empty = hidden |
 | `ADMIN_EMAIL` | `james67@gmail.com` | Google account allowed into `/admin` |
@@ -102,7 +103,8 @@ log in — they get emails with tokenised links.
    sets start + duration, status → `booked`, emails the customer a confirmation
    with an `.ics` invite. Rescheduling re-sends; **Cancel** emails a cancellation.
 3. After the visit mark it **Done**, then **Create invoice** — a draft prefilled with
-   the service fee and labour (duration ÷ 15 min × `BLOCK_RATE`); add hardware lines.
+   the visit fee and labour (duration ÷ 15 min × `BLOCK_RATE`); add hardware lines,
+   and a **+ Seniors discount** button adds a −`SENIORS_DISCOUNT_PCT`% line.
    Numbers start at `INV-1000` and are never reused (void keeps its number).
 4. **Zeller:** the invoice page shows the amount and `INV-####` with copy buttons —
    create a Payment Link in the Zeller app with those and paste it in. There is no

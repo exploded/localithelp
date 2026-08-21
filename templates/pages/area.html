@@ -35,7 +35,7 @@
       "image": "{{.Site.BaseURL}}{{.PageData.Image}}",{{end}}
       "provider": {"@id": "{{.Site.BaseURL}}/#business"},
       "areaServed": {"@type": "City", "name": "{{$a.Name}}", "address": {"@type": "PostalAddress", "addressLocality": "{{$a.Name}}", "postalCode": "{{$a.Postcode}}", "addressRegion": "VIC", "addressCountry": "AU"}},
-      "offers": {"@type": "Offer", "priceCurrency": "AUD", "price": "{{.Site.OnsiteFee}}", "description": "Onsite service fee; time billed at ${{.Site.BlockRate}} per 15 minutes. No fix, no fee."}
+      "offers": {"@type": "Offer", "priceCurrency": "AUD", "price": "{{.Site.OnsiteFee}}", "description": "Flat ${{.Site.OnsiteFee}} visit fee including travel within the service area, plus ${{.Site.BlockRate}} per 15 minutes on site.{{if .Site.SeniorsPct}} Seniors Card holders {{.Site.SeniorsPct}}% off.{{end}} No fix, no fee."}
     }
     </script>
 {{end}}
@@ -64,7 +64,7 @@
     <section class="service-section">
         <div class="container">
             <div class="help-banner help-banner--slim reveal">
-                <div><strong>About {{$a.DriveMin}} minutes from Donvale.</strong> {{$a.Name}} is well inside the service area, so there's no call-out or travel fee — just the standard visit rate, and no fix, no fee.</div>
+                <div><strong>About {{$a.DriveMin}} minutes from Donvale.</strong> {{$a.Name}} is well inside the service area, so the flat visit fee covers the travel — nothing extra for the trip. And no fix, no fee.</div>
                 <div class="help-banner-actions">
                     <a href="/book?suburb={{$a.Name}}" class="btn btn--primary">Book a visit in {{$a.Name}} &#8594;</a>
                     {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost">Call {{.Site.Phone}}</a>{{end}}
@@ -112,13 +112,10 @@
                 </div>
 
                 <aside class="service-aside">
-                    <div class="price-card price-card--highlight">
-                        <div class="price-card-kicker">Home or office visit in {{$a.Name}}</div>
-                        <div class="price-card-amount">${{.Site.OnsiteFee}} <span class="price-card-plus">+ ${{.Site.BlockRate}} / 15 min</span></div>
-                        <p class="price-card-note">Billed in 15-minute blocks. The service fee covers travel — no call-out charge for {{$a.Name}}.</p>
-                        <a href="/book?suburb={{$a.Name}}" class="btn btn--primary aside-btn">Book a visit &#8594;</a>
-                        {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost aside-btn">Call {{.Site.Phone}}</a>{{end}}
-                    </div>
+                    {{template "price-card" (dict "Site" .Site
+                        "Kicker" (printf "Home or office visit in %s" $a.Name)
+                        "Note" (printf "Billed in 15-minute blocks. The flat visit fee covers the travel — nothing extra for the trip to %s." $a.Name)
+                        "BookURL" (printf "/book?suburb=%s" $a.Name))}}
                     <ul class="aside-guarantees">
                         <li>No fix, no fee</li>
                         <li>14-day work guarantee</li>

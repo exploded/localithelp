@@ -21,12 +21,30 @@ var robotsDisallow = []string{
 	"/admin", "/api/", "/auth/", "/invoice/", "/quote/verify", "/quote/sent", "/book/thanks",
 }
 
+// aiCrawlers get their own robots.txt group so intent is explicit: AI
+// assistants are welcome to crawl the content under the same rules as
+// everyone else.
+var aiCrawlers = []string{
+	"GPTBot", "OAI-SearchBot", "ChatGPT-User",
+	"ClaudeBot", "Claude-User", "Claude-SearchBot",
+	"PerplexityBot", "Google-Extended",
+}
+
 func handleRobots(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
-	b.WriteString("User-agent: *\n")
-	for _, p := range robotsDisallow {
-		b.WriteString("Disallow: " + p + "\n")
+	group := func(agents ...string) {
+		for _, a := range agents {
+			b.WriteString("User-agent: " + a + "\n")
+		}
+		b.WriteString("Allow: /api/pricing\n")
+		for _, p := range robotsDisallow {
+			b.WriteString("Disallow: " + p + "\n")
+		}
+		b.WriteString("\n")
 	}
+	group("*")
+	group(aiCrawlers...)
+	b.WriteString("# Machine-readable site summary for AI assistants: " + site.BaseURL + "/llms.txt\n")
 	b.WriteString("\nSitemap: " + site.BaseURL + "/sitemap.xml\n")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
@@ -38,7 +56,7 @@ func handleRobots(w http.ResponseWriter, r *http.Request) {
 // sitemapURLs is the single source of truth for every indexable public path.
 // Everything here must return 200 (never a redirect) — TestSitemap enforces it.
 func sitemapURLs() []string {
-	paths := []string{"/", "/services", "/software-development", "/fix-it-yourself", "/areas", "/book", "/quote", "/portfolio"}
+	paths := []string{"/", "/services", "/software-development", "/pricing", "/fix-it-yourself", "/areas", "/book", "/quote", "/portfolio"}
 	for i := range services {
 		p := services[i].URL()
 		if p == "/software-development" {

@@ -46,7 +46,7 @@
             <a href="/services"{{if hasPrefix .Path "/services"}} class="active"{{end}}>Services</a>
             <a href="/software-development"{{if hasPrefix .Path "/software-development"}} class="active"{{end}}>Software</a>
             <a href="/fix-it-yourself"{{if hasPrefix .Path "/fix-it-yourself"}} class="active"{{end}}>Fix it yourself</a>
-            <a href="/#pricing">Pricing</a>
+            <a href="/pricing"{{if hasPrefix .Path "/pricing"}} class="active"{{end}}>Pricing</a>
             <a href="/areas"{{if hasPrefix .Path "/areas"}} class="active"{{end}}>Areas</a>
             <a href="/portfolio"{{if hasPrefix .Path "/portfolio"}} class="active"{{end}}>Portfolio</a>
             {{if .IsAdmin}}<a href="/admin"{{if hasPrefix .Path "/admin"}} class="active"{{end}}>Admin</a>{{end}}
@@ -76,7 +76,7 @@
                 <a href="/services">Services</a>
                 <a href="/software-development">Software</a>
                 <a href="/fix-it-yourself">Fix it yourself</a>
-                <a href="/#pricing">Pricing</a>
+                <a href="/pricing">Pricing</a>
                 <a href="/areas">Areas</a>
                 <a href="/portfolio">Portfolio</a>
                 <a href="/quote">Get a Quote</a>

@@ -99,6 +99,9 @@
                 </form>
 
                 <aside class="service-aside book-aside">
+                    {{template "price-card" (dict "Site" .Site
+                        "Kicker" "The rate"
+                        "Note" "Billed in 15-minute blocks. The flat visit fee includes travel anywhere in the service area, and there's no fix, no fee.")}}
                     <div class="price-card">
                         <div class="price-card-kicker">What happens next</div>
                         <ol class="aside-steps">
@@ -110,7 +113,7 @@
                     <ul class="aside-guarantees">
                         <li>No fix, no fee</li>
                         <li>14-day work guarantee</li>
-                        <li>No call-out fee in the service area</li>
+                        <li>Travel included in the flat visit fee</li>
                     </ul>
                     {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost aside-btn">Prefer to call? {{.Site.Phone}}</a>{{end}}
                     <p class="aside-area">Or email <a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a></p>

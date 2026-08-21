@@ -58,6 +58,23 @@
             if (!units) return;
             addRow('Labour — ' + units + ' × 15 min', units, lab.getAttribute('data-rate'));
         });
+        var sen = document.getElementById('inv-add-seniors');
+        if (sen) sen.addEventListener('click', function () {
+            var exists = false;
+            body.querySelectorAll('input[name=desc]').forEach(function (i) {
+                if (i.value.indexOf('Seniors Card discount') !== -1) exists = true;
+            });
+            if (exists) { alert('A seniors discount line is already on this invoice.'); return; }
+            var sum = 0;
+            body.querySelectorAll('tr').forEach(function (tr) {
+                var qty = Number(tr.querySelector('.inv-qty').value) || 0;
+                var unit = cents(tr.querySelector('.inv-unit').value);
+                if (tr.querySelector('input[name=desc]').value.trim()) sum += Math.round(qty * unit);
+            });
+            if (sum <= 0) { alert('Add the fee and labour lines first, then apply the discount.'); return; }
+            var pct = Number(sen.getAttribute('data-pct'));
+            addRow('Seniors Card discount — ' + pct + '%', 1, (-Math.round(sum * pct / 100) / 100).toFixed(2));
+        });
         recalc();
     }
 

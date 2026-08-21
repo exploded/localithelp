@@ -117,7 +117,7 @@ func TestMoneyHelpers(t *testing.T) {
 			t.Errorf("fmtCents(%d) = %q, want %q", in, got, want)
 		}
 	}
-	for in, want := range map[string]int64{"": 0, "80": 8000, "129.5": 12950, "$1,200.99": 120099, "0.5": 50, "3.999": 399} {
+	for in, want := range map[string]int64{"": 0, "80": 8000, "129.5": 12950, "$1,200.99": 120099, "0.5": 50, "3.999": 399, "-58.00": -5800, "-$58.00": -5800, "$-58.00": -5800} {
 		got, err := dollarsToCents(in)
 		if err != nil || got != want {
 			t.Errorf("dollarsToCents(%q) = %d, %v; want %d", in, got, err, want)

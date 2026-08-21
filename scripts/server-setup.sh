@@ -37,9 +37,10 @@ BASE_URL=https://mchugh.com.au
 PHONE=
 CONTACT_EMAIL=james@mchugh.com.au
 
-# Pricing (AUD). Defaults: 80 service fee, 30 per 15-minute block
+# Pricing (AUD). Defaults: 80 visit fee, 30 per 15-minute block, 20% seniors discount
 ONSITE_FEE=80
 BLOCK_RATE=30
+SENIORS_DISCOUNT_PCT=20
 
 # Invoices: ABN and bank transfer details (BANK_BSB empty = bank details hidden)
 ABN=14 723 053 435

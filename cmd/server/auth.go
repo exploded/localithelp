@@ -82,7 +82,8 @@ func fmtCents(c int64) string {
 
 // dollarsToCents parses a user-typed dollar amount ("129.95", "$1,200") to cents.
 func dollarsToCents(s string) (int64, error) {
-	s = strings.TrimSpace(strings.ReplaceAll(strings.TrimPrefix(strings.TrimSpace(s), "$"), ",", ""))
+	// Remove all "$" (not just a leading one): negative amounts render as "-$58.00".
+	s = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(s, "$", ""), ",", ""))
 	if s == "" {
 		return 0, nil
 	}

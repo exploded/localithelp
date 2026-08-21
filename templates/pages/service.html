@@ -66,11 +66,8 @@
                 </div>
 
                 <aside class="service-aside">
-                    <div class="price-card price-card--highlight">
-                        <div class="price-card-kicker">Home or office visit</div>
-                        <div class="price-card-amount">${{$.Site.OnsiteFee}} <span class="price-card-plus">+ ${{$.Site.BlockRate}} / 15 min</span></div>
-                        <p class="price-card-note">Billed in 15-minute blocks. No call-out fee in the service area.</p>
-                    </div>
+                    {{template "price-card" (dict "Site" $.Site
+                        "Note" "Billed in 15-minute blocks. The flat visit fee includes travel anywhere in the service area.")}}
                     {{if $s.PriceNote}}<p class="aside-note">{{$s.PriceNote}}</p>{{end}}
                     <ul class="aside-guarantees">
                         <li>No fix, no fee</li>

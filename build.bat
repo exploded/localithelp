@@ -1,6 +1,6 @@
 @echo off
 echo Deleting database...
-del /q quotes.db 2>nul
+del /q app.db 2>nul
 echo Generating sqlc...
 sqlc generate
 if %errorlevel% neq 0 exit /b %errorlevel%

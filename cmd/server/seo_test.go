@@ -26,7 +26,7 @@ func seoTestSetup(t *testing.T) *http.ServeMux {
 	if err != nil {
 		t.Fatal(err)
 	}
-	site = siteConfig{BaseURL: "https://example.test", Email: "me@example.test", OnsiteFee: 80, BlockRate: 30, Suburbs: suburbs, Areas: suburbList}
+	site = siteConfig{BaseURL: "https://example.test", Email: "me@example.test", OnsiteFee: 80, BlockRate: 30, SeniorsPct: 20, Suburbs: suburbs, Areas: suburbList}
 	return newMux("../..")
 }
 
@@ -45,7 +45,13 @@ func TestRobots(t *testing.T) {
 		t.Fatalf("robots: %d %s", rr.Code, rr.Header().Get("Content-Type"))
 	}
 	body := rr.Body.String()
-	for _, want := range []string{"User-agent: *", "Disallow: /admin", "Disallow: /invoice/", "Sitemap: https://example.test/sitemap.xml"} {
+	for _, want := range []string{
+		"User-agent: *", "Disallow: /admin", "Disallow: /invoice/", "Sitemap: https://example.test/sitemap.xml",
+		"User-agent: GPTBot", "User-agent: OAI-SearchBot", "User-agent: ChatGPT-User",
+		"User-agent: ClaudeBot", "User-agent: Claude-User", "User-agent: Claude-SearchBot",
+		"User-agent: PerplexityBot", "User-agent: Google-Extended",
+		"Allow: /api/pricing", "https://example.test/llms.txt",
+	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("robots.txt missing %q:\n%s", want, body)
 		}
@@ -88,7 +94,7 @@ func TestSitemap(t *testing.T) {
 			t.Errorf("GET %s → %d (sitemap entries must be 200)", path, r.Code)
 		}
 	}
-	for _, must := range []string{"/", "/services", "/software-development", "/fix-it-yourself", "/areas", "/areas/donvale", "/services/email-outlook", "/book"} {
+	for _, must := range []string{"/", "/services", "/software-development", "/pricing", "/fix-it-yourself", "/areas", "/areas/donvale", "/services/email-outlook", "/book"} {
 		if !seen["https://example.test"+must] {
 			t.Errorf("sitemap missing %s", must)
 		}
@@ -227,6 +233,7 @@ func TestJSONLD(t *testing.T) {
 		"/services":                          {"BreadcrumbList"},
 		"/services/email-outlook":            {"BreadcrumbList", "Service"},
 		"/software-development":              {"BreadcrumbList", "Service"},
+		"/pricing":                           {"BreadcrumbList", "Service", "FAQPage"},
 		"/fix-it-yourself":                   {"BreadcrumbList"},
 		"/fix-it-yourself/" + guides[0].Slug: {"BreadcrumbList", "Article"},
 		"/areas":                             {"BreadcrumbList"},
@@ -265,6 +272,14 @@ func TestJSONLD(t *testing.T) {
 		}
 		if strings.Contains(body, `name="robots" content="noindex"`) {
 			t.Errorf("%s: indexable page is noindex", path)
+		}
+	}
+	// Home page LocalBusiness: concrete priceRange and a booking action.
+	// (Match slash-free fragments — html/template escapes "/" inside <script>.)
+	home := get(mux, "/").Body.String()
+	for _, want := range []string{"ReserveAction", "$80 flat visit fee plus $30 per 15 minutes (AUD)", `"Reservation"`} {
+		if !strings.Contains(home, want) {
+			t.Errorf("home JSON-LD missing %s", want)
 		}
 	}
 	// Suburb photo: page with a file gets the figure + credit + its own og:image; page without falls back.

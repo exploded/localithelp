@@ -1,0 +1,168 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Computer Repair &amp; IT Help Prices — Donvale &amp; Melbourne's Eastern Suburbs | Local IT Help</title>
+    <meta name="description" content="What at-home computer help costs around Donvale and Melbourne's east: a flat ${{.Site.OnsiteFee}} visit fee including travel, ${{.Site.BlockRate}} per 15 minutes on site{{if .Site.SeniorsPct}}, {{.Site.SeniorsPct}}% off for Seniors Card holders{{end}} — and no fix, no fee.">
+    <meta property="og:title" content="Computer repair &amp; IT help prices — Donvale &amp; Melbourne's east">
+    <meta property="og:description" content="Flat ${{.Site.OnsiteFee}} visit fee + ${{.Site.BlockRate}} per 15 min, published up front. No fix, no fee.">
+{{end}}
+
+{{define "head"}}
+    {{template "ld-breadcrumbs" (crumbs "Home" "/" "Pricing" "/pricing")}}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Service",
+          "name": "At-home computer help and repairs",
+          "serviceType": "Computer repair and IT support",
+          "description": "Onsite computer help around Donvale and Melbourne's eastern suburbs, priced as a flat visit fee plus time on site.",
+          "url": "{{.Site.BaseURL}}/pricing",
+          "provider": {"@id": "{{.Site.BaseURL}}/#business"},
+          "areaServed": [{{range $i, $n := .Site.Suburbs}}{{if $i}}, {{end}}{"@type": "City", "name": "{{$n}}"}{{end}}],
+          "offers": [
+            {"@type": "Offer", "priceCurrency": "AUD", "price": "{{.Site.OnsiteFee}}", "description": "Flat visit fee — one per visit, travel anywhere in the service area included."},
+            {"@type": "Offer", "priceCurrency": "AUD", "price": "{{.Site.BlockRate}}", "description": "Per 15 minutes on site, billed in 15-minute blocks. A typical one-hour visit totals ${{.PageData.HourTotal}} including the visit fee. No fix, no fee."}
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is there a call-out fee?",
+              "acceptedAnswer": {"@type": "Answer", "text": "No separate one — the ${{.Site.OnsiteFee}} visit fee is the only fixed charge, and it covers travel anywhere in the service area. Distance never changes the price."}
+            },
+            {
+              "@type": "Question",
+              "name": "What if you can't fix it?",
+              "acceptedAnswer": {"@type": "Answer", "text": "Then you don't pay for the labour — no fix, no fee. If the same problem comes back within 14 days, I return and sort it at no charge."}
+            },
+            {
+              "@type": "Question",
+              "name": "How long do jobs usually take?",
+              "acceptedAnswer": {"@type": "Answer", "text": "Most email, printer and Wi-Fi problems take 30–60 minutes. Virus clean-ups and new-computer setups usually run 1–2 hours. You'll know the likely cost before I start."}
+            },
+            {
+              "@type": "Question",
+              "name": "Do you charge GST?",
+              "acceptedAnswer": {"@type": "Answer", "text": "No GST is charged on labour — I'm not registered for GST. Parts, if any, are supplied at cost plus GST and always agreed with you first."}
+            },
+            {
+              "@type": "Question",
+              "name": "How do I pay?",
+              "acceptedAnswer": {"@type": "Answer", "text": "Tap your card at the end of the visit — Visa, Mastercard, Amex, Apple Pay or Google Pay — or ask for an invoice you can pay online or by bank transfer."}
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Pricing</div>
+            <h1 class="section-title">What it costs.</h1>
+            <p class="page-header-intro">Most computer-help outfits won't tell you the price until they're at your door. Mine is published here: one flat visit fee that includes travel, plus the time the job actually takes — and no fix, no fee.</p>
+        </div>
+    </div>
+
+    <section class="pricing-section" id="pricing">
+        <div class="container">
+            {{template "pricing" .Site}}
+            {{template "payment-methods" .}}
+        </div>
+    </section>
+
+    <section class="pricing-section">
+        <div class="container">
+            <div class="section-label reveal">Typical jobs</div>
+            <h2 class="section-title reveal">What a visit usually adds up to.</h2>
+            <p class="section-intro reveal">Time on site is billed in 15-minute blocks, so the total depends on the job — here's what common visits come to, visit fee included.</p>
+            <div class="package-grid">
+                <div class="package-card reveal">
+                    <div class="package-name">Quick fix — about 30 minutes</div>
+                    <div class="package-from"><strong>${{add .Site.OnsiteFee (mul .Site.BlockRate 2)}}</strong></div>
+                    <p class="package-blurb">One well-defined problem, sorted on the spot.</p>
+                    <ul class="checklist checklist--small">
+                        <li>Printer showing offline</li>
+                        <li>Email won't send or receive</li>
+                        <li>Phone or tablet not syncing</li>
+                    </ul>
+                </div>
+                <div class="package-card reveal">
+                    <div class="package-name">Standard visit — about an hour</div>
+                    <div class="package-from"><strong>${{.PageData.HourTotal}}</strong></div>
+                    <p class="package-blurb">The most common visit length.</p>
+                    <ul class="checklist checklist--small">
+                        <li>Wi-Fi drop-outs traced and fixed</li>
+                        <li>New modem or router set up</li>
+                        <li>One-on-one help session</li>
+                    </ul>
+                </div>
+                <div class="package-card reveal">
+                    <div class="package-name">Bigger job — about 90 minutes</div>
+                    <div class="package-from"><strong>${{add .Site.OnsiteFee (mul .Site.BlockRate 6)}}</strong></div>
+                    <p class="package-blurb">Clean-ups and setups that take longer.</p>
+                    <ul class="checklist checklist--small">
+                        <li>Virus or scam clean-up, accounts secured</li>
+                        <li>New computer set up, data moved across</li>
+                        <li>SSD upgrade with your data cloned</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{if .Site.SeniorsPct}}
+    <section class="pricing-section">
+        <div class="container">
+            <div class="section-label reveal">Seniors</div>
+            <h2 class="section-title reveal">Seniors Card holders: {{.Site.SeniorsPct}}% off.</h2>
+            <p class="section-intro reveal">Show your Seniors Card and {{.Site.SeniorsPct}}% comes off the whole bill — so a typical one-hour visit is ${{.PageData.SeniorsHour}} instead of ${{.PageData.HourTotal}}. It applies to every service, including <a href="/services/one-on-one-help">patient one-on-one help</a> at your own pace.</p>
+        </div>
+    </section>
+    {{end}}
+
+    <section class="pricing-section">
+        <div class="container">
+            <div class="section-label reveal">Guarantees</div>
+            <h2 class="section-title reveal">If it isn't fixed, you don't pay.</h2>
+            {{template "guarantees" .}}
+        </div>
+    </section>
+
+    <section class="pricing-section">
+        <div class="container">
+            <div class="section-label reveal">Software development</div>
+            <h2 class="section-title reveal">Building something instead?</h2>
+            <p class="section-intro reveal">Websites, Shopify stores and custom web apps are quoted separately — {{.PageData.Hourly}} for updates and rewrites, or fixed-price packages: {{range $i, $p := .PageData.Packages}}{{if $i}}, {{end}}{{$p.Name}} from {{$p.From}}{{end}}. See <a href="/software-development">software development</a> or get an instant estimate with the <a href="/quote">quote tool</a>.</p>
+        </div>
+    </section>
+
+    <section class="service-section">
+        <div class="container">
+            <div class="section-label reveal">Questions</div>
+            <h2 class="section-title reveal">Pricing questions, answered.</h2>
+            <div class="service-body reveal">
+                <h3>Is there a call-out fee?</h3>
+                <p>No separate one — the ${{.Site.OnsiteFee}} visit fee is the only fixed charge, and it covers travel anywhere in the service area. Distance never changes the price.</p>
+                <h3>What if you can't fix it?</h3>
+                <p>Then you don't pay for the labour — no fix, no fee. If the same problem comes back within 14 days, I return and sort it at no charge.</p>
+                <h3>How long do jobs usually take?</h3>
+                <p>Most email, printer and Wi-Fi problems take 30–60 minutes. Virus clean-ups and new-computer setups usually run 1–2 hours. You'll know the likely cost before I start.</p>
+                <h3>Do you charge GST?</h3>
+                <p>No GST is charged on labour — I'm not registered for GST. Parts, if any, are supplied at cost plus GST and always agreed with you first.</p>
+                <h3>How do I pay?</h3>
+                <p>Tap your card at the end of the visit — Visa, Mastercard, Amex, Apple Pay or Google Pay — or ask for an invoice you can pay online or by bank transfer.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">{{template "book-cta" .Site}}</div>
+    </section>
+{{end}}

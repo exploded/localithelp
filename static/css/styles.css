@@ -122,14 +122,16 @@ nav {
 .nav-brand {
     display: inline-flex;
     align-items: center;
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.35rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.02rem;
+    font-weight: 700;
     color: var(--text-primary);
     text-decoration: none;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
 }
-.nav-brand span { color: var(--brand); }
+.nav-brand span { color: var(--accent); }
 .nav-brand-icon {
     display: block;
     width: 26px;
@@ -1033,12 +1035,18 @@ footer {
 }
 
 /* ── Responsive ── */
+@media (max-width: 1100px) {
+    /* Not enough room for brand + full link row side by side:
+       brand on row one, links on their own row underneath */
+    nav { flex-wrap: wrap; row-gap: 0.5rem; }
+    .nav-links { order: 3; width: 100%; flex-wrap: wrap; gap: 0.5rem 1.5rem; }
+}
+
 @media (max-width: 768px) {
     nav { padding: 0.75rem 1.25rem; flex-wrap: wrap; row-gap: 0.5rem; }
-    .nav-brand { white-space: nowrap; font-size: 1.25rem; }
+    .nav-brand { font-size: 0.95rem; }
     .nav-brand-icon { width: 23px; height: 23px; margin-right: 0.5rem; }
-    /* Brand on row one, links on their own row underneath */
-    .nav-links { order: 3; width: 100%; gap: 0.5rem 1rem; flex-wrap: wrap; }
+    .nav-links { gap: 0.5rem 1rem; }
     .nav-links a { font-size: 0.7rem; }
     .nav-user-name { display: none; }
     .nav-user { margin-left: 0; padding-left: 0.5rem; }

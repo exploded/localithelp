@@ -10,20 +10,34 @@
 </a>
 {{end}}
 
+{{/* price-card: takes a dict — "Site" (required), plus optional "Kicker", "Note",
+     "BookURL" and "BookLabel" (a book button, and a call button when a phone is set) */}}
+{{define "price-card"}}
+<div class="price-card price-card--highlight">
+    <div class="price-card-kicker">{{or .Kicker "Home or office visit"}}</div>
+    <div class="price-card-amount">${{.Site.OnsiteFee}} <span class="price-card-plus">+ ${{.Site.BlockRate}} per 15 min</span></div>
+    <p class="price-card-note">{{or .Note "One flat visit fee covers me coming to you — travel anywhere in the service area is included, with no separate call-out charge on top. Time on site is billed in 15-minute blocks, so you only pay for what the job takes — most are done inside the hour."}}</p>
+    {{if .BookURL}}<a href="{{.BookURL}}" class="btn btn--primary aside-btn">{{or .BookLabel "Book a visit"}} &#8594;</a>
+    {{if .Site.Phone}}<a href="{{.Site.PhoneHref}}" class="btn btn--ghost aside-btn">Call {{.Site.Phone}}</a>{{end}}{{end}}
+</div>
+{{end}}
+
+{{/* price-points: takes .Site */}}
+{{define "price-points"}}
+<ul class="price-points">
+    <li>One flat visit fee — travel anywhere in the service area is included</li>
+    <li>You'll know the likely cost before I start — and no fix, no fee</li>
+    {{if .SeniorsPct}}<li>Seniors Card holders get {{.SeniorsPct}}% off the total</li>{{end}}
+    <li>Parts (if any) at cost + GST, always agreed with you first</li>
+    <li>Pay by tapping your card at the end of the visit</li>
+</ul>
+{{end}}
+
 {{/* pricing: takes .Site */}}
 {{define "pricing"}}
 <div class="pricing-grid pricing-grid--single">
-    <div class="price-card price-card--highlight">
-        <div class="price-card-kicker">Home or office visit</div>
-        <div class="price-card-amount">${{.OnsiteFee}} <span class="price-card-plus">+ ${{.BlockRate}} per 15 min</span></div>
-        <p class="price-card-note">The service fee covers travel anywhere in the service area. Time is billed in 15-minute blocks, so you only pay for what the job actually takes — many are done well inside the hour.</p>
-    </div>
-    <ul class="price-points">
-        <li>No call-out or travel fee anywhere in the service area</li>
-        <li>You'll know the price before I start — and no fix, no fee</li>
-        <li>Parts (if any) at cost + GST, always agreed with you first</li>
-        <li>Pay by tapping your card at the end of the visit</li>
-    </ul>
+    {{template "price-card" (dict "Site" .)}}
+    {{template "price-points" .}}
 </div>
 {{end}}
 

@@ -145,7 +145,7 @@ func handleAdminInvoiceNew(w http.ResponseWriter, r *http.Request) {
 		units = (b.DurationMin + calSlotMin - 1) / calSlotMin
 	}
 	items := []db.InvoiceItem{
-		{Description: "Onsite service fee", Qty: 1, UnitCents: int64(site.OnsiteFee) * 100},
+		{Description: "Visit fee — includes travel", Qty: 1, UnitCents: int64(site.OnsiteFee) * 100},
 		{Description: fmt.Sprintf("Labour — %d × 15 min", units), Qty: float64(units), UnitCents: int64(site.BlockRate) * 100},
 	}
 	id, err := db.CreateInvoice(bookingID, customerID, db.Today().AddDate(0, 0, 7), "", generateSessionToken(), items)
@@ -177,6 +177,7 @@ type adminInvoiceData struct {
 	When           string
 	BlockRate      string
 	OnsiteFee      string
+	SeniorsPct     string
 	PaymentMethod  string
 	HasCustEmail   bool
 	SentEmailNote  string
@@ -189,7 +190,8 @@ type adminInvoiceData struct {
 type invoiceLine struct {
 	Description string
 	Qty         string
-	Unit        string
+	Unit        string // bare dollars for the editor input, e.g. "-58.00"
+	UnitFmt     string // display form for read-only views, e.g. "-$58.00"
 	Line        string
 }
 
@@ -206,18 +208,19 @@ func handleAdminInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 	d := adminInvoiceData{
 		Flash: readFlash(r), V: v, Ref: inv.Ref(), Total: fmtCents(inv.TotalCents),
-		TotalDollars:   strings.TrimPrefix(strings.ReplaceAll(fmtCents(inv.TotalCents), ",", ""), "$"),
+		TotalDollars:   strings.ReplaceAll(strings.ReplaceAll(fmtCents(inv.TotalCents), ",", ""), "$", ""),
 		Editable:       inv.Status == db.InvoiceDraft,
 		CanSend:        inv.Status == db.InvoiceDraft,
 		CanResend:      inv.Status == db.InvoiceSent,
 		CanResendRcpt:  inv.Status == db.InvoicePaid,
-		CanPay:        inv.Status == db.InvoiceDraft || inv.Status == db.InvoiceSent,
+		CanPay:         inv.Status == db.InvoiceDraft || inv.Status == db.InvoiceSent,
 		CanVoid:        inv.Status == db.InvoiceDraft || inv.Status == db.InvoiceSent,
 		DueValue:       db.FormatDate(inv.DueAt),
 		PaidValue:      db.FormatDate(db.Today()),
 		Methods:        db.PaymentMethods,
 		BlockRate:      strconv.Itoa(site.BlockRate),
 		OnsiteFee:      strconv.Itoa(site.OnsiteFee),
+		SeniorsPct:     strconv.Itoa(site.SeniorsPct),
 		PaymentMethod:  db.PaymentMethodLabel(inv.PaymentMethod),
 		HasCustEmail:   v.Cust != nil && v.Cust.Email != "",
 		PublicURL:      v.PublicURL,
@@ -229,8 +232,9 @@ func handleAdminInvoice(w http.ResponseWriter, r *http.Request) {
 	for _, it := range v.Items {
 		d.Lines = append(d.Lines, invoiceLine{
 			Description: it.Description, Qty: fmtQty(it.Qty),
-			Unit: strings.TrimPrefix(strings.ReplaceAll(fmtCents(it.UnitCents), ",", ""), "$"),
-			Line: fmtCents(db.LineCents(it.Qty, it.UnitCents)),
+			Unit:    strings.ReplaceAll(strings.ReplaceAll(fmtCents(it.UnitCents), ",", ""), "$", ""),
+			UnitFmt: fmtCents(it.UnitCents),
+			Line:    fmtCents(db.LineCents(it.Qty, it.UnitCents)),
 		})
 	}
 	if d.Editable {

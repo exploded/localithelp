@@ -53,6 +53,17 @@ func init() {
 	}
 }
 
+// applySeniorsNote rewrites the tuition price note once the Seniors Card
+// discount percentage is known (the catalogue literal is built before env
+// is read, so this runs from initSiteConfig).
+func applySeniorsNote(pct int) {
+	if pct <= 0 {
+		return
+	}
+	servicesBySlug["one-on-one-help"].PriceNote = fmt.Sprintf(
+		"Book a one-hour session; longer or regular sessions available. Seniors Card holders get %d%% off the total.", pct)
+}
+
 func findService(slug string) (*Service, bool) {
 	s, ok := servicesBySlug[slug]
 	return s, ok
@@ -415,6 +426,7 @@ var services = []Service{
 			"Shopify store setup, theme customisation and app integration",
 			"Small-business websites with booking, forms and payments",
 			"Custom web apps — dashboards, portals, internal tools",
+			"MVPs and first versions for startups and new business ideas",
 			"Updating or rewriting legacy apps and spreadsheet-based processes",
 			"Integrations and automation between the tools you already use",
 			"Hosting, backups, monitoring and ongoing maintenance",

@@ -53,6 +53,25 @@ func handleSoftwareDev(w http.ResponseWriter, r *http.Request) {
 	}{s, softwarePackages, softwareHourly, relatedServices(s)})
 }
 
+// ── Pricing ──
+
+type pricingPageData struct {
+	Packages    []Package
+	Hourly      string
+	HourTotal   int // one-hour visit: fee + 4 blocks
+	SeniorsHour int // the same hour with the Seniors Card discount
+}
+
+func handlePricing(w http.ResponseWriter, r *http.Request) {
+	hour := site.OnsiteFee + 4*site.BlockRate
+	render(w, r, "pricing", pricingPageData{
+		Packages:    softwarePackages,
+		Hourly:      softwareHourly,
+		HourTotal:   hour,
+		SeniorsHour: hour - hour*site.SeniorsPct/100,
+	})
+}
+
 // ── Fix it yourself guides ──
 
 // guideGroup is one category on the /fix-it-yourself index.
@@ -185,7 +204,26 @@ type bookPageData struct {
 }
 
 func handleBookForm(w http.ResponseWriter, r *http.Request) {
-	f := bookForm{Service: r.URL.Query().Get("service")}
+	// Prefill from query params so AI assistants can hand users a ready-made
+	// booking link (documented in /llms.txt). Caps mirror the form maxlengths.
+	// Address fields are deliberately never prefilled: the address must come
+	// through the autocomplete so the service-area gate stays meaningful.
+	q := r.URL.Query()
+	pre := func(key string, max int) string {
+		v := strings.TrimSpace(q.Get(key))
+		if runes := []rune(v); len(runes) > max {
+			v = string(runes[:max])
+		}
+		return v
+	}
+	f := bookForm{
+		Name:          pre("name", 100),
+		Phone:         pre("phone", 40),
+		Email:         pre("email", 120),
+		Service:       q.Get("service"),
+		Issue:         pre("issue", 2000),
+		PreferredTime: pre("preferred_time", 200),
+	}
 	if _, ok := findService(f.Service); !ok {
 		f.Service = ""
 	}
