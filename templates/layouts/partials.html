@@ -124,6 +124,49 @@
 </div>
 {{end}}
 
+{{/* google-tag: takes the whole pageData. Loads gtag.js (Analytics and/or Ads) and
+     tracks clicks on phone and email links, which GA4 does not count on its own.
+     Renders nothing unless a tag ID is configured, and never for the signed-in
+     admin — my own visits shouldn't show up as traffic or conversions. */}}
+{{define "google-tag"}}
+{{if and .Site.Analytics (not .IsAdmin)}}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{.Site.TagID}}"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+{{if .Site.GA4ID}}gtag('config', '{{.Site.GA4ID}}');{{end}}
+{{if .Site.AdsID}}gtag('config', '{{.Site.AdsID}}');{{end}}
+document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href^="tel:"], a[href^="mailto:"]');
+    if (!a) return;
+    if (a.getAttribute('href').indexOf('tel:') === 0) {
+        gtag('event', 'phone_call_click');
+        {{if .Site.AdsCallLabel}}gtag('event', 'conversion', {send_to: '{{.Site.AdsID}}/{{.Site.AdsCallLabel}}'});{{end}}
+    } else {
+        gtag('event', 'email_click');
+    }
+});
+</script>
+{{end}}
+{{end}}
+
+{{/* conversion: reports one conversion on page load. Takes a dict — "Site" and
+     "IsAdmin" from the pageData, "Event" (GA4 event name) and "Label" (the Ads
+     conversion label, which may be empty). Self-contained: it re-declares gtag()
+     so it works wherever it is placed, and pushes to the same dataLayer that
+     "google-tag" set up under the identical condition. */}}
+{{define "conversion"}}
+{{if and .Site.Analytics (not .IsAdmin)}}
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('event', '{{.Event}}');
+{{if .Label}}gtag('event', 'conversion', {send_to: '{{.Site.AdsID}}/{{.Label}}'});{{end}}
+</script>
+{{end}}
+{{end}}
+
 {{/* csrf: takes the session token */}}
 {{define "csrf"}}<input type="hidden" name="csrf" value="{{.}}">{{end}}
 

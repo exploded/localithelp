@@ -81,6 +81,28 @@ go run ./cmd/server          # http://localhost:8080
 | `ANTHROPIC_API_KEY` | – | AI estimate in quote flow (generated only after the email is verified) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | – | Amazon SES credentials (IAM user `mchugh-au-mailer`); unset = email disabled |
 | `AWS_REGION` | `ap-southeast-2` | SES region |
+| `GA4_ID` | – | GA4 measurement ID (`G-…`); unset = no analytics script at all |
+| `GOOGLE_ADS_ID` | – | Google Ads conversion ID (`AW-…`) |
+| `GOOGLE_ADS_BOOKING_LABEL` | – | Ads conversion label fired on `/book/thanks` |
+| `GOOGLE_ADS_QUOTE_LABEL` | – | Ads conversion label fired on the quote "check your email" page |
+| `GOOGLE_ADS_CALL_LABEL` | – | Ads conversion label fired when a `tel:` link is clicked |
+| `SAME_AS` | – | comma-separated profile URLs (Google Business Profile, …) for the home-page JSON-LD `sameAs` |
+
+### Google tag (Analytics + Ads)
+
+The tag renders only when `PROD` is set **and** at least one ID is configured, so a
+local build reading a copy of the server's `.env` can't pollute the property. It is
+also suppressed for the signed-in admin, keeping your own visits out of the numbers.
+
+Each ID and label is validated at startup (letters, digits, `-`, `_`, plus the
+expected `G-`/`AW-` prefix); a malformed value is logged and ignored rather than
+injected into the tag. Conversion labels are dropped entirely if `GOOGLE_ADS_ID`
+is unset.
+
+Events sent: `page_view` (automatic), `booking_request`, `quote_request`,
+`phone_call_click` and `email_click` — the last two because GA4 does not count
+`tel:`/`mailto:` clicks on its own, and a phone call is the main way an ad click
+turns into a job.
 
 Booking requests are stored in the `bookings` table and listed at `/admin`.
 When SES is configured, each booking emails `CONTACT_EMAIL` (reply-to set to the

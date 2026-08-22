@@ -5,6 +5,10 @@
     <meta name="robots" content="noindex">
 {{end}}
 
+{{define "head"}}
+    {{template "conversion" (dict "Site" .Site "IsAdmin" .IsAdmin "Event" "booking_request" "Label" .Site.AdsBookLabel)}}
+{{end}}
+
 {{define "content"}}
     <div class="page-header">
         <div class="container">

@@ -48,6 +48,16 @@ BANK_ACCOUNT_NAME=James McHugh
 BANK_BSB=
 BANK_ACCOUNT_NO=
 
+# Google tag. Nothing loads until an ID is set. Conversion labels come from the
+# conversion actions you create in Google Ads; SAME_AS is a comma-separated list
+# of profile URLs (Google Business Profile, ...) for the home-page JSON-LD.
+GA4_ID=
+GOOGLE_ADS_ID=
+GOOGLE_ADS_BOOKING_LABEL=
+GOOGLE_ADS_QUOTE_LABEL=
+GOOGLE_ADS_CALL_LABEL=
+SAME_AS=
+
 # Admin + integrations (ADMIN_EMAIL = Google account allowed into /admin, default james67@gmail.com)
 ADMIN_EMAIL=james67@gmail.com
 GOOGLE_CLIENT_ID=

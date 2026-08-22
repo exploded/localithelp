@@ -563,6 +563,17 @@ type siteConfig struct {
 	BankName    string       // bank transfer details on invoices (BSB empty = hidden)
 	BankBSB     string
 	BankAcct    string
+
+	// Google tag (Analytics + Ads). Every field is optional and independently
+	// gated, so the site renders no third-party script until one is configured.
+	Analytics     bool     // true when the tag should render: PROD and at least one ID
+	TagID         string   // ID gtag.js is loaded with (GA4 if set, else Ads)
+	GA4ID         string   // GA4 measurement ID, G-XXXXXXXXXX
+	AdsID         string   // Google Ads conversion ID, AW-XXXXXXXXX
+	AdsBookLabel  string   // Ads conversion label — booking request submitted
+	AdsQuoteLabel string   // Ads conversion label — quote request submitted
+	AdsCallLabel  string   // Ads conversion label — tel: link clicked
+	SameAs        []string // profile URLs (Google Business Profile, …) for JSON-LD sameAs
 }
 
 var site siteConfig
@@ -594,9 +605,28 @@ func initSiteConfig(port string) {
 		BankName:    envOr("BANK_ACCOUNT_NAME", "James McHugh"),
 		BankBSB:     strings.TrimSpace(os.Getenv("BANK_BSB")),
 		BankAcct:    strings.TrimSpace(os.Getenv("BANK_ACCOUNT_NO")),
+
+		GA4ID:         tagID(os.Getenv("GA4_ID"), "G-"),
+		AdsID:         tagID(os.Getenv("GOOGLE_ADS_ID"), "AW-"),
+		AdsBookLabel:  tagToken(os.Getenv("GOOGLE_ADS_BOOKING_LABEL")),
+		AdsQuoteLabel: tagToken(os.Getenv("GOOGLE_ADS_QUOTE_LABEL")),
+		AdsCallLabel:  tagToken(os.Getenv("GOOGLE_ADS_CALL_LABEL")),
+		SameAs:        splitList(os.Getenv("SAME_AS")),
 	}
 	site.PhoneHref = template.URL(telHref(site.Phone))
 	applySeniorsNote(site.SeniorsPct)
+
+	// A conversion label is meaningless without the Ads ID it hangs off.
+	if site.AdsID == "" {
+		site.AdsBookLabel, site.AdsQuoteLabel, site.AdsCallLabel = "", "", ""
+	}
+	site.TagID = site.GA4ID
+	if site.TagID == "" {
+		site.TagID = site.AdsID
+	}
+	// Only tag production traffic — a local build reading a copy of the server's
+	// .env must not pollute the property or report phantom conversions.
+	site.Analytics = os.Getenv("PROD") != "" && site.TagID != ""
 }
 
 func envOr(key, def string) string {
@@ -613,6 +643,49 @@ func envInt(key string, def int) int {
 		}
 	}
 	return def
+}
+
+// tagToken sanitises a Google tag ID or conversion label. Google uses only
+// letters, digits, dash and underscore in both, so anything else is a typo (or
+// an attempt to break out of the tag's JS string) and is dropped entirely.
+func tagToken(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return ""
+	}
+	for _, c := range v {
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9', c == '-', c == '_':
+		default:
+			log.Printf("ignoring malformed Google tag value %q", v)
+			return ""
+		}
+	}
+	return v
+}
+
+// tagID is tagToken plus a required prefix ("G-" for GA4, "AW-" for Ads), so a
+// value pasted into the wrong variable is ignored rather than silently wrong.
+func tagID(v, prefix string) string {
+	v = tagToken(v)
+	if !strings.HasPrefix(v, prefix) {
+		if v != "" {
+			log.Printf("ignoring Google tag ID %q: expected the %s prefix", v, prefix)
+		}
+		return ""
+	}
+	return v
+}
+
+// splitList splits a comma-separated env value into trimmed, non-empty entries.
+func splitList(v string) []string {
+	var out []string
+	for _, s := range strings.Split(v, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // telHref converts a display phone number like "0400 000 000" into "tel:+61400000000".

@@ -18,7 +18,8 @@
           "name": "Local IT Help — Computer Help & Software Development",
           "url": "{{.Site.BaseURL}}/",
           "image": "{{.Site.BaseURL}}/static/img/og.png",
-          "logo": "{{.Site.BaseURL}}/static/img/icon-512.png",
+          "logo": "{{.Site.BaseURL}}/static/img/icon-512.png",{{if .Site.SameAs}}
+          "sameAs": [{{range $i, $u := .Site.SameAs}}{{if $i}}, {{end}}"{{$u}}"{{end}}],{{end}}
           "email": "{{.Site.Email}}",{{if .Site.Phone}}
           "telephone": "{{.Site.Phone}}",{{end}}
           "priceRange": "${{.Site.OnsiteFee}} flat visit fee plus ${{.Site.BlockRate}} per 15 minutes (AUD)",
