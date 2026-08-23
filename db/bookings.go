@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"mchugh.com.au/db/sqlc"
+	"localithelp/db/sqlc"
 )
 
 // Booking statuses.

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"mchugh.com.au/db"
+	"localithelp/db"
 )
 
 // TestBookingToInvoiceFlow drives the admin handlers end to end against a temp

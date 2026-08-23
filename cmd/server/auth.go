@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"mchugh.com.au/db"
+	"localithelp/db"
 )
 
 // requireAdmin gates a handler behind Google sign-in + the ADMIN_EMAIL check.

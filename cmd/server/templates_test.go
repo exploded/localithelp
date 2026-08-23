@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"mchugh.com.au/db"
+	"localithelp/db"
 )
 
 // TestTemplatesRender executes every page template with representative data so a

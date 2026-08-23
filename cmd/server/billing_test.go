@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"mchugh.com.au/db"
+	"localithelp/db"
 )
 
 // sampleInvoiceView builds a representative invoice for template/PDF tests.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"mchugh.com.au/db/sqlc"
+	"localithelp/db/sqlc"
 )
 
 // Customer is a person we do work for. No login — customers only ever receive

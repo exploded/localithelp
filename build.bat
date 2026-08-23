@@ -5,7 +5,7 @@ echo Generating sqlc...
 sqlc generate
 if %errorlevel% neq 0 exit /b %errorlevel%
 echo Building...
-go build -o mchugh-com-au.exe ./cmd/server/
+go build -o localithelp.exe ./cmd/server/
 if %errorlevel% neq 0 exit /b %errorlevel%
 echo Starting server...
-mchugh-com-au.exe
+localithelp.exe

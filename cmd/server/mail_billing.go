@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"mchugh.com.au/db"
-	"mchugh.com.au/mailer"
+	"localithelp/db"
+	"localithelp/mailer"
 )
 
 // ── Booking lifecycle + invoice emails ──

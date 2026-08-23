@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"mchugh.com.au/db/sqlc"
+	"localithelp/db/sqlc"
 
 	_ "modernc.org/sqlite"
 )

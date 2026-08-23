@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	"mchugh.com.au/db"
+	"localithelp/db"
 )
 
 // logoPNG is a copy of static/img/icon-512.png, embedded so the PDF renders

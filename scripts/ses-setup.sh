@@ -12,7 +12,7 @@
 #   2. Ensures the SES domain identity `localithelp.com.au` exists (Easy DKIM).
 #   3. If CF_TOKEN is set (Cloudflare API token with Zone:DNS:Edit on
 #      localithelp.com.au), adds the 3 DKIM CNAME records; otherwise prints them.
-#   4. Prints the lines to append to /var/www/mchugh.com.au/.env on the server.
+#   4. Prints the lines to append to /var/www/localithelp/.env on the server.
 #
 # Requirements: aws CLI v2 with an admin profile, curl, jq.
 # Usage:
@@ -110,7 +110,7 @@ fi
 # ── 4. Server .env lines ────────────────────────────────────────────────────
 cat <<ENV
 
-On the server, /var/www/mchugh.com.au/.env needs (then: sudo systemctl restart mchugh-com-au):
+On the server, /var/www/localithelp/.env needs (then: sudo systemctl restart localithelp):
 
 # Email notifications via Amazon SES
 AWS_REGION=$REGION

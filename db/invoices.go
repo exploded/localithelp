@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"mchugh.com.au/db/sqlc"
+	"localithelp/db/sqlc"
 )
 
 // Invoice statuses.

@@ -22,7 +22,7 @@ jobs:
         run: go vet ./... && go test ./...
 
       - name: Build binary
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o mchugh-com-au ./cmd/server/
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o localithelp ./cmd/server/
 
       - name: Copy files to server
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
@@ -31,8 +31,8 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT || '22' }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "mchugh-com-au,templates,static,scripts/deploy-mchugh-com-au"
-          target: "/tmp/mchugh-com-au-deploy"
+          source: "localithelp,templates,static,scripts/deploy-localithelp"
+          target: "/tmp/localithelp-deploy"
           overwrite: true
 
       - name: Deploy
@@ -43,4 +43,4 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            sudo /usr/local/bin/deploy-mchugh-com-au
+            sudo /usr/local/bin/deploy-localithelp

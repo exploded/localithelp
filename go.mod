@@ -1,4 +1,4 @@
-module mchugh.com.au
+module localithelp
 
 go 1.25.0
 

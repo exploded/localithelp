@@ -1,20 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_DIR="/var/www/mchugh.com.au"
-BINARY="$APP_DIR/mchugh-com-au"
-SERVICE="mchugh-com-au"
-STAGING="${1:-/tmp/mchugh-com-au-deploy}"
+APP_DIR="/var/www/localithelp"
+BINARY="$APP_DIR/localithelp"
+SERVICE="localithelp"
+STAGING="${1:-/tmp/localithelp-deploy}"
 
 # Self-update: if the bundle contains a newer version of this script, install and re-exec
-BUNDLE_SCRIPT="$STAGING/scripts/deploy-mchugh-com-au"
-if [ -f "$BUNDLE_SCRIPT" ] && ! diff -q /usr/local/bin/deploy-mchugh-com-au "$BUNDLE_SCRIPT" > /dev/null 2>&1; then
+BUNDLE_SCRIPT="$STAGING/scripts/deploy-localithelp"
+if [ -f "$BUNDLE_SCRIPT" ] && ! diff -q /usr/local/bin/deploy-localithelp "$BUNDLE_SCRIPT" > /dev/null 2>&1; then
     echo "[deploy] Updating deploy script from bundle..."
-    install -m 755 "$BUNDLE_SCRIPT" /usr/local/bin/deploy-mchugh-com-au
-    exec /usr/local/bin/deploy-mchugh-com-au "$@"
+    install -m 755 "$BUNDLE_SCRIPT" /usr/local/bin/deploy-localithelp
+    exec /usr/local/bin/deploy-localithelp "$@"
 fi
 
-echo "[deploy] Deploying mchugh.com.au..."
+echo "[deploy] Deploying localithelp..."
 
 # Stop service
 systemctl stop "$SERVICE" 2>/dev/null || true
@@ -23,7 +23,7 @@ systemctl stop "$SERVICE" 2>/dev/null || true
 rm -f "$BINARY"
 
 # Copy new binary
-cp "$STAGING/mchugh-com-au" "$BINARY"
+cp "$STAGING/localithelp" "$BINARY"
 chmod +x "$BINARY"
 
 # Replace templates and static assets (rm+cp instead of rsync: not installed on the box)
@@ -49,4 +49,4 @@ fi
 # Cleanup
 rm -rf "$STAGING"
 
-echo "[deploy] Done — mchugh.com.au is running."
+echo "[deploy] Done — localithelp is running."

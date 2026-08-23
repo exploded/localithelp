@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"mchugh.com.au/db"
-	"mchugh.com.au/mailer"
+	"localithelp/db"
+	"localithelp/mailer"
 )
 
 // ── Email notifications (Amazon SES) ──

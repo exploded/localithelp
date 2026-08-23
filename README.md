@@ -6,18 +6,17 @@ software development as a featured service. Go + `html/template` + SQLite (sqlc)
 Canonical domain: https://localithelp.com.au (rebranded from mchugh.com.au —
 see "Domain cutover" below).
 
-Repo: `exploded/mchugh-com-au` (pre-rebrand name; Go module is still
-`mchugh.com.au`). Not to be confused with **https://mchugh.au** — that is a
-separate static landing page (repo `exploded/mchugh-au`, served from
-`/var/www/mchugh.au`, source in `C:\Projects\php\mchugh.au`). This app lives at
-`/var/www/mchugh.com.au` as systemd unit `mchugh-com-au`.
+Repo: `exploded/localithelp`, Go module `localithelp`. Not to be confused with
+**https://mchugh.au** — that is a separate static landing page (repo
+`exploded/mchugh-au`, served from `/var/www/mchugh.au`, source in
+`C:\Projects\php\mchugh.au`). This app lives at `/var/www/localithelp` as
+systemd unit `localithelp`.
 
-## Domain cutover (rebrand → localithelp.com.au)
+## Domain cutover (rebrand → localithelp.com.au) — done
 
-The code now defaults to the new domain (`PROD` ⇒ `BASE_URL=https://localithelp.com.au`,
-and `canonicalHost` 301s every other host there). **Do not deploy until the new
-domain serves traffic**, or set `BASE_URL=https://mchugh.com.au` in the server
-`.env` to hold the old canonical. One-off steps:
+localithelp.com.au has been canonical since 2026-08-20: `PROD` ⇒
+`BASE_URL=https://localithelp.com.au`, and `canonicalHost` 301s every other host
+there. Kept for reference — the one-off steps that were run:
 
 1. Register `localithelp.com.au`, add the zone to Cloudflare (or use registrar DNS):
    `A @` / `A www` → `172.105.178.43`, `AAAA @` / `AAAA www` →
@@ -147,17 +146,17 @@ are Australia/Melbourne (`time/tzdata` is embedded). Money is integer cents; no 
 
 One-time, from your machine with an admin AWS profile: `AWS_PROFILE=tooltrack-admin
 CF_TOKEN=<cloudflare token> scripts/ses-setup.sh`. It creates the send-only IAM
-user + key, the `mchugh.com.au` SES domain identity, adds the DKIM CNAMEs to
+user + key, the `localithelp.com.au` SES domain identity, adds the DKIM CNAMEs to
 Cloudflare (or prints them if `CF_TOKEN` is unset), and prints the `.env` lines
-to add on the server. `james@mchugh.com.au` is already a verified sender so mail
-flows before DKIM verification completes; DKIM just improves deliverability.
+to add on the server. The policy also keeps the old `mchugh.com.au` identities so
+the pre-rebrand sender still works.
 
 ## SEO
 
 - `GET /robots.txt` and `GET /sitemap.xml` are generated in `cmd/server/seo.go`; the sitemap lists every
   static page plus each service, guide and suburb page (≈86 URLs). `TestSitemap` GETs every entry
   through the real router and fails on anything that isn't a 200 — so a route rename breaks CI, not Google.
-  **Submit `https://mchugh.com.au/sitemap.xml` in Google Search Console once** (not automated).
+  **Submit `https://localithelp.com.au/sitemap.xml` in Google Search Console once** (not automated).
 - Every page has canonical, `og:*` (incl. `og:image` → `/static/img/og.png`), `twitter:card`, favicon set and a
   default `<title>`/description fallback in `base.html`. Structured data: `LocalBusiness` + `WebSite` on `/`,
   `BreadcrumbList` on all inner pages, `Service` on service and suburb pages, `Article` on guides
@@ -186,24 +185,24 @@ flows before DKIM verification completes; DKIM just improves deliverability.
 ## Deploy
 
 GitHub Actions (`.github/workflows/deploy.yml`) builds a static Linux binary and
-runs `scripts/deploy-mchugh-com-au` on the server. Actions secrets needed on
+runs `scripts/deploy-localithelp` on the server. Actions secrets needed on
 this repo: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`.
 
 ### First-time provisioning (one-off, in order)
 
-1. **Cloudflare** — zone `mchugh.com.au`: `A @` and `A www` → `172.105.178.43`,
+1. **Cloudflare** — zone `localithelp.com.au`: `A @` and `A www` → `172.105.178.43`,
    `AAAA @` and `AAAA www` → `2400:8907::f03c:92ff:fe4b:43ea`, all DNS-only (grey cloud).
 2. **Server** —
-   `curl -fsSL https://raw.githubusercontent.com/exploded/mchugh-com-au/main/scripts/server-setup.sh | sudo bash`
-   (creates `/var/www/mchugh.com.au`, `.env` template, systemd unit on port 8181,
+   `curl -fsSL https://raw.githubusercontent.com/exploded/localithelp/main/scripts/server-setup.sh | sudo bash`
+   (creates `/var/www/localithelp`, `.env` template, systemd unit on port 8181,
    sudoers, prints the Caddy block). It refuses to touch `/var/www/mchugh.au`.
-3. **Server `.env`** — `sudo nano /var/www/mchugh.com.au/.env`: `PHONE=…`, `ADMIN_EMAIL`,
+3. **Server `.env`** — `sudo nano /var/www/localithelp/.env`: `PHONE=…`, `ADMIN_EMAIL`,
    Google/Turnstile/Anthropic keys, SES creds, pricing if different.
 4. **Caddy** — add the printed blocks to `/etc/caddy/Caddyfile` (`www.` → 301 to apex, apex →
    reverse proxy; uses the box's shared `access_log` / `go_proxy` snippets; leave the existing
    `mchugh.au` block alone), `sudo systemctl reload caddy`.
-5. **Google Cloud Console** — add `https://mchugh.com.au/auth/google/callback` to the
+5. **Google Cloud Console** — add `https://localithelp.com.au/auth/google/callback` to the
    OAuth client's authorised redirect URIs.
 6. Push / `gh workflow run Deploy`, watch it go green, then check
-   `https://mchugh.com.au/`, `/services/email-outlook`, `/book`, and that
+   `https://localithelp.com.au/`, `/services/email-outlook`, `/book`, and that
    `https://mchugh.au` still serves the landing page.

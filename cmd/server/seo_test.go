@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"mchugh.com.au/db"
+	"localithelp/db"
 )
 
 // seoTestSetup opens a temp DB, loads templates, sets site config and returns the real router.

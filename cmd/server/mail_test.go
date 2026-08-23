@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"mchugh.com.au/db"
+	"localithelp/db"
 )
 
 func TestMailTemplatesRender(t *testing.T) {
