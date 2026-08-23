@@ -38,7 +38,7 @@ type suburbGroup struct {
 }
 
 // lgaOrder controls the order of council groups on /areas (closest first).
-var lgaOrder = []string{"Manningham", "Whitehorse", "Maroondah", "Boroondara", "Nillumbik", "Banyule", "Yarra Ranges", "Knox", "Monash"}
+var lgaOrder = []string{"Manningham", "Whitehorse", "Maroondah", "Boroondara", "Nillumbik", "Yarra Ranges", "Knox", "Monash"}
 
 var (
 	suburbs       []string // display names, in catalogue order (used by templates + JSON-LD areaServed)
@@ -50,6 +50,17 @@ func init() {
 		suburbsBySlug[suburbList[i].Slug] = &suburbList[i]
 		suburbs = append(suburbs, suburbList[i].Name)
 	}
+}
+
+// retiredSuburbs are slugs that once had a page but fell outside the service
+// area when it was tightened on 2026-08-23. They 301 to /areas so the indexed
+// URLs don't become 404s. Keep until Search Console shows them dropped.
+var retiredSuburbs = map[string]bool{
+	"camberwell": true, "canterbury": true, "chirnside-park": true,
+	"eaglemont": true, "eltham": true, "eltham-north": true,
+	"greensborough": true, "heidelberg": true, "knoxfield": true,
+	"lilydale": true, "lower-plenty": true, "montmorency": true,
+	"rosanna": true, "viewbank": true, "watsonia": true, "wheelers-hill": true,
 }
 
 func findSuburb(slug string) (*Suburb, bool) {
@@ -196,6 +207,21 @@ var suburbList = []Suburb{
 		Blurb:    "Just up from Box Hill, between Elgar Road and Middleborough Road. Box Hill North has a lot of long-established households and a good share of multi-generational homes, so I'm often setting things up so grandparents, parents and kids can all use the same Wi-Fi, printer and shared photos without getting in each other's way.",
 		MetaDesc: "At-home computer help in Box Hill North 3129 — family Wi-Fi and printers, new-computer setups, email, phones and tablets. Local, plain-English, no fix no fee.",
 		Photo:    &Photo{Artist: "Philip Mallis from Melbourne", Licence: "CC BY-SA 2.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/2.0", Source: "https://commons.wikimedia.org/wiki/File:Bushy_Creek_Trail,_Mont_Albert_North_(30560247513).jpg"}},
+	{Name: "Blackburn North", Slug: "blackburn-north", Postcode: "3130", LGA: "Whitehorse", DriveMin: 12,
+		Blurb:    "North of the railway line, between Springfield Road and Middleborough Road, Blackburn North is a mix of original post-war homes and newer townhouses. The older houses tend to have solid brick walls that Wi-Fi struggles to get through, so mesh setups and getting a decent signal to the back rooms come up often, alongside the usual email, printer and new-computer jobs.",
+		MetaDesc: "At-home computer help in Blackburn North 3130 — Wi-Fi that reaches every room, email, printers, slow PCs and new-computer setups. Local; no fix, no fee."},
+	{Name: "Blackburn South", Slug: "blackburn-south", Postcode: "3130", LGA: "Whitehorse", DriveMin: 15,
+		Blurb:    "Down towards Canterbury Road and the shops on Blackburn Road. Blackburn South has a lot of long-settled households where one desktop does everything and nobody's quite sure where the backups are. Tune-ups, backup setups and patient one-on-one sessions are the regular calls, plus printers that stopped talking to the laptop after an update.",
+		MetaDesc: "Computer help at your place in Blackburn South 3130 — slow computers, backups, printers, email and one-on-one help. Friendly and local; no fix, no fee."},
+	{Name: "Box Hill South", Slug: "box-hill-south", Postcode: "3128", LGA: "Whitehorse", DriveMin: 15,
+		Blurb:    "The quieter side of Box Hill, between Canterbury Road and Surrey Park. Plenty of family homes here juggling schoolwork, streaming and a home office on the same connection, which is usually where the trouble starts. Wi-Fi that drops out, printers nobody can find on the network, and setting up new laptops properly are the common jobs.",
+		MetaDesc: "At-home computer help in Box Hill South 3128 — Wi-Fi drop-outs, printers, new laptop setups, email and virus clean-ups. I come to you; no fix, no fee."},
+	{Name: "Burwood East", Slug: "burwood-east", Postcode: "3151", LGA: "Whitehorse", DriveMin: 15,
+		Blurb:    "Along the Burwood Highway around Tally Ho and the Deakin end. Burwood East mixes established family homes with a good number of students and home offices, so it's a lot of laptop trouble, shared Wi-Fi and getting printers and cloud storage working across several devices. Small businesses along the highway call for email and backup help too.",
+		MetaDesc: "Computer help at home or work in Burwood East 3151 — laptops, Wi-Fi, printers, cloud storage and small-business IT. Local, plain-English, no fix no fee."},
+	{Name: "Mont Albert North", Slug: "mont-albert-north", Postcode: "3129", LGA: "Whitehorse", DriveMin: 15,
+		Blurb:    "The pocket between Belmore Road and the Koonung Creek reserve, north of Mont Albert proper. It's a settled, quiet area with a lot of older residents who'd much rather someone came to the house than carried a computer into a shop. Scam and virus clean-ups, email problems and patient sit-down sessions are the usual reasons for a visit.",
+		MetaDesc: "At-home computer help in Mont Albert North 3129 — scam clean-ups, email, printers, slow computers and patient one-on-one help. No fix, no fee."},
 
 	// ── Maroondah ──
 	{Name: "Ringwood", Slug: "ringwood", Postcode: "3134", LGA: "Maroondah", DriveMin: 12,
@@ -218,6 +244,18 @@ var suburbList = []Suburb{
 		Blurb:    "Croydon has a proper town centre and a wide spread of homes from Main Street out towards the hills. I do a lot of everyday household work here — a computer that's slowed to a crawl, a printer that's gone offline, email that stopped syncing — and I'm happy to come out for the small jobs as well as the big ones.",
 		MetaDesc: "Computer help at your place in Croydon 3136 — slow PCs, printers, email, Wi-Fi, scam and virus clean-ups, new setups. Local, no fix no fee.",
 		Photo:    &Photo{Artist: "NatoV", Licence: "CC BY-SA 4.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/4.0", Source: "https://commons.wikimedia.org/wiki/File:Croydon_Victoria_Main_Street.jpg"}},
+	{Name: "Warranwood", Slug: "warranwood", Postcode: "3134", LGA: "Maroondah", DriveMin: 12,
+		Blurb:    "Between Wonga Road and the Warranwood Reserve, on larger blocks that back onto bushland. Big houses and long driveways mean Wi-Fi rarely reaches the whole property on its own, so mesh and outdoor access points come up a lot here — along with backups, new-computer setups and the occasional laptop that's stopped booting.",
+		MetaDesc: "Computer and Wi-Fi help in Warranwood 3134 — whole-house mesh Wi-Fi, backups, new-computer setups and repairs. Close to Donvale; no fix, no fee."},
+	{Name: "Croydon North", Slug: "croydon-north", Postcode: "3136", LGA: "Maroondah", DriveMin: 15,
+		Blurb:    "Up around Exeter Road and Yarra Road, on the rising ground north of the Croydon shops. It's a quieter, established part of Croydon with plenty of families and retirees, and the jobs reflect that — printers, email, phones and tablets that won't sync, and getting a new computer set up with everything moved across from the old one.",
+		MetaDesc: "At-home computer help in Croydon North 3136 — printers, email, phones and tablets, new-computer setups and repairs. Friendly and local; no fix, no fee."},
+	{Name: "Croydon Hills", Slug: "croydon-hills", Postcode: "3136", LGA: "Maroondah", DriveMin: 15,
+		Blurb:    "A newer estate on the hills north-west of Croydon, with wide streets and two-storey homes. Double-storey usually means the modem sits in one corner downstairs and the study upstairs gets nothing, so mesh Wi-Fi is a frequent call. Beyond that it's the usual mix — new laptops, printers, backups and clearing up scam pop-ups.",
+		MetaDesc: "Computer and Wi-Fi help in Croydon Hills 3136 — mesh Wi-Fi for two-storey homes, laptops, printers, backups and scam clean-ups. No fix, no fee."},
+	{Name: "Croydon South", Slug: "croydon-south", Postcode: "3136", LGA: "Maroondah", DriveMin: 18,
+		Blurb:    "Down towards Bayswater Road and Eastfield Park. Croydon South is a practical, settled area with a lot of original homes and a good number of small businesses run from the shed or the spare room. Typical visits are slow computers, printers, backups and sorting out email that's stopped sending after a provider change.",
+		MetaDesc: "At-home computer help in Croydon South 3136 — slow PCs, printers, email problems, backups and small-business IT. I come to you; no fix, no fee."},
 
 	// ── Yarra Ranges ──
 	{Name: "Kilsyth", Slug: "kilsyth", Postcode: "3137", LGA: "Yarra Ranges", DriveMin: 20,
@@ -228,14 +266,6 @@ var suburbList = []Suburb{
 		Blurb:    "Mooroolbark's a big, family-oriented suburb around the station and Brice Avenue, with plenty of homes that have grown a tangle of devices over the years. Getting everything on the one Wi-Fi network, backing up the photos and giving the main computer a good clean-out are the regular jobs.",
 		MetaDesc: "At-home computer help in Mooroolbark 3138 — Wi-Fi for every device, backups, PC clean-outs, email, printers and phone/tablet help. No fix, no fee.",
 		Photo:    &Photo{Artist: "Phenix1888", Licence: "CC BY-SA 4.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/4.0", Source: "https://commons.wikimedia.org/wiki/File:Mooroolbark_station_front.jpg"}},
-	{Name: "Lilydale", Slug: "lilydale", Postcode: "3140", LGA: "Yarra Ranges", DriveMin: 25,
-		Blurb:    "Lilydale is about as far east as I regularly go — the end of the train line and the gateway to the Valley. There's a lot of history here and a lot of homes with years of photos and documents on a single ageing computer, so backups and data recovery come up often, alongside the everyday email, printer and Wi-Fi jobs.",
-		MetaDesc: "Computer help at your place in Lilydale 3140 — backups, data recovery, slow PCs, email, printers and Wi-Fi. Local eastern-suburbs tech, no fix no fee.",
-		Photo:    &Photo{Artist: "Melburnian", Licence: "CC BY 3.0", LicenceURL: "https://creativecommons.org/licenses/by/3.0", Source: "https://commons.wikimedia.org/wiki/File:Lilydale_Maroondah_Highway.jpg"}},
-	{Name: "Chirnside Park", Slug: "chirnside-park", Postcode: "3116", LGA: "Yarra Ranges", DriveMin: 20,
-		Blurb:    "Around the shopping centre and the newer estates towards the Yarra, Chirnside Park has plenty of family homes with modern layouts that don't always suit a single modem in the corner. Mesh Wi-Fi, smart-TV and streaming setups and getting the kids' devices under control are frequent calls.",
-		MetaDesc: "At-home Wi-Fi and computer help in Chirnside Park 3116 — mesh Wi-Fi, smart TVs and streaming, PCs, printers and email. Friendly, local, no fix no fee.",
-		Photo:    &Photo{Artist: "Ottre", Licence: "Public domain", LicenceURL: "", Source: "https://commons.wikimedia.org/wiki/File:Edward_Road,_Chirnside2.jpg"}},
 
 	// ── Boroondara ──
 	{Name: "Surrey Hills", Slug: "surrey-hills", Postcode: "3127", LGA: "Boroondara", DriveMin: 18,
@@ -250,58 +280,11 @@ var suburbList = []Suburb{
 		Blurb:    "Just across the river from Bulleen, Balwyn North is a quick trip via the Eastern Freeway. It's a family suburb with a lot of devices per household — I do plenty of Wi-Fi, printer and shared-photo setups here, and a steady stream of new-computer handovers where everything needs to move across cleanly.",
 		MetaDesc: "Computer help at your place in Balwyn North 3104 — new-computer setups, Wi-Fi, printers, photo backups and repairs. Local, quick to reach, no fix no fee.",
 		Photo:    &Photo{Artist: "Philip Mallis", Licence: "CC BY-SA 2.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/2.0", Source: "https://commons.wikimedia.org/wiki/File:Dunstan_Street,_Balwyn_North.jpg"}},
-	{Name: "Camberwell", Slug: "camberwell", Postcode: "3124", LGA: "Boroondara", DriveMin: 22,
-		Blurb:    "Camberwell's a bit further in, around the Junction and the shopping strip, but well within range. Lots of professionals working from home a few days a week and wanting a proper setup — a second screen, a printer that works, video calls that don't drop — plus long-time locals who'd like their computer looked after by the same person each time.",
-		MetaDesc: "Home-office and household computer help in Camberwell 3124 — reliable Wi-Fi, printers, screens, email and repairs at your place. No fix, no fee.",
-		Photo:    &Photo{Artist: "User:Orderinchaos", Licence: "CC BY-SA 3.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/3.0", Source: "https://commons.wikimedia.org/wiki/File:Burke_Rd_S_from_Camberwell_shops.jpg"}},
-	{Name: "Canterbury", Slug: "canterbury", Postcode: "3126", LGA: "Boroondara", DriveMin: 20,
-		Blurb:    "Maling Road, the station and some of the loveliest old homes in the east. Canterbury's period houses can be stubborn about Wi-Fi, and its residents often value a slow, careful explanation over a quick fix. I'm happy to sit down, sort the problem and show you what changed.",
-		MetaDesc: "Patient at-home computer help in Canterbury 3126 — Wi-Fi in period homes, email, printers, scam protection and one-on-one help. Local, no fix no fee.",
-		Photo:    &Photo{Artist: "Philip Mallis", Licence: "CC BY-SA 2.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/2.0", Source: "https://commons.wikimedia.org/wiki/File:Maling_Road_looking_north-east,_Canterbury.jpg"}},
 
 	// ── Nillumbik ──
-	{Name: "Eltham", Slug: "eltham", Postcode: "3095", LGA: "Nillumbik", DriveMin: 20,
-		Blurb:    "Bushy blocks, mud-brick houses and a strong creative community around the town centre and Montsalvat. Eltham homes are often spread out and full of trees, so Wi-Fi coverage and reliable internet are the big ones, along with backups for the many artists, writers and home businesses working from the house.",
-		MetaDesc: "Computer, internet and Wi-Fi help at home in Eltham 3095 — coverage across bush blocks, backups, home-office setups, PCs and printers. No fix, no fee.",
-		Photo:    &Photo{Artist: "Marcnut1996", Licence: "CC BY-SA 4.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/4.0", Source: "https://commons.wikimedia.org/wiki/File:Eltham_Trestle_Bridge_September_2023_1.jpg"}},
-	{Name: "Eltham North", Slug: "eltham-north", Postcode: "3095", LGA: "Nillumbik", DriveMin: 22,
-		Blurb:    "Further up the hill from Eltham, quieter and more spread out. Similar story to its neighbour — larger properties, patchy signal, and households who've built up years of photos and files that deserve a proper backup. I'll set up something that just runs, and show you how to check it.",
-		MetaDesc: "At-home computer help in Eltham North 3095 — Wi-Fi across large blocks, backups that actually run, PCs, printers and email. Local and friendly.",
-		Photo:    &Photo{Artist: "Philip Mallis", Licence: "CC BY-SA 2.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/2.0", Source: "https://commons.wikimedia.org/wiki/File:Diamond_Creek_Trail,_Eltham_North.jpg"}},
-
-	// ── Banyule ──
-	{Name: "Montmorency", Slug: "montmorency", Postcode: "3094", LGA: "Banyule", DriveMin: 22,
-		Blurb:    "A village feel around Were Street and the station, with leafy streets running down to the Plenty River. Montmorency's a friendly, settled place with a good mix of young families and long-time residents, and the calls reflect that — kids' devices and Wi-Fi one day, a patient email or scam-call sit-down the next.",
-		MetaDesc: "Computer help at your place in Montmorency 3094 — Wi-Fi, family devices, email, scam clean-ups, printers and repairs. Friendly, local, no fix no fee.",
-		Photo:    &Photo{Artist: "Philip Mallis", Licence: "CC BY-SA 2.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/2.0", Source: "https://commons.wikimedia.org/wiki/File:Plenty_River,_Montmorency.jpg"}},
-	{Name: "Lower Plenty", Slug: "lower-plenty", Postcode: "3093", LGA: "Banyule", DriveMin: 18,
-		Blurb:    "Tucked between the Yarra and the Plenty rivers, Lower Plenty is closer than it feels — straight through Templestowe and over the bridge. Larger homes on bigger blocks mean the usual Wi-Fi coverage work, plus setting up new computers and TVs and keeping the household's photos backed up.",
-		MetaDesc: "At-home computer and Wi-Fi help in Lower Plenty 3093 — coverage across large homes, new-computer and TV setups, backups, email and printers. No fix, no fee.",
-		Photo:    &Photo{Artist: "BCProductions18", Licence: "CC BY-SA 4.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/4.0", Source: "https://commons.wikimedia.org/wiki/File:Lwr_Plenty_Road.jpg"}},
-	{Name: "Greensborough", Slug: "greensborough", Postcode: "3088", LGA: "Banyule", DriveMin: 25,
-		Blurb:    "Greensborough's a proper hub — the plaza, the station and a wide spread of homes and units around it. I come out for everything from a small business's point-of-sale and email to a household's slow computer, and there are always a few 'my printer's stopped working again' calls in the mix.",
-		MetaDesc: "Computer help at your home or shop in Greensborough 3088 — slow PCs, printers, email, Wi-Fi, small-business IT and repairs. Local, no fix no fee.",
-		Photo:    &Photo{Artist: "Wongm", Licence: "CC BY-SA 3.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/3.0", Source: "https://commons.wikimedia.org/wiki/File:Greensborough-overall-aerial.jpg"}},
-	{Name: "Watsonia", Slug: "watsonia", Postcode: "3087", LGA: "Banyule", DriveMin: 25,
-		Blurb:    "A compact, friendly suburb around the Watsonia shops and station. Plenty of long-time residents here who like having the same person look after their computer, phone and tablet, and who appreciate a plain-English explanation of what went wrong and how to avoid it next time.",
-		MetaDesc: "At-home computer help in Watsonia 3087 — PCs, phones and tablets, email, printers, scam clean-ups and patient one-on-one help. Local, no fix no fee.",
-		Photo:    &Photo{Artist: "BobTanGo", Licence: "CC BY 4.0", LicenceURL: "https://creativecommons.org/licenses/by/4.0", Source: "https://commons.wikimedia.org/wiki/File:Watsonia_facing_north,_with_the_Northeast_Link_Big_Build.jpg"}},
-	{Name: "Viewbank", Slug: "viewbank", Postcode: "3084", LGA: "Banyule", DriveMin: 22,
-		Blurb:    "Quiet streets on the hill above the Yarra flats and Banyule Flats reserve. Viewbank households are often busy families with a shared computer and a fleet of devices — I sort out the Wi-Fi so everything works everywhere, get the printer behaving, and make sure the family photos are backed up somewhere safe.",
-		MetaDesc: "Computer help at your place in Viewbank 3084 — family Wi-Fi, printers, photo backups, PC repairs and setups. Friendly, local, no fix no fee.",
-		Photo:    &Photo{Artist: "Philip Mallis", Licence: "CC BY-SA 2.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/2.0", Source: "https://commons.wikimedia.org/wiki/File:Banyule_Swamp,_Viewbank.jpg"}},
-	{Name: "Heidelberg", Slug: "heidelberg", Postcode: "3084", LGA: "Banyule", DriveMin: 22,
-		Blurb:    "Heidelberg's got the hospital precinct, Burgundy Street's shops and cafes, and a lot of homes and units in between. I visit households, home offices and small businesses here — email that won't sync, a laptop that's on its last legs, a Wi-Fi network that drops out at the worst moment.",
-		MetaDesc: "Computer help at your home or business in Heidelberg 3084 — email, laptops, Wi-Fi drop-outs, printers, backups and repairs. Local, no fix no fee.",
-		Photo:    &Photo{Artist: "Bananabones", Licence: "CC BY-SA 4.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/4.0", Source: "https://commons.wikimedia.org/wiki/File:Heidelberg_Station_View.jpg"}},
-	{Name: "Eaglemont", Slug: "eaglemont", Postcode: "3084", LGA: "Banyule", DriveMin: 22,
-		Blurb:    "The hilltop village and its heritage streets. Eaglemont homes are beautiful and, like a lot of older houses, not built with Wi-Fi in mind. I'll get the signal to every room, help with email, banking and staying safe online, and take my time explaining things — no rush and no jargon.",
-		MetaDesc: "Patient at-home computer help in Eaglemont 3084 — Wi-Fi in older homes, email, safe online banking, scam protection and one-on-one help. No fix, no fee.",
-		Photo:    &Photo{Artist: "Ottre", Licence: "Public domain", LicenceURL: "", Source: "https://commons.wikimedia.org/wiki/File:House_at_Eaglemont1.jpg"}},
-	{Name: "Rosanna", Slug: "rosanna", Postcode: "3084", LGA: "Banyule", DriveMin: 22,
-		Blurb:    "Around the Rosanna village and the parklands along Salt Creek. A friendly, family-oriented suburb where I do plenty of everyday household jobs — a new laptop set up with everything moved over, a printer that works from the phones, a slow computer given a new lease of life.",
-		MetaDesc: "At-home computer help in Rosanna 3084 — new laptop setups, printers, Wi-Fi, slow PCs and email. Local eastern-suburbs tech, no fix no fee.",
-		Photo:    &Photo{Artist: "Philip Mallis", Licence: "CC BY-SA 2.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/2.0", Source: "https://commons.wikimedia.org/wiki/File:Beetham_Parade,_Rosanna.jpg"}},
+	{Name: "North Warrandyte", Slug: "north-warrandyte", Postcode: "3113", LGA: "Nillumbik", DriveMin: 15,
+		Blurb:    "Across the bridge on the Nillumbik side, where the blocks are bush and the internet is often the weakest link. North Warrandyte visits lean heavily towards connectivity — mobile broadband, Starlink, mesh Wi-Fi out to studios and sheds — plus backups and data recovery for people with years of photos on a single ageing drive.",
+		MetaDesc: "Internet, Wi-Fi and computer help in North Warrandyte 3113 — mobile broadband, Starlink, mesh Wi-Fi, backups and data recovery. Local; no fix, no fee."},
 
 	// ── Knox ──
 	{Name: "Bayswater", Slug: "bayswater", Postcode: "3153", LGA: "Knox", DriveMin: 20,
@@ -316,16 +299,11 @@ var suburbList = []Suburb{
 		Blurb:    "At the foot of the Dandenongs, Boronia has a busy centre and a wide spread of homes up towards the hills. I come out for the everyday jobs — email, printers, slow computers, scam clean-ups — and for helping people who'd rather learn to do things themselves with someone patient sitting next to them.",
 		MetaDesc: "Computer help at your place in Boronia 3155 — email, printers, slow PCs, scam clean-ups and one-on-one tuition. Local, plain-English, no fix no fee.",
 		Photo:    &Photo{Artist: "HelloMojo at en.wikipedia", Licence: "Public domain", LicenceURL: "", Source: "https://commons.wikimedia.org/wiki/File:Boronia,_Vic,_east_towards_One_Tree_Hill.JPG"}},
-	{Name: "Knoxfield", Slug: "knoxfield", Postcode: "3180", LGA: "Knox", DriveMin: 22,
-		Blurb:    "A quiet pocket between Wantirna South and Scoresby, with family homes and a handful of small businesses on the main roads. Knoxfield jobs are usually about the household basics — Wi-Fi to every room, a printer that prints, a family computer that isn't crawling — done properly and explained clearly.",
-		MetaDesc: "At-home computer help in Knoxfield 3180 — Wi-Fi, printers, family PCs, email, setups and repairs. Local, friendly, no fix no fee.",
-		Photo:    &Photo{Artist: "ozzmosis", Licence: "CC BY-SA 3.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/3.0", Source: "https://commons.wikimedia.org/wiki/File:Ferny_Creek_trail_-_panoramio.jpg"}},
+	{Name: "Bayswater North", Slug: "bayswater-north", Postcode: "3153", LGA: "Knox", DriveMin: 20,
+		Blurb:    "The residential streets north of Canterbury Road, out towards Colchester Road. Bayswater North is a straightforward, hard-working area where computers get used until they stop, so tune-ups, replacements and moving everything across to a new machine are the bread and butter — along with printers, email and getting Wi-Fi to the back of the house.",
+		MetaDesc: "At-home computer help in Bayswater North 3153 — tune-ups, new-computer setups, printers, email and Wi-Fi fixes. Friendly and local; no fix, no fee."},
 
 	// ── Monash ──
-	{Name: "Wheelers Hill", Slug: "wheelers-hill", Postcode: "3150", LGA: "Monash", DriveMin: 25,
-		Blurb:    "Wheelers Hill's big family homes on the hill have plenty of rooms for Wi-Fi to get lost in. Whole-house coverage, smart-TV and streaming setups, and getting the whole family's devices working together are the common calls, plus new-computer setups when it's finally time to upgrade.",
-		MetaDesc: "At-home Wi-Fi and computer help in Wheelers Hill 3150 — whole-house Wi-Fi, smart TVs, family devices, new-computer setups and repairs. No fix, no fee.",
-		Photo:    &Photo{Artist: "User:Fneep", Licence: "Public domain", LicenceURL: "", Source: "https://commons.wikimedia.org/wiki/File:Jells_Park_1.JPG"}},
 	{Name: "Glen Waverley", Slug: "glen-waverley", Postcode: "3150", LGA: "Monash", DriveMin: 20,
 		Blurb:    "The Glen, Kingsway and a lot of busy households with students and professionals under one roof. Glen Waverley visits are often about capacity — Wi-Fi that copes with everyone streaming and studying at once, a printer that works from every device, and a shared computer that's kept fast and safe.",
 		MetaDesc: "Computer help at your place in Glen Waverley 3150 — high-capacity home Wi-Fi, printers, shared PCs, email, security and repairs. Local, no fix no fee.",

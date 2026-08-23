@@ -141,8 +141,15 @@ func handleAreas(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleArea(w http.ResponseWriter, r *http.Request) {
-	s, ok := findSuburb(r.PathValue("slug"))
+	slug := r.PathValue("slug")
+	s, ok := findSuburb(slug)
 	if !ok {
+		// Suburbs dropped when the service area was tightened keep their link
+		// equity by pointing at the index rather than 404ing.
+		if retiredSuburbs[slug] {
+			http.Redirect(w, r, "/areas", http.StatusMovedPermanently)
+			return
+		}
 		notFound(w, r)
 		return
 	}

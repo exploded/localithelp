@@ -123,6 +123,14 @@ func TestNotFoundAndTrailingSlash(t *testing.T) {
 			t.Errorf("%s → %d %s, want 301 %s", c.path, rr.Code, rr.Header().Get("Location"), c.want)
 		}
 	}
+	// Suburbs dropped from the service area 301 to the index instead of 404ing,
+	// so the URLs Google already indexed keep their value.
+	for _, p := range []string{"/areas/eltham", "/areas/camberwell", "/areas/wheelers-hill"} {
+		rr := get(mux, p)
+		if rr.Code != 301 || rr.Header().Get("Location") != "/areas" {
+			t.Errorf("%s → %d %s, want 301 /areas", p, rr.Code, rr.Header().Get("Location"))
+		}
+	}
 	// Unknown service/guide/suburb slugs use the branded page too.
 	for _, p := range []string{"/services/nope", "/fix-it-yourself/nope", "/areas/nope"} {
 		if rr := get(mux, p); rr.Code != 404 || !strings.Contains(rr.Body.String(), "</html>") {
