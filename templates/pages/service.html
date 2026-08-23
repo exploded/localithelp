@@ -63,6 +63,14 @@
                             <p>You'll know the price before I start; tap your card at the end. If it comes back within 14 days, I come back free.</p>
                         </div>
                     </div>
+
+                    {{if .PageData.Guides}}
+                    <h2>Try these first &mdash; free guides</h2>
+                    <p>Some of this you can sort out yourself in ten minutes. These <a href="/fix-it-yourself">plain-English guides</a> cover the ones I get called out for most, and each says when to stop and call.</p>
+                    <ul class="checklist checklist--plain">
+                        {{range .PageData.Guides}}<li><a href="/fix-it-yourself/{{.Slug}}">{{.Title}}</a></li>{{end}}
+                    </ul>
+                    {{end}}
                 </div>
 
                 <aside class="service-aside">

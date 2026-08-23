@@ -45,7 +45,8 @@ func TestTemplatesRender(t *testing.T) {
 		"service": struct {
 			S       *Service
 			Related []*Service
-		}{email, relatedServices(email)},
+			Guides  []*Guide
+		}{email, relatedServices(email), guidesForService(email.Slug)},
 		"software-development": struct {
 			S        *Service
 			Packages []Package

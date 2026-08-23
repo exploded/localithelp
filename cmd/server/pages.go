@@ -1,6 +1,7 @@
 package main
 
 import (
+	"hash/fnv"
 	"log"
 	"net"
 	"net/http"
@@ -36,7 +37,8 @@ func handleService(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "service", struct {
 		S       *Service
 		Related []*Service
-	}{s, relatedServices(s)})
+		Guides  []*Guide
+	}{s, relatedServices(s), guidesForService(s.Slug)})
 }
 
 func handleSoftwareDev(w http.ResponseWriter, r *http.Request) {
@@ -165,14 +167,29 @@ type areaPage struct {
 }
 
 func areaPageData(s *Suburb) areaPage {
-	var gs []*Guide
-	for i := range guides {
-		if len(gs) == 4 {
-			break
-		}
-		gs = append(gs, &guides[i])
+	return areaPage{A: s, Image: areaImage(s), Services: services, Guides: areaGuides(s.Slug), Nearby: s.Nearby()}
+}
+
+// areaGuides picks the four guides to link from a suburb page. Every area page
+// used to link the same first four of the catalogue, which left the rest with
+// almost no internal links; starting at a hash of the slug spreads the links
+// across the whole catalogue while keeping each page's list stable.
+func areaGuides(slug string) []*Guide {
+	if len(guides) == 0 {
+		return nil
 	}
-	return areaPage{A: s, Image: areaImage(s), Services: services, Guides: gs, Nearby: s.Nearby()}
+	h := fnv.New32a()
+	h.Write([]byte(slug))
+	start := int(h.Sum32() % uint32(len(guides)))
+	n := 4
+	if n > len(guides) {
+		n = len(guides)
+	}
+	out := make([]*Guide, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, &guides[(start+i)%len(guides)])
+	}
+	return out
 }
 
 // staticDir is where /static/ is served from; set by newMux so handlers can check for optional assets.

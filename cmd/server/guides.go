@@ -474,3 +474,16 @@ var guides = []Guide{
 		MetaDesc: "Recycling an old PC? Copy the right folders, get email and favourites across, and wipe the drive before it goes — or what to do if it won't start.",
 	},
 }
+
+// guidesForService returns the guides whose related service is slug, in
+// catalogue order. Service pages link these so every guide has an inbound link
+// from a service page rather than only from the /fix-it-yourself index.
+func guidesForService(slug string) []*Guide {
+	var out []*Guide
+	for i := range guides {
+		if guides[i].Service == slug {
+			out = append(out, &guides[i])
+		}
+	}
+	return out
+}
