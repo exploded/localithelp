@@ -78,7 +78,7 @@ go run ./cmd/server          # http://localhost:8080
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | – | Google sign-in — admin only; customers never sign in |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | – | Cloudflare Turnstile on the quote form (empty = check skipped, logged at startup; dev test pair `1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) |
 | `ANTHROPIC_API_KEY` | – | AI estimate in quote flow (generated only after the email is verified) |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | – | Amazon SES credentials (IAM user `mchugh-au-mailer`); unset = email disabled |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | – | Amazon SES credentials (IAM user `localithelp-mailer`); unset = email disabled |
 | `AWS_REGION` | `ap-southeast-2` | SES region |
 | `GA4_ID` | – | GA4 measurement ID (`G-…`); unset = no analytics script at all |
 | `GOOGLE_ADS_ID` | – | Google Ads conversion ID (`AW-…`) |

@@ -5,7 +5,7 @@
 # transition.
 #
 # What it does (idempotent — safe to re-run):
-#   1. Creates IAM user `mchugh-au-mailer` with a send-only policy limited to
+#   1. Creates IAM user `localithelp-mailer` with a send-only policy limited to
 #      the localithelp.com.au + mchugh.com.au SES identities (plus any
 #      configuration set, since a default set attached to an identity is also
 #      authorised on send), and an access key for it.
@@ -24,8 +24,8 @@ DOMAIN=localithelp.com.au
 FROM_ADDR=james@localithelp.com.au
 OLD_DOMAIN=mchugh.com.au
 OLD_FROM_ADDR=james@mchugh.com.au
-USER_NAME=mchugh-au-mailer
-POLICY_NAME=ses-send-mchugh-com-au
+USER_NAME=localithelp-mailer
+POLICY_NAME=ses-send-localithelp-com-au
 CF_ZONE_NAME=$DOMAIN
 
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
