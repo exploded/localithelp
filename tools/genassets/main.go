@@ -39,6 +39,18 @@ var (
 	white    = color.RGBA{0xff, 0xff, 0xff, 0xff}
 )
 
+// Dark variants, used by coverImage. The light palette above is tuned for a
+// white page; on a navy field the brand blue and amber both drop below a legible
+// contrast ratio, so the cover uses brighter siblings of the same hues.
+var (
+	navyTop  = color.RGBA{0x0b, 0x12, 0x20, 0xff}
+	navyBot  = color.RGBA{0x17, 0x2a, 0x52, 0xff}
+	brandLt  = color.RGBA{0x3b, 0x82, 0xf6, 0xff}
+	accentLt = color.RGBA{0xf5, 0x9e, 0x0b, 0xff}
+	dimOnDk  = color.RGBA{0xc3, 0xd0, 0xe3, 0xff}
+	faintOn  = color.RGBA{0x8d, 0x9d, 0xb5, 0xff}
+)
+
 func main() {
 	out := "static/img"
 	if len(os.Args) > 1 {
@@ -233,10 +245,15 @@ func softGlow(dst *image.RGBA, cx, cy, radius float64, col color.RGBA, maxAlpha 
 
 // ── the images ──
 
-func icon(size int) *image.RGBA {
+func icon(size int) *image.RGBA { return iconTile(size, brand, accent) }
+
+// iconTile draws the "IT." mark at the given size. tile is the rounded square's
+// colour and dot the full stop's; icon() passes the on-white palette, the cover
+// passes the brighter on-navy one.
+func iconTile(size int, tile, dot color.RGBA) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, size, size))
-	// Transparent background; a brand-blue rounded tile with "IT".
-	roundedRect(img, img.Bounds(), float64(size)*0.22, brand)
+	// Transparent background; a rounded tile with "IT".
+	roundedRect(img, img.Bounds(), float64(size)*0.22, tile)
 	fc := face(gobold.TTF, float64(size)*0.5)
 	w := textWidth(fc, "IT")
 	m := fc.Metrics()
@@ -249,7 +266,7 @@ func icon(size int) *image.RGBA {
 	if size >= 48 {
 		r := float64(size) * 0.055
 		cx, cy := float64(x+w)+r*1.6, float64(y)-r
-		roundedRect(img, image.Rect(int(cx-r), int(cy-r), int(cx+r)+1, int(cy+r)+1), r, accent)
+		roundedRect(img, image.Rect(int(cx-r), int(cy-r), int(cx+r)+1, int(cy+r)+1), r, dot)
 	}
 	return img
 }
@@ -259,41 +276,109 @@ func textC(dst draw.Image, fc font.Face, s string, cx, y int, col color.Color) i
 	return text(dst, fc, s, cx-textWidth(fc, s)/2, y, col)
 }
 
-// coverImage is the 16:9 cover, sized for Google Business Profile. GBP re-crops
-// the cover to whatever shape the surface wants, and a square crop of a 16:9
-// image keeps only the middle 675px — so everything here is centred and held
-// inside that column rather than run across the full width like ogImage.
+// coverSafe is the widest any cover element may be. Google Business Profile
+// re-crops the cover per surface, and the worst case is a centred square, which
+// of a 1200×675 image keeps only the middle 675px. Everything is held inside
+// that column with a margin, so no crop can clip a word.
+const coverSafe = 620
+
+// coverImage is the 16:9 cover, sized for Google Business Profile. Unlike
+// ogImage — a link-preview card that is only ever shown whole — this is a
+// full-bleed piece: no card, no border, nothing near an edge that a crop could
+// slice through and leave looking broken.
 func coverImage() *image.RGBA {
 	const W, H = 1200, 675
-	const safe = 600 // widest any text may be: survives a centred square crop
 	img := image.NewRGBA(image.Rect(0, 0, W, H))
-	fill(img, img.Bounds(), bgDeep)
-	softGlow(img, 1010, 110, 430, accent, 0.18)
-	softGlow(img, 150, 600, 400, brand, 0.12)
-
-	card := image.Rect(70, 60, W-70, H-60)
-	roundedRect(img, card, 22, surface)
+	gradient(img, navyTop, navyBot)
+	softGlow(img, 1080, 60, 560, brandLt, 0.30)
+	softGlow(img, 120, 660, 480, accentLt, 0.10)
+	softGlow(img, W/2, 205, 250, brandLt, 0.22) // halo behind the mark
 
 	cx := W / 2
-	kicker := face(gomono.TTF, 18)
-	title := face(gobold.TTF, 60)
-	sub := face(goregular.TTF, 26)
+	kicker := face(gomono.TTF, 19)
+	title := face(gobold.TTF, 66)
+	sub := face(goregular.TTF, 30)
+	small := face(goregular.TTF, 21)
 
-	textC(img, kicker, "COMPUTER HELP  ·  DONVALE & MELBOURNE'S EAST", cx, 235, textMute)
+	// The mark, big and centred — the cover is the one slot with room for it.
+	const mark = 132
+	m := iconTile(mark, brandLt, accentLt)
+	draw.Draw(img, image.Rect(cx-mark/2, 138, cx+mark/2, 138+mark), m, image.Point{}, draw.Over)
 
-	// Wordmark plus its brand-coloured full stop, centred as one unit.
-	w := textWidth(title, "LOCAL IT HELP") + textWidth(title, ".")
-	end := text(img, title, "LOCAL IT HELP", cx-w/2, 340, textPri)
-	text(img, title, ".", end, 340, brand)
+	// Wordmark plus its amber full stop, centred as one unit.
+	word, stop := "LOCAL IT HELP", "."
+	w := textWidth(title, word) + textWidth(title, stop)
+	end := text(img, title, word, cx-w/2, 375, white)
+	text(img, title, stop, end, 375, accentLt)
+	mustFit(w, "wordmark")
 
-	textC(img, sub, "Friendly computer help, at your place.", cx, 400, textSec)
-	textC(img, sub, "No fix, no fee  ·  Same or next day", cx, 442, textSec)
-	textC(img, kicker, "localithelp.com.au", cx, 500, brand)
+	// A short amber rule ties the wordmark to the strapline.
+	fill(img, image.Rect(cx-45, 404, cx+45, 408), accentLt)
 
-	if textWidth(title, "LOCAL IT HELP.") > safe {
-		log.Fatalf("cover wordmark is %dpx wide, over the %dpx square-crop budget", w, safe)
+	textC(img, sub, "Friendly computer help, at your place.", cx, 462, dimOnDk)
+	textC(img, kicker, "DONVALE  ·  MELBOURNE'S EAST", cx, 502, faintOn)
+
+	// Promise chips, centred as a row: outlined rather than filled, so they read
+	// as trim on the dark field instead of competing with the wordmark.
+	chips := []string{"No fix, no fee", "Same or next day", "14-day guarantee"}
+	const gap, padX = 13, 16
+	total := gap * (len(chips) - 1)
+	for _, c := range chips {
+		total += textWidth(small, c) + padX*2
 	}
+	mustFit(total, "chip row")
+	x := cx - total/2
+	for _, c := range chips {
+		bw := textWidth(small, c) + padX*2
+		chipOutline(img, image.Rect(x, 552, x+bw, 594), 21)
+		text(img, small, c, x+padX, 581, dimOnDk)
+		x += bw + gap
+	}
+
+	textC(img, kicker, "localithelp.com.au", cx, 640, white)
 	return img
+}
+
+// mustFit fails the build rather than shipping a cover a crop would clip — the
+// wording here changes more often than anyone re-checks the crop.
+func mustFit(w int, what string) {
+	if w > coverSafe {
+		log.Fatalf("cover %s is %dpx wide, over the %dpx square-crop budget", what, w, coverSafe)
+	}
+}
+
+// chipOutline strokes a rounded rectangle by filling one and knocking out an
+// inset copy, which keeps the anti-aliasing consistent with roundedRect.
+func chipOutline(dst *image.RGBA, r image.Rectangle, radius float64) {
+	stroke := color.RGBA{0x3f, 0x52, 0x74, 0xff}
+	before := image.NewRGBA(r)
+	draw.Draw(before, r, dst, r.Min, draw.Src)
+	roundedRect(dst, r, radius, stroke)
+	in := r.Inset(2)
+	for y := in.Min.Y; y < in.Max.Y; y++ {
+		for x := in.Min.X; x < in.Max.X; x++ {
+			a := coverage(float64(x)+0.5, float64(y)+0.5, in, radius-2)
+			if a <= 0 {
+				continue
+			}
+			dst.SetRGBA(x, y, blend(dst.RGBAAt(x, y), before.RGBAAt(x, y), a))
+		}
+	}
+}
+
+// gradient paints a diagonal two-stop fade across the whole image.
+func gradient(dst *image.RGBA, from, to color.RGBA) {
+	b := dst.Bounds()
+	w, h := float64(b.Dx()), float64(b.Dy())
+	lerp := func(a, c uint8, t float64) uint8 { return uint8(float64(a)*(1-t) + float64(c)*t + 0.5) }
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			t := clamp(float64(x)/w*0.35+float64(y)/h*0.65, 0, 1)
+			dst.SetRGBA(x, y, color.RGBA{
+				lerp(from.R, to.R, t), lerp(from.G, to.G, t), lerp(from.B, to.B, t), 0xff,
+			})
+		}
+	}
 }
 
 // squareImage is the 1:1 variant, for slots that crop to a square or near it —
