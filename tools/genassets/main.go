@@ -53,6 +53,7 @@ func main() {
 		}
 	}
 	must(writePNG(filepath.Join(out, "og.png"), ogImage()))
+	must(writePNG(filepath.Join(out, "square.png"), squareImage()))
 	for _, sz := range []int{32, 180, 192, 512} {
 		name := fmt.Sprintf("icon-%d.png", sz)
 		if sz == 180 {
@@ -249,6 +250,47 @@ func icon(size int) *image.RGBA {
 		cx, cy := float64(x+w)+r*1.6, float64(y)-r
 		roundedRect(img, image.Rect(int(cx-r), int(cy-r), int(cx+r)+1, int(cy+r)+1), r, accent)
 	}
+	return img
+}
+
+// squareImage is the 1:1 variant, for slots that crop to a square or near it —
+// Google Business Profile photos being the reason it exists. Everything sits in
+// the middle band vertically, so the usual 4:3 crop still shows the whole
+// wordmark rather than lopping the ends off it.
+func squareImage() *image.RGBA {
+	const S = 1200
+	img := image.NewRGBA(image.Rect(0, 0, S, S))
+	fill(img, img.Bounds(), bgDeep)
+	softGlow(img, 1040, 140, 460, accent, 0.18)
+	softGlow(img, 140, 1050, 420, brand, 0.12)
+
+	card := image.Rect(80, 80, S-80, S-80)
+	roundedRect(img, card, 22, surface)
+	fill(img, image.Rect(card.Min.X, card.Min.Y+40, card.Min.X+6, card.Max.Y-40), brand)
+
+	kicker := face(gomono.TTF, 22)
+	title := face(gobold.TTF, 84)
+	sub := face(goregular.TTF, 32)
+	small := face(goregular.TTF, 24)
+
+	x := card.Min.X + 64
+	text(img, kicker, "COMPUTER HELP  ·  DONVALE & MELBOURNE'S EAST", x, 340, textMute)
+
+	end := text(img, title, "LOCAL IT HELP", x, 470, textPri)
+	text(img, title, ".", end, 470, brand)
+
+	text(img, sub, "Friendly computer help, at your place.", x, 545, textSec)
+	text(img, sub, "Email · printers · Wi-Fi · scams · slow PCs · new setups", x, 595, textSec)
+	text(img, sub, "— plus Shopify, websites & custom software.", x, 645, textSec)
+
+	cx := x
+	for _, c := range []string{"No fix, no fee", "Same or next day", "14-day guarantee"} {
+		w := textWidth(small, c)
+		roundedRect(img, image.Rect(cx, 730, cx+w+36, 772), 21, color.RGBA{0xee, 0xf2, 0xf7, 0xff})
+		text(img, small, c, cx+18, 760, textPri)
+		cx += w + 36 + 14
+	}
+	text(img, kicker, "localithelp.com.au", x, 850, brand)
 	return img
 }
 
