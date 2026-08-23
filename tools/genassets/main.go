@@ -54,7 +54,7 @@ func main() {
 	}
 	must(writePNG(filepath.Join(out, "og.png"), ogImage()))
 	must(writePNG(filepath.Join(out, "square.png"), squareImage()))
-	for _, sz := range []int{32, 180, 192, 512} {
+	for _, sz := range []int{32, 180, 192, 512, 1024} {
 		name := fmt.Sprintf("icon-%d.png", sz)
 		if sz == 180 {
 			name = "apple-touch-icon.png"
