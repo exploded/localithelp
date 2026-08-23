@@ -54,6 +54,7 @@ func main() {
 	}
 	must(writePNG(filepath.Join(out, "og.png"), ogImage()))
 	must(writePNG(filepath.Join(out, "square.png"), squareImage()))
+	must(writePNG(filepath.Join(out, "cover.png"), coverImage()))
 	for _, sz := range []int{32, 180, 192, 512, 1024} {
 		name := fmt.Sprintf("icon-%d.png", sz)
 		if sz == 180 {
@@ -249,6 +250,48 @@ func icon(size int) *image.RGBA {
 		r := float64(size) * 0.055
 		cx, cy := float64(x+w)+r*1.6, float64(y)-r
 		roundedRect(img, image.Rect(int(cx-r), int(cy-r), int(cx+r)+1, int(cy+r)+1), r, accent)
+	}
+	return img
+}
+
+// textC draws s centred on cx and returns the x it ended at.
+func textC(dst draw.Image, fc font.Face, s string, cx, y int, col color.Color) int {
+	return text(dst, fc, s, cx-textWidth(fc, s)/2, y, col)
+}
+
+// coverImage is the 16:9 cover, sized for Google Business Profile. GBP re-crops
+// the cover to whatever shape the surface wants, and a square crop of a 16:9
+// image keeps only the middle 675px — so everything here is centred and held
+// inside that column rather than run across the full width like ogImage.
+func coverImage() *image.RGBA {
+	const W, H = 1200, 675
+	const safe = 600 // widest any text may be: survives a centred square crop
+	img := image.NewRGBA(image.Rect(0, 0, W, H))
+	fill(img, img.Bounds(), bgDeep)
+	softGlow(img, 1010, 110, 430, accent, 0.18)
+	softGlow(img, 150, 600, 400, brand, 0.12)
+
+	card := image.Rect(70, 60, W-70, H-60)
+	roundedRect(img, card, 22, surface)
+
+	cx := W / 2
+	kicker := face(gomono.TTF, 18)
+	title := face(gobold.TTF, 60)
+	sub := face(goregular.TTF, 26)
+
+	textC(img, kicker, "COMPUTER HELP  ·  DONVALE & MELBOURNE'S EAST", cx, 235, textMute)
+
+	// Wordmark plus its brand-coloured full stop, centred as one unit.
+	w := textWidth(title, "LOCAL IT HELP") + textWidth(title, ".")
+	end := text(img, title, "LOCAL IT HELP", cx-w/2, 340, textPri)
+	text(img, title, ".", end, 340, brand)
+
+	textC(img, sub, "Friendly computer help, at your place.", cx, 400, textSec)
+	textC(img, sub, "No fix, no fee  ·  Same or next day", cx, 442, textSec)
+	textC(img, kicker, "localithelp.com.au", cx, 500, brand)
+
+	if textWidth(title, "LOCAL IT HELP.") > safe {
+		log.Fatalf("cover wordmark is %dpx wide, over the %dpx square-crop budget", w, safe)
 	}
 	return img
 }
