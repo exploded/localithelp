@@ -276,74 +276,111 @@ func textC(dst draw.Image, fc font.Face, s string, cx, y int, col color.Color) i
 	return text(dst, fc, s, cx-textWidth(fc, s)/2, y, col)
 }
 
-// coverSafe is the widest any cover element may be. Google Business Profile
-// re-crops the cover per surface, and the worst case is a centred square, which
-// of a 1200×675 image keeps only the middle 675px. Everything is held inside
-// that column with a margin, so no crop can clip a word.
-const coverSafe = 620
-
-// coverImage is the 16:9 cover, sized for Google Business Profile. Unlike
-// ogImage — a link-preview card that is only ever shown whole — this is a
-// full-bleed piece: no card, no border, nothing near an edge that a crop could
-// slice through and leave looking broken.
-func coverImage() *image.RGBA {
-	const W, H = 1200, 675
-	img := image.NewRGBA(image.Rect(0, 0, W, H))
-	gradient(img, navyTop, navyBot)
-	softGlow(img, 1080, 60, 560, brandLt, 0.30)
-	softGlow(img, 120, 660, 480, accentLt, 0.10)
-	softGlow(img, W/2, 205, 250, brandLt, 0.22) // halo behind the mark
-
+// brandPlate draws the centred brand lockup — mark, wordmark, rule, strapline,
+// locality, promise chips and domain — full-bleed on a dark gradient field.
+// Cover and photo differ only in canvas shape and scale, so they share it.
+//
+// safeW and safeH are the narrowest and shortest crops the slot can take, less
+// a margin: everything is held inside them so no crop can clip a word. Google
+// Business Profile re-crops per surface, so nothing is drawn near an edge
+// either — a crop that sliced through a card border would look broken.
+func brandPlate(img *image.RGBA, scale float64, safeW, safeH int) {
+	W, H := img.Bounds().Dx(), img.Bounds().Dy()
 	cx := W / 2
-	kicker := face(gomono.TTF, 19)
-	title := face(gobold.TTF, 66)
-	sub := face(goregular.TTF, 30)
-	small := face(goregular.TTF, 21)
+	s := func(v int) int { return int(float64(v)*scale + 0.5) }
 
-	// The mark, big and centred — the cover is the one slot with room for it.
-	const mark = 132
-	m := iconTile(mark, brandLt, accentLt)
-	draw.Draw(img, image.Rect(cx-mark/2, 138, cx+mark/2, 138+mark), m, image.Point{}, draw.Over)
+	gradient(img, navyTop, navyBot)
+	softGlow(img, float64(W)*0.90, float64(H)*0.09, float64(W)*0.47, brandLt, 0.30)
+	softGlow(img, float64(W)*0.10, float64(H)*0.98, float64(W)*0.40, accentLt, 0.10)
+
+	kicker := face(gomono.TTF, 19*scale)
+	title := face(gobold.TTF, 66*scale)
+	sub := face(goregular.TTF, 30*scale)
+	small := face(goregular.TTF, 21*scale)
+
+	// Offsets down from the top of the mark, at scale 1. The block is measured
+	// and centred as a whole, so it sits right on any canvas shape.
+	const (
+		markH   = 132
+		wordY   = 237 // baselines
+		ruleY   = 266
+		subY    = 324
+		kickY   = 364
+		chipY   = 414 // top of the chip row
+		chipH   = 42
+		domainY = 502
+		stackH  = 512
+	)
+	mustFit(s(stackH), safeH, "stack height")
+	top := (H - s(stackH)) / 2
+	at := func(off int) int { return top + s(off) }
+
+	// The mark, big and centred — these slots have room for it, the favicon doesn't.
+	mark := s(markH)
+	softGlow(img, float64(cx), float64(top+mark/2), float64(mark)*1.9, brandLt, 0.22)
+	draw.Draw(img, image.Rect(cx-mark/2, top, cx+mark/2, top+mark),
+		iconTile(mark, brandLt, accentLt), image.Point{}, draw.Over)
 
 	// Wordmark plus its amber full stop, centred as one unit.
 	word, stop := "LOCAL IT HELP", "."
 	w := textWidth(title, word) + textWidth(title, stop)
-	end := text(img, title, word, cx-w/2, 375, white)
-	text(img, title, stop, end, 375, accentLt)
-	mustFit(w, "wordmark")
+	end := text(img, title, word, cx-w/2, at(wordY), white)
+	text(img, title, stop, end, at(wordY), accentLt)
+	mustFit(w, safeW, "wordmark")
 
 	// A short amber rule ties the wordmark to the strapline.
-	fill(img, image.Rect(cx-45, 404, cx+45, 408), accentLt)
+	fill(img, image.Rect(cx-s(45), at(ruleY), cx+s(45), at(ruleY)+s(4)), accentLt)
 
-	textC(img, sub, "Friendly computer help, at your place.", cx, 462, dimOnDk)
-	textC(img, kicker, "DONVALE  ·  MELBOURNE'S EAST", cx, 502, faintOn)
+	textC(img, sub, "Friendly computer help, at your place.", cx, at(subY), dimOnDk)
+	textC(img, kicker, "DONVALE  ·  MELBOURNE'S EAST", cx, at(kickY), faintOn)
 
 	// Promise chips, centred as a row: outlined rather than filled, so they read
 	// as trim on the dark field instead of competing with the wordmark.
 	chips := []string{"No fix, no fee", "Same or next day", "14-day guarantee"}
-	const gap, padX = 13, 16
+	gap, padX := s(13), s(16)
 	total := gap * (len(chips) - 1)
 	for _, c := range chips {
 		total += textWidth(small, c) + padX*2
 	}
-	mustFit(total, "chip row")
+	mustFit(total, safeW, "chip row")
 	x := cx - total/2
 	for _, c := range chips {
 		bw := textWidth(small, c) + padX*2
-		chipOutline(img, image.Rect(x, 552, x+bw, 594), 21)
-		text(img, small, c, x+padX, 581, dimOnDk)
+		box := image.Rect(x, at(chipY), x+bw, at(chipY)+s(chipH))
+		chipOutline(img, box, float64(s(21)))
+		text(img, small, c, x+padX, box.Max.Y-s(13), dimOnDk)
 		x += bw + gap
 	}
 
-	textC(img, kicker, "localithelp.com.au", cx, 640, white)
+	textC(img, kicker, "localithelp.com.au", cx, at(domainY), white)
+}
+
+// coverImage is the 16:9 cover, sized for Google Business Profile. Unlike
+// ogImage — a link-preview card that is only ever shown whole — this is
+// full-bleed, because the worst case here is a centred square crop, which of a
+// 1200×675 image keeps only the middle 675px.
+func coverImage() *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, 1200, 675))
+	brandPlate(img, 1, 620, 675) // a square crop keeps the full height, so only width binds
+	return img
+}
+
+// squareImage is the 1:1 variant, for the Google Business Profile photos slot.
+// Photos are shown square or cropped to 4:3 landscape — which of a square keeps
+// the middle 900px of height and none of the width — so the height is the tight
+// dimension here, the reverse of the cover. It runs the lockup larger, because
+// photos are usually seen small, as a thumbnail beside the profile.
+func squareImage() *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, 1200, 1200))
+	brandPlate(img, 1.55, 1000, 880)
 	return img
 }
 
 // mustFit fails the build rather than shipping a cover a crop would clip — the
 // wording here changes more often than anyone re-checks the crop.
-func mustFit(w int, what string) {
-	if w > coverSafe {
-		log.Fatalf("cover %s is %dpx wide, over the %dpx square-crop budget", what, w, coverSafe)
+func mustFit(w, safe int, what string) {
+	if w > safe {
+		log.Fatalf("%s is %dpx wide, over the %dpx crop budget", what, w, safe)
 	}
 }
 
@@ -379,47 +416,6 @@ func gradient(dst *image.RGBA, from, to color.RGBA) {
 			})
 		}
 	}
-}
-
-// squareImage is the 1:1 variant, for slots that crop to a square or near it —
-// Google Business Profile photos being the reason it exists. Everything sits in
-// the middle band vertically, so the usual 4:3 crop still shows the whole
-// wordmark rather than lopping the ends off it.
-func squareImage() *image.RGBA {
-	const S = 1200
-	img := image.NewRGBA(image.Rect(0, 0, S, S))
-	fill(img, img.Bounds(), bgDeep)
-	softGlow(img, 1040, 140, 460, accent, 0.18)
-	softGlow(img, 140, 1050, 420, brand, 0.12)
-
-	card := image.Rect(80, 80, S-80, S-80)
-	roundedRect(img, card, 22, surface)
-	fill(img, image.Rect(card.Min.X, card.Min.Y+40, card.Min.X+6, card.Max.Y-40), brand)
-
-	kicker := face(gomono.TTF, 22)
-	title := face(gobold.TTF, 84)
-	sub := face(goregular.TTF, 32)
-	small := face(goregular.TTF, 24)
-
-	x := card.Min.X + 64
-	text(img, kicker, "COMPUTER HELP  ·  DONVALE & MELBOURNE'S EAST", x, 340, textMute)
-
-	end := text(img, title, "LOCAL IT HELP", x, 470, textPri)
-	text(img, title, ".", end, 470, brand)
-
-	text(img, sub, "Friendly computer help, at your place.", x, 545, textSec)
-	text(img, sub, "Email · printers · Wi-Fi · scams · slow PCs · new setups", x, 595, textSec)
-	text(img, sub, "— plus Shopify, websites & custom software.", x, 645, textSec)
-
-	cx := x
-	for _, c := range []string{"No fix, no fee", "Same or next day", "14-day guarantee"} {
-		w := textWidth(small, c)
-		roundedRect(img, image.Rect(cx, 730, cx+w+36, 772), 21, color.RGBA{0xee, 0xf2, 0xf7, 0xff})
-		text(img, small, c, cx+18, 760, textPri)
-		cx += w + 36 + 14
-	}
-	text(img, kicker, "localithelp.com.au", x, 850, brand)
-	return img
 }
 
 func ogImage() *image.RGBA {
