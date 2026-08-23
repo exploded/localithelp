@@ -310,3 +310,26 @@ func TestJSONLD(t *testing.T) {
 		}
 	}
 }
+
+// TestOpeningHours pins the trading week. It exists because the site and the
+// Google Business Profile drifted apart once already — if you change openHours,
+// change the profile to match, then update this test.
+func TestOpeningHours(t *testing.T) {
+	wantLD := []string{
+		"Mo 11:00-17:00", "Tu 09:00-17:00", "We 11:00-17:00",
+		"Th 09:00-17:00", "Fr 11:00-17:00",
+	}
+	got := hoursSchema()
+	if len(got) != len(wantLD) {
+		t.Fatalf("hoursSchema() = %v, want %v", got, wantLD)
+	}
+	for i, w := range wantLD {
+		if got[i] != w {
+			t.Errorf("hoursSchema()[%d] = %q, want %q", i, got[i], w)
+		}
+	}
+	const wantDisplay = "Mon, Wed & Fri 11am–5pm · Tue & Thu 9am–5pm"
+	if d := hoursDisplay(); d != wantDisplay {
+		t.Errorf("hoursDisplay() = %q, want %q", d, wantDisplay)
+	}
+}

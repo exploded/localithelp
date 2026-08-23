@@ -28,7 +28,7 @@
           "areaServed": [{{range $i, $s := .Site.Suburbs}}{{if $i}}, {{end}}{"@type": "City", "name": "{{$s}}"}{{end}}],
           "knowsAbout": ["Computer repair", "Wi-Fi and home networking", "Email and Outlook", "Printers", "Scam and virus removal", "New computer setup", "Data recovery", "Software development", "Shopify"],
           "paymentAccepted": "Visa, Mastercard, Amex, PayID, Apple Pay, Google Pay",
-          "openingHours": "Mo-Fr 09:00-17:00",
+          "openingHours": [{{range $i, $h := .Site.HoursLD}}{{if $i}}, {{end}}"{{$h}}"{{end}}],
           "founder": {"@type": "Person", "name": "James McHugh"},
           "potentialAction": {
             "@type": "ReserveAction",
@@ -221,7 +221,7 @@
                     </div>
                     <div class="contact-detail-item">
                         <div class="contact-detail-label">Hours</div>
-                        <div class="contact-detail-value">Monday to Friday, 9am–5pm.</div>
+                        <div class="contact-detail-value">{{.Site.Hours}}. Weekends closed.</div>
                     </div>
                 </div>
             </div>

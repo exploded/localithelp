@@ -30,7 +30,7 @@ func llmsTxt() string {
 	if site.Phone != "" {
 		b.WriteString(" or " + site.Phone)
 	}
-	b.WriteString(". Hours Mon-Fri 9:00-17:00.\n\n")
+	b.WriteString(". Hours " + strings.Join(site.HoursLD, "; ") + ".\n\n")
 
 	b.WriteString("## Pricing\n\n")
 	fmt.Fprintf(&b, "- Flat visit fee: $%d — includes travel anywhere in the service area\n", site.OnsiteFee)

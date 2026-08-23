@@ -559,6 +559,8 @@ type siteConfig struct {
 	Suburbs     []string     // service area (display names)
 	Areas       []Suburb     // service area with slugs, for /areas/{slug} links
 	ABN         string       // shown on invoices
+	Hours       string       // trading hours for display, e.g. "Mon & Fri 11am–5pm"
+	HoursLD     []string     // same hours as schema.org openingHours strings
 	IndexNowKey string       // IndexNow API key; empty disables the /{key}.txt route
 	BankName    string       // bank transfer details on invoices (BSB empty = hidden)
 	BankBSB     string
@@ -601,6 +603,8 @@ func initSiteConfig(port string) {
 		Suburbs:     suburbs,
 		Areas:       suburbList,
 		ABN:         envOr("ABN", "14 723 053 435"),
+		Hours:       hoursDisplay(),
+		HoursLD:     hoursSchema(),
 		IndexNowKey: strings.TrimSpace(os.Getenv("INDEXNOW_KEY")),
 		BankName:    envOr("BANK_ACCOUNT_NAME", "James McHugh"),
 		BankBSB:     strings.TrimSpace(os.Getenv("BANK_BSB")),
@@ -754,4 +758,101 @@ func cacheStatic(h http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		h.ServeHTTP(w, r)
 	})
+}
+
+// openHours is the trading week in one place. The contact block, the
+// LocalBusiness JSON-LD and llms.txt all render from it, so they can't drift
+// apart — which is how the site came to advertise different hours from the
+// Google Business Profile. Days off are simply left out.
+//
+// Keep in step with the Business Profile: Google treats a mismatch between a
+// site and its profile as a trust signal.
+var openHours = []struct {
+	Code  string // schema.org two-letter day
+	Label string
+	Open  string // 24-hour, as schema.org wants it
+	Close string
+}{
+	{"Mo", "Mon", "11:00", "17:00"},
+	{"Tu", "Tue", "09:00", "17:00"},
+	{"We", "Wed", "11:00", "17:00"},
+	{"Th", "Thu", "09:00", "17:00"},
+	{"Fr", "Fri", "11:00", "17:00"},
+}
+
+// hoursSchema renders one "Mo 11:00-17:00" string per open day. Per-day strings
+// rather than ranges: unambiguous to parse, and a day's hours can change
+// without anyone having to re-group the week.
+func hoursSchema() []string {
+	out := make([]string, 0, len(openHours))
+	for _, h := range openHours {
+		out = append(out, h.Code+" "+h.Open+"-"+h.Close)
+	}
+	return out
+}
+
+// hoursDisplay groups days that share an opening time into readable phrases,
+// e.g. "Mon & Wed 11am–5pm · Tue, Thu & Fri 9am–5pm". Groups keep the order
+// their first day falls in the week.
+func hoursDisplay() string {
+	type group struct {
+		days []string
+		span string
+	}
+	var groups []*group
+	byspan := map[string]*group{}
+	for _, h := range openHours {
+		span := clock12(h.Open) + "–" + clock12(h.Close)
+		g, ok := byspan[span]
+		if !ok {
+			g = &group{span: span}
+			byspan[span] = g
+			groups = append(groups, g)
+		}
+		g.days = append(g.days, h.Label)
+	}
+	parts := make([]string, 0, len(groups))
+	for _, g := range groups {
+		parts = append(parts, joinAnd(g.days)+" "+g.span)
+	}
+	return strings.Join(parts, " · ")
+}
+
+// clock12 turns "09:00" into "9am" and "17:30" into "5.30pm" — how the hours
+// read everywhere else on the site.
+func clock12(hhmm string) string {
+	h, m, ok := strings.Cut(hhmm, ":")
+	if !ok {
+		return hhmm
+	}
+	n, err := strconv.Atoi(h)
+	if err != nil {
+		return hhmm
+	}
+	suffix := "am"
+	if n >= 12 {
+		suffix = "pm"
+	}
+	if n > 12 {
+		n -= 12
+	}
+	if n == 0 {
+		n = 12
+	}
+	s := strconv.Itoa(n)
+	if m != "00" {
+		s += "." + m
+	}
+	return s + suffix
+}
+
+// joinAnd renders a list the way a person would say it: "Mon, Wed & Fri".
+func joinAnd(items []string) string {
+	switch len(items) {
+	case 0:
+		return ""
+	case 1:
+		return items[0]
+	}
+	return strings.Join(items[:len(items)-1], ", ") + " & " + items[len(items)-1]
 }
