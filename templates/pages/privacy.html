@@ -1,0 +1,131 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Privacy Policy | Local IT Help</title>
+    <meta name="description" content="What personal information Local IT Help collects when you book a visit or request a quote, how it is used, who it is shared with, and how to ask for a copy or deletion.">
+    <meta property="og:title" content="Privacy Policy — Local IT Help">
+    <meta property="og:description" content="What I collect, why, who it goes to, and how to ask for a copy or deletion.">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Legal</div>
+            <h1 class="section-title">Privacy policy.</h1>
+            <p class="page-header-intro">Plain English, because you're trusting me with your computer and your details. Last updated 24 August 2026.</p>
+        </div>
+    </div>
+
+    <section class="service-section">
+        <div class="container">
+            <div class="legal-body">
+                <p>This site and business are run by <strong>James McHugh</strong>, trading as <strong>Local IT Help</strong>
+                    (ABN {{.Site.ABN}}), Donvale VIC. I'm a one-person business — the only person who sees your details is me.</p>
+
+                <p>As a small business, the <em>Privacy Act 1988</em> mostly doesn't apply to me. I follow the Australian
+                    Privacy Principles anyway, because it's the right way to handle someone's home and computer.</p>
+
+                <h2>What I collect</h2>
+
+                <p><strong>When you book a visit</strong> — your name, phone number, email address, street address and
+                    suburb, the service you picked, a description of the problem, and your preferred time. The address is
+                    needed because I come to you.</p>
+
+                <p><strong>When you request a software quote</strong> — your name, email address, mobile number, address
+                    and a description of the project, plus the options you tick.</p>
+
+                <p><strong>Automatically, with either form</strong> — your IP address and the time you submitted it. This
+                    is only used to catch spam and abuse.</p>
+
+                <p><strong>During and after a visit</strong> — notes about what I found and what I did, so a follow-up
+                    visit doesn't start from scratch, and the invoice details: what the job was, the amount, how it was
+                    paid and any payment reference.</p>
+
+                <p>I never see or store your card numbers. Card payments go through the payment terminal or the payment
+                    link, and bank transfers go through your bank.</p>
+
+                <p>I also don't ask for and don't want your passwords in writing. If a job needs one, you type it in
+                    yourself, or tell me at the time and I don't record it.</p>
+
+                <h2>Why I collect it</h2>
+
+                <ul class="checklist">
+                    <li>To arrange the visit and get to the right address</li>
+                    <li>To send you a booking confirmation, a reminder the day before, and an invoice or receipt</li>
+                    <li>To do the work, and to pick up where I left off if you book again</li>
+                    <li>To keep the business records the ATO requires</li>
+                    <li>To answer you if you get in touch about a past job</li>
+                </ul>
+
+                <p>I don't sell your details, I don't rent them out, and I don't send marketing emails to customers who
+                    haven't asked for them.</p>
+
+                <h2>Who else sees it</h2>
+
+                <p>Running the site and the business needs a handful of services. Each one only gets what it needs:</p>
+
+                <ul class="checklist">
+                    <li><strong>Amazon Web Services</strong> — sends the confirmation, reminder and invoice emails, and
+                        stores the encrypted nightly database backup. Both in AWS's Sydney region.</li>
+                    <li><strong>Google Calendar</strong> — a confirmed visit (your name, address, phone number and the
+                        problem description) is written into my own work calendar, so my diary is on my phone. That
+                        calendar isn't shared with anyone.</li>
+                    <li><strong>Google Analytics and Google Ads</strong> — anonymous visit statistics on the public
+                        pages, and measuring which ads lead to enquiries. This never includes your booking details.</li>
+                    <li><strong>Cloudflare</strong> — runs the domain's DNS and the anti-spam check on the quote form.</li>
+                    <li><strong>Mappify</strong> — the address autocomplete. What you type into the address box is sent
+                        to look up matching Australian addresses.</li>
+                    <li><strong>Anthropic</strong> — <em>software quote requests only</em>. The project description is
+                        sent to generate a draft estimate. Nothing from a computer-help booking is ever sent to it.</li>
+                    <li><strong>Zeller</strong> — card payments and payment links.</li>
+                </ul>
+
+                <p>Beyond that, I'd only hand over your details if the law required it.</p>
+
+                <h2>Where it's kept, and for how long</h2>
+
+                <p>Your details sit in a database on the server that runs this site, with an encrypted backup taken each
+                    night. Backups are deleted automatically after 90 days.</p>
+
+                <p>Booking and invoice records are kept for at least five years, because tax law requires it. Notes from
+                    a visit are kept as long as you're a customer, so the next visit is faster.</p>
+
+                <h2>Cookies</h2>
+
+                <p>The public pages set a Google Analytics cookie and, if you arrived from an ad, a Google Ads
+                    measurement cookie. The quote form's anti-spam check sets a short-lived token. The only other cookie
+                    is the sign-in session for the admin area, which is just me.</p>
+
+                <p>You can block or clear all of them in your browser and every page on this site still works.</p>
+
+                <h2>Getting a copy, a correction, or a deletion</h2>
+
+                <p>Email <a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a>{{if .Site.Phone}} or call
+                    <a href="{{.Site.PhoneHref}}">{{.Site.Phone}}</a>{{end}} and ask. You can request:</p>
+
+                <ul class="checklist">
+                    <li>A copy of everything I hold about you</li>
+                    <li>A correction, if something's wrong</li>
+                    <li>Deletion — I'll delete everything except the invoice records tax law makes me keep</li>
+                </ul>
+
+                <p>No forms, no charge. I'll come back to you within a few days.</p>
+
+                <h2>If you're not happy</h2>
+
+                <p>Tell me first — most things are a misunderstanding I can fix the same day. If we can't sort it out, you
+                    can take it to the Office of the Australian Information Commissioner at
+                    <a href="https://www.oaic.gov.au" target="_blank" rel="noopener">oaic.gov.au</a>.</p>
+
+                <h2>Changes to this policy</h2>
+
+                <p>If this policy changes, the date at the top changes with it. There's no archive of old versions — if
+                    you need to know what it said on a particular date, ask me.</p>
+
+                <p class="legal-footnote">Questions about any of this? Email
+                    <a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a>. See also the
+                    <a href="/terms">terms of service</a>.</p>
+            </div>
+        </div>
+    </section>
+{{end}}

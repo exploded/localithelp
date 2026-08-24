@@ -36,6 +36,7 @@
             </div>
 
             <h2 class="admin-heading">This week <a class="admin-heading-link" href="/admin/calendar">Calendar &#8594;</a></h2>
+            <p class="admin-note admin-note--small">Google Calendar sync: {{if .PageData.CalendarOn}}connected{{else}}not connected{{end}} &middot; <a href="/admin/calendar/settings">settings</a></p>
             {{if .PageData.Week}}
             <div class="admin-quotes-table-wrap">
                 <table class="admin-quotes-table">

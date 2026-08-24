@@ -77,6 +77,7 @@ func main() {
 			Endpoint:     google.Endpoint,
 		}
 		log.Println("Google OAuth2 configured")
+		initGCalOAuth()
 	} else {
 		log.Println("GOOGLE_CLIENT_ID not set — Google login disabled")
 	}
@@ -127,6 +128,8 @@ func newMux(dir string) *http.ServeMux {
 	mux.HandleFunc("GET /book/address-search", handleBookAddressSearch)
 	mux.HandleFunc("GET /book/thanks", handleBookThanks)
 	mux.HandleFunc("GET /portfolio", handlePortfolio)
+	mux.HandleFunc("GET /privacy", handlePrivacy)
+	mux.HandleFunc("GET /terms", handleTerms)
 	mux.HandleFunc("GET /quote", handleQuote)
 	mux.HandleFunc("POST /api/quote", handleQuoteSubmit)
 	mux.HandleFunc("GET /quote/sent", handleQuoteSent)
@@ -157,6 +160,12 @@ func newMux(dir string) *http.ServeMux {
 	mux.HandleFunc("POST /admin/bookings/{id}/address", requireAdmin(handleAdminBookingAddress))
 	mux.HandleFunc("GET /admin/address-search", requireAdmin(handleAdminAddressSearch))
 	mux.HandleFunc("GET /admin/calendar", requireAdmin(handleAdminCalendar))
+	mux.HandleFunc("GET /admin/calendar/settings", requireAdmin(handleAdminCalendarSettings))
+	mux.HandleFunc("POST /admin/calendar/connect", requireAdmin(handleGCalConnect))
+	mux.HandleFunc("POST /admin/calendar/disconnect", requireAdmin(handleGCalDisconnect))
+	mux.HandleFunc("POST /admin/calendar/busy", requireAdmin(handleAdminCalendarBusy))
+	mux.HandleFunc("POST /admin/calendar/resync", requireAdmin(handleAdminCalendarResync))
+	mux.HandleFunc("GET /auth/google/calendar/callback", requireAdmin(handleGCalCallback))
 	mux.HandleFunc("GET /admin/invoices", requireAdmin(handleAdminInvoices))
 	mux.HandleFunc("POST /admin/invoices/new", requireAdmin(handleAdminInvoiceNew))
 	mux.HandleFunc("GET /admin/invoices/{id}", requireAdmin(handleAdminInvoice))
@@ -301,6 +310,16 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 
 func handlePortfolio(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "portfolio", nil)
+}
+
+// Legal pages. Both are static prose that reads its figures from siteConfig, so
+// the fees and contact details can never drift from the rest of the site.
+func handlePrivacy(w http.ResponseWriter, r *http.Request) {
+	render(w, r, "privacy", nil)
+}
+
+func handleTerms(w http.ResponseWriter, r *http.Request) {
+	render(w, r, "terms", nil)
 }
 
 // ── Google OAuth ──
@@ -483,6 +502,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 		SentCount:   counts[db.BookingInvoiced],
 		Outstanding: outstanding,
 		Week:        bookingRows(week),
+		CalendarOn:  calendarSyncConnected(),
 	})
 }
 
@@ -495,6 +515,7 @@ type adminDashData struct {
 	SentCount   int
 	Outstanding int64 // cents, invoices sent but unpaid
 	Week        []bookingRow
+	CalendarOn  bool // Google Calendar sync is connected
 }
 
 // adminOptionsData is the /admin/options view model: the quote option groups

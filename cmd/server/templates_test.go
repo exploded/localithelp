@@ -63,6 +63,8 @@ func TestTemplatesRender(t *testing.T) {
 			Others []*Guide
 		}{&guides[0], []*Guide{&guides[1]}},
 		"portfolio": nil,
+		"privacy":   nil,
+		"terms":     nil,
 		"404":       nil,
 		"areas": struct {
 			Groups []suburbGroup
@@ -89,9 +91,15 @@ func TestTemplatesRender(t *testing.T) {
 			Form:   phoneBookingForm{Name: "Ann", Address: "1 Example Ct, Donvale VIC 3111", AddrStreet: "1 Example Ct", AddrSuburb: "Donvale", AddrState: "VIC", AddrPostcode: "3111"},
 			Errors: map[string]string{"contact": "y", "address": "z"}, Services: services},
 		"admin-calendar": calendarData{WeekStart: time.Now(), WeekLabel: "w", Prev: "p", Next: "n", ThisWeek: "t", Hours: []int{7, 8},
-			SlotPx: 14, ColPx: 672, ForID: 1, ForName: "Ann",
+			SlotPx: 14, ColPx: 672, ForID: 1, ForName: "Ann", BusyOn: true, BusyErr: "google says no",
 			Days: []calDay{{Date: time.Now(), Label: "Mon 17", IsToday: true, Slots: []calSlot{{Time: "07:00", OnHour: true, Href: "/x"}, {Time: "07:15"}},
-				Events: []calEvent{{Row: newBookingRow(booked), Top: 10, Height: 56, Href: "/y", Label: "9:30 am – 10:30 am"}}}}},
+				Events: []calEvent{{Row: newBookingRow(booked), Top: 10, Height: 56, Href: "/y", Label: "9:30 am – 10:30 am"}},
+				Busy:   []calBusy{{Top: 0, Height: 28, Label: "7:00 am - 7:30 am"}}}}},
+		"admin-calendar-settings": calSettingsData{Flash: flash{OK: "x"}, Configured: true, AdminEmail: "me@example.test", SyncedBookings: 3,
+			Conn: &db.GoogleCalendar{AccountEmail: "me@example.test", RefreshToken: "r", CalendarID: "cal1", CalendarName: "Local IT Help",
+				ConnectedAt: time.Now(), LastSyncAt: time.Now(), LastError: "boom"},
+			Calendars: []calSettingsCal{{ID: "cal1", Name: "Local IT Help", IsApp: true}, {ID: "p", Name: "Personal", Primary: true}, {ID: "s", Name: "Sport", Skipped: true}}},
+		"admin-calendar-settings-off": calSettingsData{Configured: true, AdminEmail: "me@example.test"},
 		"admin-invoices": adminInvoicesData{Status: "sent", Statuses: []string{"draft", "sent"}, Rows: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, TotalOut: 500},
 		"admin-invoice": func() adminInvoiceData {
 			v := sampleInvoiceView(db.InvoiceDraft)
@@ -127,7 +135,7 @@ func TestTemplatesRender(t *testing.T) {
 	}
 	// Variants (name suffix after the page) reuse the same template with different data.
 	pageOf := func(name string) string {
-		for _, p := range []string{"admin-booking-nocust", "admin-invoice-sent", "invoice-public-paid", "admin-review-card-empty"} {
+		for _, p := range []string{"admin-booking-nocust", "admin-invoice-sent", "invoice-public-paid", "admin-review-card-empty", "admin-calendar-settings-off"} {
 			if name == p {
 				return name[:strings.LastIndex(name, "-")]
 			}

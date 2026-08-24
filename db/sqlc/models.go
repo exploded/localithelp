@@ -26,6 +26,8 @@ type Booking struct {
 	Address          string `json:"address"`
 	ReminderSentAt   string `json:"reminder_sent_at"`
 	AdminAlertSentAt string `json:"admin_alert_sent_at"`
+	GcalEventID      string `json:"gcal_event_id"`
+	GcalSyncedAt     string `json:"gcal_synced_at"`
 }
 
 type Customer struct {
@@ -39,6 +41,18 @@ type Customer struct {
 	Notes     string `json:"notes"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
+}
+
+type GoogleCalendar struct {
+	ID            int64  `json:"id"`
+	AccountEmail  string `json:"account_email"`
+	RefreshToken  string `json:"refresh_token"`
+	CalendarID    string `json:"calendar_id"`
+	CalendarName  string `json:"calendar_name"`
+	SkipCalendars string `json:"skip_calendars"`
+	ConnectedAt   string `json:"connected_at"`
+	LastSyncAt    string `json:"last_sync_at"`
+	LastError     string `json:"last_error"`
 }
 
 type Invoice struct {

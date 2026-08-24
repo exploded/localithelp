@@ -66,7 +66,7 @@ func handleIndexNowKey(w http.ResponseWriter, r *http.Request) {
 // sitemapURLs is the single source of truth for every indexable public path.
 // Everything here must return 200 (never a redirect) — TestSitemap enforces it.
 func sitemapURLs() []string {
-	paths := []string{"/", "/services", "/software-development", "/pricing", "/fix-it-yourself", "/areas", "/book", "/quote", "/portfolio"}
+	paths := []string{"/", "/services", "/software-development", "/pricing", "/fix-it-yourself", "/areas", "/book", "/quote", "/portfolio", "/privacy", "/terms"}
 	for i := range services {
 		p := services[i].URL()
 		if p == "/software-development" {

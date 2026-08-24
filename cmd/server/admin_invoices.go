@@ -393,6 +393,7 @@ func handleAdminInvoiceSend(w http.ResponseWriter, r *http.Request) {
 			if err := db.UpdateBookingStatus(inv.BookingID, db.BookingInvoiced); err != nil {
 				log.Printf("booking #%d → invoiced: %v", inv.BookingID, err)
 			}
+			syncBookingSoon(inv.BookingID)
 		}
 	case db.InvoiceSent:
 		// resend
@@ -486,6 +487,7 @@ func handleAdminInvoicePaid(w http.ResponseWriter, r *http.Request) {
 		if err := db.UpdateBookingStatus(inv.BookingID, db.BookingPaid); err != nil {
 			log.Printf("booking #%d → paid: %v", inv.BookingID, err)
 		}
+		syncBookingSoon(inv.BookingID)
 	}
 	msg := inv.Ref() + " marked paid."
 	if r.FormValue("notify") != "" {
@@ -540,6 +542,7 @@ func handleAdminInvoiceVoid(w http.ResponseWriter, r *http.Request) {
 	// A voided invoice leaves the booking as "done" so it can be re-invoiced.
 	if inv.BookingID != 0 && inv.Status == db.InvoiceSent {
 		_ = db.UpdateBookingStatus(inv.BookingID, db.BookingDone)
+		syncBookingSoon(inv.BookingID)
 	}
 	redirectMsg(w, r, back, "ok", inv.Ref()+" voided.")
 }

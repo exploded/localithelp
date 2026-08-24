@@ -51,6 +51,7 @@ type schedulerSummary struct {
 	Alerts    int // 1-hour admin heads-ups
 	Digest    bool
 	Backup    bool // nightly DB snapshot uploaded
+	Calendar  int  // bookings pushed to Google Calendar
 }
 
 // runScheduledJobs runs every job once for the given instant. Errors are
@@ -62,8 +63,12 @@ func runScheduledJobs(now time.Time) schedulerSummary {
 	s.Alerts = sendAdminAlerts(now)
 	s.Digest = sendMorningDigest(now)
 	s.Backup = backupDatabase(now)
+	s.Calendar = syncCalendar(now)
 	if s.Reminders+s.Alerts > 0 || s.Digest {
 		log.Printf("scheduler: sent %d reminder(s), %d heads-up(s), digest=%v", s.Reminders, s.Alerts, s.Digest)
+	}
+	if s.Calendar > 0 {
+		log.Printf("scheduler: synced %d booking(s) to Google Calendar", s.Calendar)
 	}
 	return s
 }

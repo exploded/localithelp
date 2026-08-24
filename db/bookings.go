@@ -48,6 +48,8 @@ type Booking struct {
 	UpdatedAt       time.Time
 	ReminderSentAt  time.Time // UTC; zero until the day-before reminder went to the customer
 	AdminAlertAt    time.Time // UTC; zero until the 1-hour heads-up went to the admin
+	GCalEventID     string    // Google Calendar event id; empty until pushed
+	GCalSyncedAt    time.Time // UTC; zero until the first successful push
 }
 
 // EndAt is StartAt + DurationMin (zero when unscheduled).
@@ -66,6 +68,7 @@ func sqlcBooking(r sqlc.Booking) Booking {
 		AdminNotes: r.AdminNotes, ParentBookingID: r.ParentBookingID,
 		CreatedAt: parseUTC(r.CreatedAt), UpdatedAt: parseUTC(r.UpdatedAt),
 		ReminderSentAt: parseUTC(r.ReminderSentAt), AdminAlertAt: parseUTC(r.AdminAlertSentAt),
+		GCalEventID: r.GcalEventID, GCalSyncedAt: parseUTC(r.GcalSyncedAt),
 	}
 }
 

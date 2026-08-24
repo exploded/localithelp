@@ -1,0 +1,113 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — Calendar sync</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Administration</div>
+            <h1 class="section-title">Calendar sync</h1>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{if $d.Flash.OK}}<div class="admin-status admin-status--success admin-flash">{{$d.Flash.OK}}</div>{{end}}
+            {{if $d.Flash.Err}}<div class="admin-status admin-status--error admin-flash">{{$d.Flash.Err}}</div>{{end}}
+
+            <div class="cal-toolbar">
+                <a class="btn btn--ghost btn--sm" href="/admin/calendar">&#8592; Back to calendar</a>
+            </div>
+
+            {{if not $d.Configured}}
+            <div class="admin-status admin-status--error">
+                Google OAuth isn't configured on this server. Set <code>GOOGLE_CLIENT_ID</code> and
+                <code>GOOGLE_CLIENT_SECRET</code> in the server <code>.env</code>, then restart.
+            </div>
+            {{else if $d.Conn.Connected}}
+
+            <div class="admin-card">
+                <h2 class="admin-card-title">Connected</h2>
+                <dl class="admin-dl">
+                    <dt>Google account</dt><dd>{{$d.Conn.AccountEmail}}</dd>
+                    <dt>Visits are written to</dt><dd>{{$d.Conn.CalendarName}}</dd>
+                    <dt>Visits currently in Google</dt><dd>{{$d.SyncedBookings}}</dd>
+                    <dt>Last successful sync</dt>
+                    <dd>{{if $d.Conn.LastSyncAt.IsZero}}not yet{{else}}{{$d.Conn.LastSyncAt.Format "2 Jan 2006, 3:04 pm"}} UTC{{end}}</dd>
+                    {{if $d.Conn.LastError}}<dt>Last error</dt><dd class="admin-error-text">{{$d.Conn.LastError}}</dd>{{end}}
+                </dl>
+                <p class="admin-note">
+                    New bookings, reschedules and cancellations are pushed straight away, and anything missed
+                    is picked up by the next 15-minute scheduler tick. Editing an event inside Google Calendar
+                    does <strong>not</strong> change the booking — reschedule from the booking page so the
+                    customer gets the confirmation email.
+                </p>
+                <div class="admin-actions">
+                    <form method="post" action="/admin/calendar/resync">
+                        <input type="hidden" name="csrf" value="{{.CSRF}}">
+                        <button class="btn btn--ghost btn--sm" type="submit">Resync all visits</button>
+                    </form>
+                    <form method="post" action="/admin/calendar/disconnect"
+                          onsubmit="return confirm('Disconnect Google Calendar? Visits already in Google are left there.')">
+                        <input type="hidden" name="csrf" value="{{.CSRF}}">
+                        <button class="btn btn--ghost btn--sm" type="submit">Disconnect</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <h2 class="admin-card-title">Busy times on the calendar view</h2>
+                <p class="admin-note">
+                    Tick the calendars whose events should block out time on <a href="/admin/calendar">/admin/calendar</a>.
+                    Only the times are read — never the event titles.
+                </p>
+                {{if $d.ListErr}}
+                <div class="admin-status admin-status--error">Couldn't list your calendars: {{$d.ListErr}}</div>
+                {{else}}
+                <form method="post" action="/admin/calendar/busy">
+                    <input type="hidden" name="csrf" value="{{.CSRF}}">
+                    <ul class="admin-checklist">
+                        {{range $d.Calendars}}
+                        <li>
+                            <input type="hidden" name="calendar" value="{{.ID}}">
+                            <label>
+                                <input type="checkbox" name="use" value="{{.ID}}"
+                                       {{if .IsApp}}disabled{{else if not .Skipped}}checked{{end}}>
+                                {{.Name}}{{if .Primary}} <span class="admin-tag">primary</span>{{end}}{{if .IsApp}} <span class="admin-tag">this app's visits — already shown</span>{{end}}
+                            </label>
+                        </li>
+                        {{end}}
+                    </ul>
+                    <button class="btn btn--primary btn--sm" type="submit">Save busy-time calendars</button>
+                </form>
+                {{end}}
+            </div>
+
+            {{else}}
+
+            <div class="admin-card">
+                <h2 class="admin-card-title">Not connected</h2>
+                <p class="admin-note">
+                    Connect <strong>{{$d.AdminEmail}}</strong> to push every booked visit into a dedicated
+                    <strong>Local IT Help</strong> calendar, and to show your other appointments as busy time
+                    on the admin calendar. The calendar is created for you on first connect.
+                </p>
+                <form method="post" action="/admin/calendar/connect">
+                    <input type="hidden" name="csrf" value="{{.CSRF}}">
+                    <button class="btn btn--primary" type="submit">Connect Google Calendar</button>
+                </form>
+                <p class="admin-note admin-note--small">
+                    Google will show an "unverified app" warning — that's expected for a private app.
+                    Choose <em>Advanced → Go to localithelp.com.au</em> to continue.
+                </p>
+            </div>
+
+            {{end}}
+        </div>
+    </section>
+{{end}}

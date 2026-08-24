@@ -50,9 +50,11 @@ never double-send. See "Scheduled reminders" in the README.
 
 ## Also noted (gaps from the site survey, not yet ranked)
 
-14. [ ] **Calendar sync** — an ICS feed of the admin diary (`/admin/calendar.ics?token=…`)
-    to subscribe from Google Calendar / iPhone, or two-way Google Calendar sync
-    of `booked` visits. Today only outbound `.ics` invites go to customers.
+14. ✅ **Calendar sync** — two-way Google Calendar sync with james67@gmail.com.
+    Built 2026-08-24 (plan below). Bookings push to a dedicated "Local IT Help"
+    calendar; other calendars show as busy times on `/admin/calendar`. Needs the
+    one-off Google Cloud Console steps in the README, then Connect on
+    `/admin/calendar/settings`.
 15. [ ] **SMS** — day-before reminder and heads-up by SMS (Twilio/ClickSend) for
     customers without email, or as a second channel. None today.
 16. [ ] **Overdue-invoice nudge** — see 1b.
@@ -68,3 +70,161 @@ never double-send. See "Scheduled reminders" in the README.
     flow produce an invoice for the deposit.
 22. [ ] **Admin: mark `contacted` from the digest** — one-click links in the
     digest/heads-up emails (tokenised) to change status without signing in.
+
+## 14. Calendar sync — plan
+
+Goal: every `booked` visit appears in James's Google Calendar
+(james67@gmail.com) and follows reschedules and cancellations; anything else in
+that Google account shows as grey "busy" blocks on `/admin/calendar`.
+
+### Approach: Google Calendar API, not an ICS feed
+
+An ICS subscription URL is read-only and Google only refetches it every 12–24 h,
+so changes and deletions would lag by up to a day, and it can't read James's
+other events. The Calendar API does both directions and the app already has a
+Google OAuth client (`GOOGLE_CLIENT_ID`), so the marginal setup is one extra
+scope and one API enablement.
+
+### Google Cloud Console (one-off, by hand)
+
+1. APIs & Services → enable **Google Calendar API**.
+2. OAuth consent screen → add scope `https://www.googleapis.com/auth/calendar`
+   (events + calendar list + free/busy on the user's own calendars).
+3. **Publishing status must be "In production"**, not "Testing". A Testing app's
+   refresh tokens expire after 7 days, which would silently stop the sync every
+   week. Publishing without verification is fine for a single owner account —
+   Google shows an "unverified app" interstitial once at connect time.
+4. Redirect URI `https://localithelp.com.au/auth/google/calendar/callback` (and
+   the localhost one for dev).
+
+### Connect flow (`/admin/calendar/settings`)
+
+- Separate from admin sign-in. Sign-in keeps `openid email profile`; the
+  calendar scope is only requested from a **Connect Google Calendar** button so
+  the login flow never prompts for it.
+- Button → `/auth/google/calendar` → consent with `access_type=offline` and
+  `prompt=consent` (forces a refresh token) → `/auth/google/calendar/callback`.
+- Callback rejects any account other than `ADMIN_EMAIL`, then stores the
+  refresh token and lets James pick a target calendar.
+- **Use a dedicated secondary calendar** ("Local IT Help"), created by the app
+  on first connect if it doesn't exist. Reasons: bookings get their own colour,
+  sharing/hiding is one click, and the busy query can exclude it cleanly so the
+  app's own events never come back as "busy".
+- Settings page shows: connected account, target calendar, last sync time,
+  last error, **Disconnect** (deletes the row; leaves events in place) and
+  **Resync all** (re-pushes every future `booked` visit).
+
+### Storage
+
+New table `google_calendar` (single row):
+
+| column | notes |
+|---|---|
+| `refresh_token` | plaintext in SQLite. Backups go to S3; acceptable for a one-user app — note in README |
+| `account_email` | must equal `ADMIN_EMAIL` |
+| `calendar_id` | the secondary calendar's id |
+| `connected_at`, `last_sync_at`, `last_error` | shown on the settings page |
+
+New columns on `bookings`:
+
+| column | notes |
+|---|---|
+| `gcal_event_id TEXT NOT NULL DEFAULT ''` | empty = no event in Google |
+| `gcal_synced_at TEXT NOT NULL DEFAULT ''` | UTC; `updated_at > gcal_synced_at` means dirty |
+
+Both via the existing `ALTER TABLE` list in `db/db.go` + `schema.sql` + sqlc.
+
+### Outbound: bookings → Google
+
+Event mapping (`cmd/server/gcal.go`):
+
+- **summary** `Visit: {Name} — {service title}` (`Remote: …` when `mode=remote`)
+- **start/end** `StartAt` / `EndAt()` with `timeZone: Australia/Melbourne`
+- **location** full `Address`, falling back to `Suburb`
+- **description** phone, email, issue, admin notes, link to
+  `/admin/bookings/{id}`
+- **extendedProperties.private.localithelp_booking_id** = id, so events can be
+  matched even if `gcal_event_id` is lost
+- **reminders.useDefault=false, overrides=[]** — the app already sends the
+  1-hour heads-up; don't double up
+
+Rules (one function, `syncBooking(b)`):
+
+| booking state | action |
+|---|---|
+| `booked`/`done`/`invoiced`/`paid` with `StartAt` set, no event | `events.insert`, store id |
+| same, event exists | `events.patch` |
+| `cancelled`/`spam`, or `StartAt` cleared, event exists | `events.delete`, clear id (404 = already gone, treat as success) |
+| anything else | no-op |
+
+Then stamp `gcal_synced_at = now`.
+
+Triggers:
+
+1. **Immediately** — `handleAdminBookingSchedule`, `handleAdminBookingStatus`,
+   `handleAdminBookingNotes`, `handleAdminBookingAddress` and the invoice status
+   changes call `go syncBookingAsync(id)` after a successful DB write. Failures
+   are logged, not surfaced, because…
+2. **Reconcile every tick** — new scheduler job `syncCalendar(now)` lists
+   bookings with `updated_at > gcal_synced_at` (and `StartAt` within
+   −30 / +365 days) and runs `syncBooking` on each. This catches anything the
+   immediate call missed (network blip, server restart mid-request) within
+   15 minutes. Check first that every mutating query bumps `updated_at`;
+   `UpdateBookingStatus` from the invoice paths must too.
+
+The app is the source of truth: if James drags an event in Google, the next
+reconcile pass does **not** pull that back (one-way for event content). That's
+deliberate — reschedules must go through `/admin/bookings/{id}` so the customer
+gets the confirmation email.
+
+### Inbound: Google → busy blocks on `/admin/calendar`
+
+- `freebusy.query` for the week shown, over every calendar in
+  `calendarList` **except** `calendar_id` (the app's own), plus any calendar
+  James unticks on the settings page. Returns only busy intervals — no titles,
+  which matches "appear as busy times" and keeps personal details out of the
+  app.
+- Render as grey hatched `calEvent`s labelled "Busy" behind the booking
+  events; not clickable. When the calendar is opened with `?for=` (placing a
+  booking), busy slots still get the `Href` so James can override, but they're
+  visibly occupied.
+- Cached in memory per week for 2 minutes; 3-second timeout; on error show a
+  one-line banner ("Google Calendar busy times unavailable: …") and render the
+  week without them. Never block the page on Google.
+- Same busy data is what #12 (customer self-service slot picking) will need,
+  so keep `busyIntervals(from, to)` as a reusable function.
+
+### Code layout
+
+- `cmd/server/gcal.go` — OAuth connect/callback, token source from the stored
+  refresh token (`golang.org/x/oauth2`), a small `calendarAPI` interface
+  (`Insert`, `Patch`, `Delete`, `FreeBusy`, `ListCalendars`, `CreateCalendar`)
+  implemented with plain `net/http` + JSON against `www.googleapis.com/calendar/v3`
+  — no need to pull in `google.golang.org/api`.
+- `cmd/server/gcal_sync.go` — `eventForBooking`, `syncBooking`, scheduler job.
+- `cmd/server/gcal_test.go` — fake `calendarAPI`; tests for the mapping table
+  above, the dirty-row reconcile, delete-on-cancel, 404-is-ok, busy overlay
+  rendering, and that the login flow's scopes are unchanged.
+- `db/`: `google_calendar` table + queries; `ListBookingsDirtyForCalendar`,
+  `MarkBookingCalendarSynced`, `SetBookingCalendarEventID`.
+- `templates/admin-calendar-settings.html`; busy blocks in `admin-calendar.html`;
+  a "Calendar sync: connected / not connected" line on the admin dashboard.
+- README: new "Google Calendar sync" section (console steps, publishing-status
+  caveat, refresh-token-in-DB note, disconnect/resync).
+
+### Order of work
+
+1. DB: table, columns, queries, `updated_at` audit.
+2. Connect/disconnect flow + settings page (no sync yet). Verify a refresh
+   token survives a restart.
+3. Outbound sync + immediate triggers + backfill on connect.
+4. Scheduler reconcile job + tests.
+5. Busy overlay on `/admin/calendar`.
+6. README + ship.
+
+### Out of scope (for now)
+
+- Pulling edits made in Google back into bookings.
+- Attendee invites from Google (customers already get the `.ics` by email).
+- Push notifications (webhook channels) — the 15-minute reconcile and
+  immediate trigger cover it without a public webhook endpoint.

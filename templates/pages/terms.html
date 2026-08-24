@@ -1,0 +1,140 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Terms of Service | Local IT Help</title>
+    <meta name="description" content="How Local IT Help works: bookings, pricing, the no-fix-no-fee and 14-day guarantees, payment terms, backups, and your rights under Australian Consumer Law.">
+    <meta property="og:title" content="Terms of Service — Local IT Help">
+    <meta property="og:description" content="Bookings, pricing, guarantees, payment terms and liability — in plain English.">
+{{end}}
+
+{{define "content"}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Legal</div>
+            <h1 class="section-title">Terms of service.</h1>
+            <p class="page-header-intro">The deal, in plain English. Nothing here takes away your rights under Australian Consumer Law. Last updated 24 August 2026.</p>
+        </div>
+    </div>
+
+    <section class="service-section">
+        <div class="container">
+            <div class="legal-body">
+                <p>These terms cover work done by <strong>James McHugh</strong>, trading as <strong>Local IT Help</strong>
+                    (ABN {{.Site.ABN}}). By booking a visit you're agreeing to them.</p>
+
+                <h2>What I do</h2>
+
+                <p>On-site and remote computer help for homes and small businesses in my
+                    <a href="/areas">service area</a> — see <a href="/services">services</a> for the full list. Software
+                    development and web work is quoted separately and in writing before anything starts.</p>
+
+                <h2>Bookings</h2>
+
+                <p>A booking form is an <em>enquiry</em>, not a locked-in appointment. It becomes a confirmed visit when I
+                    email or call you back with a time. All times are Melbourne time.</p>
+
+                <p>I'll turn up inside the time I've confirmed with you. If something runs badly over on an earlier job
+                    I'll ring you rather than leave you waiting.</p>
+
+                <p>If you need to cancel or move a visit, let me know as early as you can — there's no cancellation fee.</p>
+
+                <h2>Pricing</h2>
+
+                <p>On-site work is a flat <strong>${{.Site.OnsiteFee}} visit fee</strong> plus
+                    <strong>${{.Site.BlockRate}} per 15 minutes</strong> on site.{{if .Site.SeniorsPct}} Seniors Card
+                    holders get <strong>{{.Site.SeniorsPct}}% off</strong> the total — just mention it when you book.{{end}}
+                    Current rates are always on the <a href="/pricing">pricing page</a>, and the rate I quote you when I
+                    confirm the booking is the rate you pay.</p>
+
+                <p>Parts, hardware and any software licences are extra and I'll tell you the price before buying anything.
+                    For anything I need to buy in — a replacement drive, a new machine, a licence — I'll ask for a deposit
+                    covering the cost before I order it, and the balance goes on the final invoice. I don't add a margin
+                    to petrol, parking or tolls.</p>
+
+                <h2>No fix, no fee</h2>
+
+                <p>If I can't fix the problem you booked me for, you don't pay for my labour.</p>
+
+                <p>Two fair exceptions: parts and licences I've already bought at your go-ahead are yours to keep and
+                    pay for, so the deposit isn't refunded, and a job that turns out to be a hardware failure needing a
+                    part or a manufacturer repair counts as diagnosed, not unfixed — I'll tell you what's wrong and what
+                    it takes to fix it.</p>
+
+                <h2>14-day work guarantee</h2>
+
+                <p>If the same problem comes back within 14 days of my visit, I come back and sort it at no charge for
+                    labour.</p>
+
+                <p>That covers the thing I actually worked on. It doesn't cover a new and unrelated fault, hardware that
+                    fails later, or a malware infection that returns because the same risky habit continues — though I'll
+                    always tell you honestly which one you're looking at.</p>
+
+                <h2>Paying</h2>
+
+                <p>You can tap a card on the spot, or I'll email you an invoice — due within <strong>7 days</strong>, and
+                    payable by bank transfer, PayID or the payment link on the invoice. Cash is fine too.</p>
+
+                <p>If an invoice is heading overdue I'll send a reminder, not a debt collector. Talk to me if money is
+                    tight and we'll work something out.</p>
+
+                <h2>Back up your data first</h2>
+
+                <p>This is the important one. <strong>Please back up anything you can't bear to lose before I start.</strong>
+                    If you don't have a backup, tell me and making one will be the first thing we do.</p>
+
+                <p>Computers that are already failing can lose data at any moment, including while being repaired, and a
+                    drive that's dying can die completely the next time it spins up. I'll take reasonable care and I'll
+                    always warn you when a job carries that risk, but I can't guarantee data will survive and I can't
+                    guarantee recovery of data that's already lost.</p>
+
+                <h2>Your side of it</h2>
+
+                <ul class="checklist">
+                    <li>You own the device, or you're allowed to authorise work on it</li>
+                    <li>You'll give me access to the machine, power, and the passwords or PINs the job needs</li>
+                    <li>You hold valid licences for the software you're using, and any subscription costs are yours</li>
+                    <li>You'll let me know about anything I should be careful with — a dodgy power point, a cat that bites, a drive with the only copy of the wedding photos</li>
+                </ul>
+
+                <p>For remote support, nothing happens until you let me connect, you can see everything I do, and you can
+                    end the session whenever you like.</p>
+
+                <h2>Illegal or unsafe work</h2>
+
+                <p>I won't remove licence protections, break into an account that isn't yours, install pirated software,
+                    or work on a machine I have good reason to think is stolen. If that comes up I'll stop and explain
+                    why, and you won't be charged for labour.</p>
+
+                <h2>Hardware I supply</h2>
+
+                <p>Anything I buy for you carries the manufacturer's warranty, and you get the receipt. If it fails
+                    inside that warranty I'll help you make the claim.</p>
+
+                <h2>Liability</h2>
+
+                <p>My services come with guarantees that can't be excluded under Australian Consumer Law — including that
+                    the work will be done with due care and skill. Nothing in these terms limits those rights.</p>
+
+                <p>Beyond those rights, and to the extent the law allows, what I owe you if something goes wrong is capped
+                    at redoing the work or refunding what you paid for it. I'm not liable for indirect losses such as lost
+                    business, lost profits, or lost data beyond that cap.</p>
+
+                <p>I carry insurance for the work I do. If I damage something of yours, tell me — I'd rather fix it than
+                    argue about it.</p>
+
+                <h2>The boring bits</h2>
+
+                <p>These terms are governed by the law of Victoria, Australia. How I handle your details is set out in the
+                    <a href="/privacy">privacy policy</a>. If any part of these terms turns out to be unenforceable, the
+                    rest still stands.</p>
+
+                <p>If these terms change, the date at the top changes too. The terms that apply to your job are the ones
+                    on this page when I confirmed your booking.</p>
+
+                <p class="legal-footnote">Anything here you'd like clarified before booking? Email
+                    <a href="mailto:{{.Site.Email}}">{{.Site.Email}}</a>{{if .Site.Phone}} or call
+                    <a href="{{.Site.PhoneHref}}">{{.Site.Phone}}</a>{{end}} and ask.</p>
+            </div>
+        </div>
+    </section>
+{{end}}

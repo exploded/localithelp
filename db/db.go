@@ -108,6 +108,9 @@ func Open(path string) error {
 		// scheduler stamps
 		"ALTER TABLE bookings ADD COLUMN reminder_sent_at TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE bookings ADD COLUMN admin_alert_sent_at TEXT NOT NULL DEFAULT ''",
+		// Google Calendar sync stamps
+		"ALTER TABLE bookings ADD COLUMN gcal_event_id TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE bookings ADD COLUMN gcal_synced_at TEXT NOT NULL DEFAULT ''",
 		// invoices: review request tracking
 		"ALTER TABLE invoices ADD COLUMN review_asked_at TEXT NOT NULL DEFAULT ''",
 	} {

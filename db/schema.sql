@@ -73,7 +73,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     updated_at        TEXT    NOT NULL DEFAULT '',
     address           TEXT    NOT NULL DEFAULT '',  -- full street address, e.g. '12 Smith St, Donvale VIC 3111'
     reminder_sent_at    TEXT  NOT NULL DEFAULT '',  -- UTC datetime the day-before reminder was emailed to the customer
-    admin_alert_sent_at TEXT  NOT NULL DEFAULT ''   -- UTC datetime the 1-hour heads-up was emailed to the admin
+    admin_alert_sent_at TEXT  NOT NULL DEFAULT '',  -- UTC datetime the 1-hour heads-up was emailed to the admin
+    gcal_event_id       TEXT  NOT NULL DEFAULT '',  -- Google Calendar event id; '' = no event pushed yet
+    gcal_synced_at      TEXT  NOT NULL DEFAULT ''   -- UTC datetime of the last successful push; < updated_at = dirty
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookings_start_at ON bookings(start_at);
@@ -137,4 +139,18 @@ CREATE TABLE IF NOT EXISTS scheduler_runs (
     job    TEXT NOT NULL,
     ran_on TEXT NOT NULL,   -- 'YYYY-MM-DD' Melbourne local
     PRIMARY KEY (job, ran_on)
+);
+
+-- Google Calendar sync: a single row (id = 1) holding the admin's refresh token
+-- and the calendar bookings are pushed to. Deleting the row disconnects sync.
+CREATE TABLE IF NOT EXISTS google_calendar (
+    id             INTEGER PRIMARY KEY CHECK (id = 1),
+    account_email  TEXT NOT NULL DEFAULT '',   -- must match ADMIN_EMAIL
+    refresh_token  TEXT NOT NULL DEFAULT '',
+    calendar_id    TEXT NOT NULL DEFAULT '',   -- the "Local IT Help" secondary calendar
+    calendar_name  TEXT NOT NULL DEFAULT '',
+    skip_calendars TEXT NOT NULL DEFAULT '',   -- newline-separated calendar ids excluded from busy times
+    connected_at   TEXT NOT NULL DEFAULT '',   -- UTC
+    last_sync_at   TEXT NOT NULL DEFAULT '',   -- UTC; last successful push or busy query
+    last_error     TEXT NOT NULL DEFAULT ''
 );

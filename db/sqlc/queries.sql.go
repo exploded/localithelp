@@ -9,6 +9,15 @@ import (
 	"context"
 )
 
+const clearBookingCalendarEventIDs = `-- name: ClearBookingCalendarEventIDs :exec
+UPDATE bookings SET gcal_event_id = '', gcal_synced_at = '' WHERE gcal_event_id <> ''
+`
+
+func (q *Queries) ClearBookingCalendarEventIDs(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, clearBookingCalendarEventIDs)
+	return err
+}
+
 const countBookingsByStatus = `-- name: CountBookingsByStatus :many
 SELECT status, COUNT(*) AS n FROM bookings GROUP BY status
 `
@@ -39,6 +48,17 @@ func (q *Queries) CountBookingsByStatus(ctx context.Context) ([]CountBookingsByS
 		return nil, err
 	}
 	return items, nil
+}
+
+const countBookingsWithCalendarEvent = `-- name: CountBookingsWithCalendarEvent :one
+SELECT COUNT(*) AS n FROM bookings WHERE gcal_event_id <> ''
+`
+
+func (q *Queries) CountBookingsWithCalendarEvent(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countBookingsWithCalendarEvent)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
 }
 
 const countOptionGroups = `-- name: CountOptionGroups :one
@@ -92,6 +112,15 @@ func (q *Queries) DeleteAllOptions(ctx context.Context) error {
 	return err
 }
 
+const deleteGoogleCalendar = `-- name: DeleteGoogleCalendar :exec
+DELETE FROM google_calendar WHERE id = 1
+`
+
+func (q *Queries) DeleteGoogleCalendar(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteGoogleCalendar)
+	return err
+}
+
 const deleteInvoiceItems = `-- name: DeleteInvoiceItems :exec
 DELETE FROM invoice_items WHERE invoice_id = ?
 `
@@ -126,7 +155,7 @@ func (q *Queries) DeleteSchedulerRun(ctx context.Context, arg DeleteSchedulerRun
 
 const getBooking = `-- name: GetBooking :one
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings WHERE id = ?
 `
 
@@ -155,6 +184,8 @@ func (q *Queries) GetBooking(ctx context.Context, id int64) (Booking, error) {
 		&i.Address,
 		&i.ReminderSentAt,
 		&i.AdminAlertSentAt,
+		&i.GcalEventID,
+		&i.GcalSyncedAt,
 	)
 	return i, err
 }
@@ -224,6 +255,38 @@ func (q *Queries) GetCustomerByPhoneNorm(ctx context.Context, phoneNorm string) 
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getGoogleCalendar = `-- name: GetGoogleCalendar :one
+SELECT account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error
+FROM google_calendar WHERE id = 1
+`
+
+type GetGoogleCalendarRow struct {
+	AccountEmail  string `json:"account_email"`
+	RefreshToken  string `json:"refresh_token"`
+	CalendarID    string `json:"calendar_id"`
+	CalendarName  string `json:"calendar_name"`
+	SkipCalendars string `json:"skip_calendars"`
+	ConnectedAt   string `json:"connected_at"`
+	LastSyncAt    string `json:"last_sync_at"`
+	LastError     string `json:"last_error"`
+}
+
+func (q *Queries) GetGoogleCalendar(ctx context.Context) (GetGoogleCalendarRow, error) {
+	row := q.db.QueryRowContext(ctx, getGoogleCalendar)
+	var i GetGoogleCalendarRow
+	err := row.Scan(
+		&i.AccountEmail,
+		&i.RefreshToken,
+		&i.CalendarID,
+		&i.CalendarName,
+		&i.SkipCalendars,
+		&i.ConnectedAt,
+		&i.LastSyncAt,
+		&i.LastError,
 	)
 	return i, err
 }
@@ -666,7 +729,7 @@ func (q *Queries) InsertSchedulerRun(ctx context.Context, arg InsertSchedulerRun
 
 const listBookings = `-- name: ListBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings ORDER BY id DESC
 `
 
@@ -701,6 +764,8 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 			&i.Address,
 			&i.ReminderSentAt,
 			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -717,7 +782,7 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 
 const listBookingsBetween = `-- name: ListBookingsBetween :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam')
 ORDER BY start_at
@@ -759,6 +824,8 @@ func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetwe
 			&i.Address,
 			&i.ReminderSentAt,
 			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -775,7 +842,7 @@ func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetwe
 
 const listBookingsByCustomer = `-- name: ListBookingsByCustomer :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings WHERE customer_id = ? ORDER BY id DESC
 `
 
@@ -810,6 +877,8 @@ func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) 
 			&i.Address,
 			&i.ReminderSentAt,
 			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -826,7 +895,7 @@ func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) 
 
 const listBookingsByStatus = `-- name: ListBookingsByStatus :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings WHERE status = ? ORDER BY id DESC
 `
 
@@ -861,6 +930,8 @@ func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Bo
 			&i.Address,
 			&i.ReminderSentAt,
 			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -877,7 +948,7 @@ func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Bo
 
 const listBookingsForAdminAlert = `-- name: ListBookingsForAdminAlert :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND admin_alert_sent_at = ''
 ORDER BY start_at
@@ -920,6 +991,148 @@ func (q *Queries) ListBookingsForAdminAlert(ctx context.Context, arg ListBooking
 			&i.Address,
 			&i.ReminderSentAt,
 			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookingsForCalendarBackfill = `-- name: ListBookingsForCalendarBackfill :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+FROM bookings
+WHERE (start_at >= ? AND start_at < ?) OR gcal_event_id <> ''
+ORDER BY start_at, id
+`
+
+type ListBookingsForCalendarBackfillParams struct {
+	StartAt   string `json:"start_at"`
+	StartAt_2 string `json:"start_at_2"`
+}
+
+// Every booking that should have an event, for the "resync all" button.
+func (q *Queries) ListBookingsForCalendarBackfill(ctx context.Context, arg ListBookingsForCalendarBackfillParams) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listBookingsForCalendarBackfill, arg.StartAt, arg.StartAt_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookingsForCalendarSync = `-- name: ListBookingsForCalendarSync :many
+
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+FROM bookings
+WHERE (
+        gcal_synced_at = '' OR gcal_synced_at < updated_at
+        OR (gcal_event_id =  '' AND start_at <> '' AND status IN ('booked', 'done', 'invoiced', 'paid'))
+        OR (gcal_event_id <> '' AND (start_at =  '' OR status NOT IN ('booked', 'done', 'invoiced', 'paid')))
+      )
+  AND ((start_at >= ? AND start_at < ?) OR gcal_event_id <> '')
+ORDER BY start_at, id
+LIMIT ?
+`
+
+type ListBookingsForCalendarSyncParams struct {
+	StartAt   string `json:"start_at"`
+	StartAt_2 string `json:"start_at_2"`
+	Limit     int64  `json:"limit"`
+}
+
+// Google Calendar sync
+// Bookings needing a push to Google Calendar, restricted to a start-time
+// window (plus any row still holding an event id, so cancellations outside the
+// window are still deleted). A row qualifies when either:
+//   - it changed since the last successful push, or
+//   - its stored state disagrees with what Google should hold - a visit with no
+//     event, or an event on a booking that should no longer have one.
+//
+// The second test matters because updated_at and gcal_synced_at only have
+// one-second resolution: an edit landing in the same second as a push would
+// otherwise look clean. It also retries anything Google rejected last time.
+func (q *Queries) ListBookingsForCalendarSync(ctx context.Context, arg ListBookingsForCalendarSyncParams) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listBookingsForCalendarSync, arg.StartAt, arg.StartAt_2, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -936,7 +1149,7 @@ func (q *Queries) ListBookingsForAdminAlert(ctx context.Context, arg ListBooking
 
 const listBookingsForReminder = `-- name: ListBookingsForReminder :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND email <> '' AND reminder_sent_at = ''
 ORDER BY start_at
@@ -979,6 +1192,8 @@ func (q *Queries) ListBookingsForReminder(ctx context.Context, arg ListBookingsF
 			&i.Address,
 			&i.ReminderSentAt,
 			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -995,7 +1210,7 @@ func (q *Queries) ListBookingsForReminder(ctx context.Context, arg ListBookingsF
 
 const listChildBookings = `-- name: ListChildBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings WHERE parent_booking_id = ? ORDER BY id
 `
 
@@ -1030,6 +1245,8 @@ func (q *Queries) ListChildBookings(ctx context.Context, parentBookingID int64) 
 			&i.Address,
 			&i.ReminderSentAt,
 			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1473,7 +1690,7 @@ func (q *Queries) ListQuotes(ctx context.Context) ([]Quote, error) {
 
 const listUnlinkedBookings = `-- name: ListUnlinkedBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
 FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id
 `
 
@@ -1508,6 +1725,8 @@ func (q *Queries) ListUnlinkedBookings(ctx context.Context) ([]Booking, error) {
 			&i.Address,
 			&i.ReminderSentAt,
 			&i.AdminAlertSentAt,
+			&i.GcalEventID,
+			&i.GcalSyncedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1537,6 +1756,15 @@ UPDATE bookings SET reminder_sent_at = datetime('now') WHERE id = ?
 
 func (q *Queries) MarkBookingReminderSent(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, markBookingReminderSent, id)
+	return err
+}
+
+const markGoogleCalendarSynced = `-- name: MarkGoogleCalendarSynced :exec
+UPDATE google_calendar SET last_sync_at = datetime('now'), last_error = '' WHERE id = 1
+`
+
+func (q *Queries) MarkGoogleCalendarSynced(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, markGoogleCalendarSynced)
 	return err
 }
 
@@ -1620,6 +1848,35 @@ func (q *Queries) MarkQuoteVerified(ctx context.Context, arg MarkQuoteVerifiedPa
 	return result.RowsAffected()
 }
 
+const saveGoogleCalendar = `-- name: SaveGoogleCalendar :exec
+INSERT INTO google_calendar (id, account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error)
+VALUES (1, ?, ?, ?, ?, '', datetime('now'), '', '')
+ON CONFLICT(id) DO UPDATE SET
+    account_email = excluded.account_email,
+    refresh_token = excluded.refresh_token,
+    calendar_id   = excluded.calendar_id,
+    calendar_name = excluded.calendar_name,
+    connected_at  = datetime('now'),
+    last_error    = ''
+`
+
+type SaveGoogleCalendarParams struct {
+	AccountEmail string `json:"account_email"`
+	RefreshToken string `json:"refresh_token"`
+	CalendarID   string `json:"calendar_id"`
+	CalendarName string `json:"calendar_name"`
+}
+
+func (q *Queries) SaveGoogleCalendar(ctx context.Context, arg SaveGoogleCalendarParams) error {
+	_, err := q.db.ExecContext(ctx, saveGoogleCalendar,
+		arg.AccountEmail,
+		arg.RefreshToken,
+		arg.CalendarID,
+		arg.CalendarName,
+	)
+	return err
+}
+
 const searchCustomers = `-- name: SearchCustomers :many
 SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
 FROM customers
@@ -1673,6 +1930,22 @@ func (q *Queries) SearchCustomers(ctx context.Context, arg SearchCustomersParams
 	return items, nil
 }
 
+const setBookingCalendarEvent = `-- name: SetBookingCalendarEvent :exec
+UPDATE bookings SET gcal_event_id = ?, gcal_synced_at = datetime('now') WHERE id = ?
+`
+
+type SetBookingCalendarEventParams struct {
+	GcalEventID string `json:"gcal_event_id"`
+	ID          int64  `json:"id"`
+}
+
+// Records the pushed event id and stamps the sync time. updated_at is left
+// alone so the row does not immediately look dirty again.
+func (q *Queries) SetBookingCalendarEvent(ctx context.Context, arg SetBookingCalendarEventParams) error {
+	_, err := q.db.ExecContext(ctx, setBookingCalendarEvent, arg.GcalEventID, arg.ID)
+	return err
+}
+
 const setBookingCustomer = `-- name: SetBookingCustomer :exec
 UPDATE bookings SET customer_id = ? WHERE id = ?
 `
@@ -1684,6 +1957,24 @@ type SetBookingCustomerParams struct {
 
 func (q *Queries) SetBookingCustomer(ctx context.Context, arg SetBookingCustomerParams) error {
 	_, err := q.db.ExecContext(ctx, setBookingCustomer, arg.CustomerID, arg.ID)
+	return err
+}
+
+const setGoogleCalendarError = `-- name: SetGoogleCalendarError :exec
+UPDATE google_calendar SET last_error = ? WHERE id = 1
+`
+
+func (q *Queries) SetGoogleCalendarError(ctx context.Context, lastError string) error {
+	_, err := q.db.ExecContext(ctx, setGoogleCalendarError, lastError)
+	return err
+}
+
+const setGoogleCalendarSkips = `-- name: SetGoogleCalendarSkips :exec
+UPDATE google_calendar SET skip_calendars = ? WHERE id = 1
+`
+
+func (q *Queries) SetGoogleCalendarSkips(ctx context.Context, skipCalendars string) error {
+	_, err := q.db.ExecContext(ctx, setGoogleCalendarSkips, skipCalendars)
 	return err
 }
 

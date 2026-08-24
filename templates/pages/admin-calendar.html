@@ -20,10 +20,14 @@
             {{if $d.ForID}}
             <div class="admin-status admin-status--success admin-flash">Picking a time for <a href="/admin/bookings/{{$d.ForID}}">#{{$d.ForID}} {{$d.ForName}}</a> — click a free slot.</div>
             {{end}}
+            {{if $d.BusyErr}}
+            <div class="admin-status admin-status--error admin-flash">Google Calendar busy times unavailable: {{$d.BusyErr}}</div>
+            {{end}}
             <div class="cal-toolbar">
                 <a class="btn btn--ghost btn--sm" href="/admin/calendar?week={{$d.Prev}}{{if $d.ForID}}&for={{$d.ForID}}{{end}}">&#8592; Prev</a>
                 <a class="btn btn--ghost btn--sm" href="/admin/calendar?week={{$d.ThisWeek}}{{if $d.ForID}}&for={{$d.ForID}}{{end}}">This week</a>
                 <a class="btn btn--ghost btn--sm" href="/admin/calendar?week={{$d.Next}}{{if $d.ForID}}&for={{$d.ForID}}{{end}}">Next &#8594;</a>
+                <a class="btn btn--ghost btn--sm" href="/admin/calendar/settings">Calendar sync{{if not $d.BusyOn}} (off){{end}}</a>
                 <span class="cal-week-label">{{$d.WeekLabel}}</span>
             </div>
 
@@ -37,6 +41,7 @@
                 {{range $d.Days}}
                 <div class="cal-col{{if .IsToday}} cal-today{{end}}">
                     {{range .Slots}}{{if .Href}}<a class="cal-slot{{if .OnHour}} cal-slot--hour{{end}}" href="{{.Href}}" title="{{.Time}}"></a>{{else}}<div class="cal-slot{{if .OnHour}} cal-slot--hour{{end}}"></div>{{end}}{{end}}
+                    {{range .Busy}}<div class="cal-busy" style="top:{{.Top}}px;height:{{.Height}}px" title="Busy {{.Label}} (from your other calendars)"><span class="cal-busy-label">busy</span></div>{{end}}
                     {{range .Events}}
                     <a class="cal-event cal-event--{{.Row.Status}}" href="{{.Href}}" style="top:{{.Top}}px;height:{{.Height}}px" title="{{.Label}} — {{.Row.Name}}{{if .Row.Suburb}}, {{.Row.Suburb}}{{end}}">
                         <span class="cal-event-time">{{.Label}}</span>

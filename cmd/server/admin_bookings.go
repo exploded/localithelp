@@ -188,6 +188,7 @@ func handleAdminBookingSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.StartAt, b.DurationMin, b.Status = start, dur, db.BookingBooked
+	syncBookingSoon(b.ID)
 	msg := "Booked for " + fmtWhen(start) + "."
 	if r.FormValue("notify") != "" {
 		if err := sendBookingConfirmation(b, rescheduled); err != nil {
@@ -222,6 +223,7 @@ func handleAdminBookingStatus(w http.ResponseWriter, r *http.Request) {
 		redirectMsg(w, r, back, "err", "Could not update the status.")
 		return
 	}
+	syncBookingSoon(b.ID)
 	msg := "Status set to " + status + "."
 	if status == db.BookingCancelled && r.FormValue("notify") != "" {
 		if err := sendBookingCancellation(b, strings.TrimSpace(r.FormValue("reason"))); err != nil {
@@ -248,6 +250,7 @@ func handleAdminBookingNotes(w http.ResponseWriter, r *http.Request) {
 		redirectMsg(w, r, back, "err", "Could not save notes.")
 		return
 	}
+	syncBookingSoon(b.ID)
 	redirectMsg(w, r, back, "ok", "Notes saved.")
 }
 
@@ -301,6 +304,7 @@ func handleAdminBookingAddress(w http.ResponseWriter, r *http.Request) {
 	if err := db.UpdateCustomer(c); err != nil {
 		log.Printf("booking #%d address: sync customer: %v", b.ID, err)
 	}
+	syncBookingSoon(b.ID)
 	redirectMsg(w, r, back, "ok", "Address saved: "+full)
 }
 
@@ -458,6 +462,15 @@ type calDay struct {
 	IsToday bool
 	Slots   []calSlot
 	Events  []calEvent
+	Busy    []calBusy
+}
+
+// calBusy is a block of time the admin is busy according to their other Google
+// calendars. Only the times come back from Google — never the titles.
+type calBusy struct {
+	Top    int // px from column top
+	Height int
+	Label  string // "10:00 am – 11:00 am"
 }
 
 type calendarData struct {
@@ -472,6 +485,8 @@ type calendarData struct {
 	ColPx     int
 	ForID     int64
 	ForName   string
+	BusyOn    bool   // Google Calendar sync is connected, so busy blocks are shown
+	BusyErr   string // set when the busy lookup failed; the week still renders
 }
 
 func handleAdminCalendar(w http.ResponseWriter, r *http.Request) {
@@ -507,6 +522,16 @@ func handleAdminCalendar(w http.ResponseWriter, r *http.Request) {
 	for h := calStartHour; h < calEndHour; h++ {
 		d.Hours = append(d.Hours, h)
 	}
+
+	// Busy times from the admin's other Google calendars. Never fatal: on
+	// failure the week renders without them and says so.
+	busy, busyErr := busyIntervals(weekStart, weekEnd)
+	d.BusyOn = calendarSyncConnected()
+	if busyErr != nil {
+		logGCal("busy times", busyErr)
+		d.BusyErr = busyErr.Error()
+	}
+
 	today := db.Today()
 	for i := 0; i < 7; i++ {
 		date := weekStart.AddDate(0, 0, i)
@@ -541,7 +566,36 @@ func handleAdminCalendar(w http.ResponseWriter, r *http.Request) {
 				Label: fmtClock(b.StartAt) + " – " + fmtClock(b.EndAt()),
 			})
 		}
+		day.Busy = busyBlocksFor(busy, date)
 		d.Days = append(d.Days, day)
 	}
 	render(w, r, "admin-calendar", d)
+}
+
+// busyBlocksFor clips busy intervals to one day column, dropping anything
+// outside the displayed hours. An interval spanning midnight yields a block on
+// each day it covers.
+func busyBlocksFor(busy []busyInterval, date time.Time) []calBusy {
+	dayStart := time.Date(date.Year(), date.Month(), date.Day(), calStartHour, 0, 0, 0, db.Melbourne)
+	dayEnd := time.Date(date.Year(), date.Month(), date.Day(), calEndHour, 0, 0, 0, db.Melbourne)
+	var out []calBusy
+	for _, b := range busy {
+		st, en := b.Start.In(db.Melbourne), b.End.In(db.Melbourne)
+		if st.Before(dayStart) {
+			st = dayStart
+		}
+		if en.After(dayEnd) {
+			en = dayEnd
+		}
+		if !en.After(st) {
+			continue
+		}
+		top := int(st.Sub(dayStart).Minutes()) * calSlotPx / calSlotMin
+		height := int(en.Sub(st).Minutes()) * calSlotPx / calSlotMin
+		if height < 2 {
+			height = 2
+		}
+		out = append(out, calBusy{Top: top, Height: height, Label: fmtClock(st) + " – " + fmtClock(en)})
+	}
+	return out
 }
