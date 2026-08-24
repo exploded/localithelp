@@ -110,6 +110,20 @@ func (q *Queries) DeletePendingByEmail(ctx context.Context, email string) error 
 	return err
 }
 
+const deleteSchedulerRun = `-- name: DeleteSchedulerRun :exec
+DELETE FROM scheduler_runs WHERE job = ? AND ran_on = ?
+`
+
+type DeleteSchedulerRunParams struct {
+	Job   string `json:"job"`
+	RanOn string `json:"ran_on"`
+}
+
+func (q *Queries) DeleteSchedulerRun(ctx context.Context, arg DeleteSchedulerRunParams) error {
+	_, err := q.db.ExecContext(ctx, deleteSchedulerRun, arg.Job, arg.RanOn)
+	return err
+}
+
 const getBooking = `-- name: GetBooking :one
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
        customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at

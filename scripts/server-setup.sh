@@ -71,6 +71,14 @@ TURNSTILE_SECRET_KEY=
 AWS_REGION=ap-southeast-2
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
+
+# Background scheduler (reminders, digest, nightly backup). Runs when PROD is set; 0 disables.
+SCHEDULER=
+
+# Nightly DB backup to S3 (scripts/s3-backup-setup.sh prints these). Empty = no backups.
+BACKUP_S3_BUCKET=localithelp-backups
+BACKUP_AWS_ACCESS_KEY_ID=
+BACKUP_AWS_SECRET_ACCESS_KEY=
 EOF
     chmod 640 "$APP_DIR/.env"
     echo "Created $APP_DIR/.env template — edit it before starting the service."

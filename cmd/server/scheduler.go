@@ -50,6 +50,7 @@ type schedulerSummary struct {
 	Reminders int // day-before customer reminders
 	Alerts    int // 1-hour admin heads-ups
 	Digest    bool
+	Backup    bool // nightly DB snapshot uploaded
 }
 
 // runScheduledJobs runs every job once for the given instant. Errors are
@@ -60,6 +61,7 @@ func runScheduledJobs(now time.Time) schedulerSummary {
 	s.Reminders = sendDayBeforeReminders(now)
 	s.Alerts = sendAdminAlerts(now)
 	s.Digest = sendMorningDigest(now)
+	s.Backup = backupDatabase(now)
 	if s.Reminders+s.Alerts > 0 || s.Digest {
 		log.Printf("scheduler: sent %d reminder(s), %d heads-up(s), digest=%v", s.Reminders, s.Alerts, s.Digest)
 	}
@@ -275,6 +277,15 @@ const mailSchedulerTmplSrc = `
 {{range .Quotes}}<tr><td style="padding:6px 0;vertical-align:top">#{{.ID}} {{.Name}} &lt;{{.Email}}&gt; — {{printf "$%.0f" .TotalCost}}</td></tr>
 {{end}}</table>{{end}}
 <p><a href="{{site.BaseURL}}/admin" style="display:inline-block;background:#1c1c1c;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px">Open admin</a></p>
+{{end}}
+
+{{define "backup-failed"}}
+<h2 style="margin:0 0 12px">Nightly database backup failed</h2>
+<table style="border-collapse:collapse;margin:12px 0 20px">
+{{template "row" (kv "Object" (printf "s3://%s/%s" .Bucket .Key))}}
+{{template "row" (kv "Error" .Error)}}
+</table>
+<p style="color:#666">The scheduler retries every 15 minutes and will email again if the next attempt fails too. Check the service log with <code>journalctl -u localithelp</code>.</p>
 {{end}}
 `
 

@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -137,6 +138,20 @@ func Open(path string) error {
 func parseUTC(s string) time.Time {
 	t, _ := time.Parse("2006-01-02 15:04:05", s)
 	return t
+}
+
+// BackupTo writes a consistent snapshot of the live database to path using
+// VACUUM INTO, which runs on the app's own connection so it never races a
+// writer (the pool is capped at one connection). Any file already at path is
+// removed first — VACUUM INTO refuses to overwrite.
+func BackupTo(ctx context.Context, path string) error {
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove old backup: %w", err)
+	}
+	if _, err := conn.ExecContext(ctx, "VACUUM INTO ?", path); err != nil {
+		return fmt.Errorf("vacuum into: %w", err)
+	}
+	return nil
 }
 
 func Close() error {

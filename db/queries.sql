@@ -176,6 +176,9 @@ UPDATE bookings SET admin_alert_sent_at = datetime('now') WHERE id = ?;
 -- name: InsertSchedulerRun :execrows
 INSERT OR IGNORE INTO scheduler_runs (job, ran_on) VALUES (?, ?);
 
+-- name: DeleteSchedulerRun :exec
+DELETE FROM scheduler_runs WHERE job = ? AND ran_on = ?;
+
 -- Customers
 
 -- name: InsertCustomer :one

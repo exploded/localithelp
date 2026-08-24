@@ -213,3 +213,10 @@ func ClaimSchedulerRun(job string, on time.Time) (bool, error) {
 	n, err := q.InsertSchedulerRun(context.Background(), sqlc.InsertSchedulerRunParams{Job: job, RanOn: FormatDate(on)})
 	return n == 1, err
 }
+
+// ReleaseSchedulerRun drops a claim so the job can run again today. Jobs whose
+// work happens after the claim (the backup upload) call it on failure so the
+// next tick retries instead of waiting for tomorrow.
+func ReleaseSchedulerRun(job string, on time.Time) error {
+	return q.DeleteSchedulerRun(context.Background(), sqlc.DeleteSchedulerRunParams{Job: job, RanOn: FormatDate(on)})
+}

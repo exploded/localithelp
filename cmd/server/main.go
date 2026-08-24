@@ -53,6 +53,7 @@ func main() {
 	}
 	initSiteConfig(port)
 	initMail()
+	initBackup()
 	initTurnstile()
 
 	if err := db.Open(filepath.Join(dir, "app.db")); err != nil {

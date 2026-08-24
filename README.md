@@ -155,6 +155,7 @@ and a send failure is retried on the next tick.
 | Day-before reminder | 4–8 pm the day before a `booked` visit | customer (needs an email) | `bookings.reminder_sent_at` |
 | Heads-up | 45–60 min before a `booked` visit | admin | `bookings.admin_alert_sent_at` |
 | Morning digest | first tick after 7:30 am, only if there is something to say | admin | `scheduler_runs('digest', date)` |
+| DB backup | first tick after 2:00 am (see below) | S3 | `scheduler_runs('backup', date)` — released on failure so the next tick retries |
 
 The digest lists today's visits, `new` enquiries, overdue invoices and quotes
 verified in the last 7 days. Rescheduling a visit clears both stamps, so the
@@ -168,6 +169,34 @@ user + key, the `localithelp.com.au` SES domain identity, adds the DKIM CNAMEs t
 Cloudflare (or prints them if `CF_TOKEN` is unset), and prints the `.env` lines
 to add on the server. The policy also keeps the old `mchugh.com.au` identities so
 the pre-rebrand sender still works.
+
+### Database backups
+
+The scheduler snapshots `app.db` every night with `VACUUM INTO` (consistent,
+runs on the app's own connection — no `sqlite3` binary or cron on the box),
+gzips it and puts it at `s3://localithelp-backups/app/YYYY/MM/localithelp-YYYY-MM-DD.db.gz`.
+Objects expire after 90 days. If the upload fails the claim is released, the
+next 15-minute tick retries, and you get a "DB backup failed" email each time.
+
+Setup, once, from your machine: `AWS_PROFILE=tooltrack-admin scripts/s3-backup-setup.sh`.
+It creates the private bucket (SSE-S3, lifecycle rule) and the `localithelp-backup`
+IAM user whose only permission is `s3:PutObject` on that bucket, then prints the
+`BACKUP_*` lines for the server `.env`. Leave them empty to disable backups.
+
+Restore (on the server, from a machine with an admin profile to fetch the file):
+
+```
+aws s3 ls s3://localithelp-backups/app/2026/08/
+aws s3 cp s3://localithelp-backups/app/2026/08/localithelp-2026-08-24.db.gz .
+gunzip localithelp-2026-08-24.db.gz
+scp -P 2222 localithelp-2026-08-24.db deploy@172.105.178.43:/tmp/
+# on the server
+sudo systemctl stop localithelp
+sudo cp /var/www/localithelp/app.db /var/www/localithelp/app.db.bak   # keep the broken one
+sudo cp /tmp/localithelp-2026-08-24.db /var/www/localithelp/app.db
+sudo chown www-data:www-data /var/www/localithelp/app.db
+sudo systemctl start localithelp
+```
 
 ## SEO
 
