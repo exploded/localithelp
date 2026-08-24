@@ -174,7 +174,7 @@ the pre-rebrand sender still works.
 
 The scheduler snapshots `app.db` every night with `VACUUM INTO` (consistent,
 runs on the app's own connection — no `sqlite3` binary or cron on the box),
-gzips it and puts it at `s3://localithelp-backups/app/YYYY/MM/localithelp-YYYY-MM-DD.db.gz`.
+gzips it and puts it at `s3://localithelp-backups/localithelp-YYYY-MM-DD.db.gz`.
 Objects expire after 90 days. If the upload fails the claim is released, the
 next 15-minute tick retries, and you get a "DB backup failed" email each time.
 
@@ -186,8 +186,8 @@ IAM user whose only permission is `s3:PutObject` on that bucket, then prints the
 Restore (on the server, from a machine with an admin profile to fetch the file):
 
 ```
-aws s3 ls s3://localithelp-backups/app/2026/08/
-aws s3 cp s3://localithelp-backups/app/2026/08/localithelp-2026-08-24.db.gz .
+aws s3 ls s3://localithelp-backups/
+aws s3 cp s3://localithelp-backups/localithelp-2026-08-24.db.gz .
 gunzip localithelp-2026-08-24.db.gz
 scp -P 2222 localithelp-2026-08-24.db deploy@172.105.178.43:/tmp/
 # on the server

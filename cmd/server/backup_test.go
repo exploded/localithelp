@@ -75,7 +75,7 @@ func TestBackupJob(t *testing.T) {
 	if backupDatabase(at.Add(time.Hour)) {
 		t.Fatal("second upload in one day")
 	}
-	if len(fake.keys) != 1 || fake.keys[0] != "app/2026/08/localithelp-2026-08-24.db.gz" {
+	if len(fake.keys) != 1 || fake.keys[0] != "localithelp-2026-08-24.db.gz" {
 		t.Fatalf("keys = %v", fake.keys)
 	}
 	if _, err := os.Stat(filepath.Join(os.TempDir(), "localithelp-backup.db")); !os.IsNotExist(err) {

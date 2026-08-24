@@ -51,7 +51,7 @@ const backupHour = 2
 
 // backupKey is the S3 object key for a given local date.
 func backupKey(day time.Time) string {
-	return day.Format("app/2006/01/localithelp-2006-01-02.db.gz")
+	return day.Format("localithelp-2006-01-02.db.gz")
 }
 
 // backupDatabase uploads a gzip'd snapshot of app.db once a day, on the first
