@@ -47,3 +47,24 @@ never double-send. See "Scheduled reminders" in the README.
     the admin calendar.
 13. [ ] **Google Business Profile cadence** — runbook note only (monthly
     post/photo), no code.
+
+## Also noted (gaps from the site survey, not yet ranked)
+
+14. [ ] **Calendar sync** — an ICS feed of the admin diary (`/admin/calendar.ics?token=…`)
+    to subscribe from Google Calendar / iPhone, or two-way Google Calendar sync
+    of `booked` visits. Today only outbound `.ics` invites go to customers.
+15. [ ] **SMS** — day-before reminder and heads-up by SMS (Twilio/ClickSend) for
+    customers without email, or as a second channel. None today.
+16. [ ] **Overdue-invoice nudge** — see 1b.
+17. [ ] **Newsletter / email list** — signup + occasional tips mailout; no list
+    or capture beyond bookings today.
+18. [ ] **Gift vouchers** — "an hour of help" voucher, sold via payment link,
+    redeemed on an invoice; separate from the referral voucher (7).
+19. [ ] **Post-visit follow-up email** — automatic "how's it going?" 7–14 days
+    after a `paid` booking, with the review ask if not already asked.
+20. [ ] **Booking-source capture** — see 10; store `utm_*`, referrer and landing
+    page on every booking so Ads spend can be judged per keyword.
+21. [ ] **Quote → invoice conversion** — see 9; also let the software `/quote`
+    flow produce an invoice for the deposit.
+22. [ ] **Admin: mark `contacted` from the digest** — one-click links in the
+    digest/heads-up emails (tokenised) to change status without signing in.

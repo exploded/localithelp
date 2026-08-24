@@ -204,11 +204,10 @@ sudo systemctl start localithelp
 answers a query, `503 db unavailable` otherwise. It's `Cache-Control: no-store`
 and disallowed in `robots.txt`.
 
-Point an external monitor at it — UptimeRobot's free tier is enough:
-HTTP(S) monitor, URL `https://localithelp.com.au/health`, keyword check for
-`ok`, 5-minute interval, alert by email. A keyword monitor catches the case
-where Caddy is up but the app behind it isn't; a plain status check would
-only see the 502.
+Monitored from https://monitor.mchugh.au/uptime (the self-hosted `monitor`
+app on the same Linode box). A keyword check on `ok` catches the case where
+Caddy is up but the app behind it isn't; a plain status check would only see
+the 502.
 
 ## SEO
 
