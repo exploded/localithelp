@@ -1447,6 +1447,7 @@ footer {
     margin-bottom: 1rem;
 }
 .section-intro a { color: var(--brand); }
+.portfolio-more { margin-top: 2.5rem; }
 .crumb { color: inherit; text-decoration: none; }
 .crumb:hover { text-decoration: underline; }
 
