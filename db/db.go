@@ -104,6 +104,9 @@ func Open(path string) error {
 		"ALTER TABLE bookings ADD COLUMN parent_booking_id INTEGER NOT NULL DEFAULT 0",
 		"ALTER TABLE bookings ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE bookings ADD COLUMN address TEXT NOT NULL DEFAULT ''",
+		// scheduler stamps
+		"ALTER TABLE bookings ADD COLUMN reminder_sent_at TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE bookings ADD COLUMN admin_alert_sent_at TEXT NOT NULL DEFAULT ''",
 		// invoices: review request tracking
 		"ALTER TABLE invoices ADD COLUMN review_asked_at TEXT NOT NULL DEFAULT ''",
 	} {

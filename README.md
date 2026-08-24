@@ -67,6 +67,7 @@ go run ./cmd/server          # http://localhost:8080
 |---|---|---|
 | `PORT` | `8080` | listen port |
 | `PROD` | – | set in production (affects BASE_URL default) |
+| `SCHEDULER` | on if `PROD` | background reminders (see below); `1` runs it locally, `0` disables it |
 | `BASE_URL` | `https://localithelp.com.au` if PROD else `http://localhost:PORT` | canonical origin; OAuth redirect + quote verification links |
 | `PHONE` | empty | display phone; empty hides all phone UI |
 | `CONTACT_EMAIL` | `james@localithelp.com.au` | contact email; also the SES sender (must be a verified identity) and where booking / verified-quote notifications go |
@@ -141,6 +142,23 @@ log in — they get emails with tokenised links.
 Booking statuses: `new → contacted → booked → done → invoiced → paid`, plus
 `cancelled`, `spam`. Invoice statuses: `draft → sent → paid`, plus `void`. Times
 are Australia/Melbourne (`time/tzdata` is embedded). Money is integer cents; no GST.
+
+### Scheduled reminders
+
+A goroutine (`cmd/server/scheduler.go`) ticks every 15 minutes when `PROD` (or
+`SCHEDULER=1`) is set. Every job is idempotent — it stamps a column or a
+`scheduler_runs` row before it counts as done — so restarts never double-send,
+and a send failure is retried on the next tick.
+
+| Job | When | To | Stamp |
+|---|---|---|---|
+| Day-before reminder | 4–8 pm the day before a `booked` visit | customer (needs an email) | `bookings.reminder_sent_at` |
+| Heads-up | 45–60 min before a `booked` visit | admin | `bookings.admin_alert_sent_at` |
+| Morning digest | first tick after 7:30 am, only if there is something to say | admin | `scheduler_runs('digest', date)` |
+
+The digest lists today's visits, `new` enquiries, overdue invoices and quotes
+verified in the last 7 days. Rescheduling a visit clears both stamps, so the
+new time gets its own reminder and heads-up.
 
 ### Email (Amazon SES) setup
 

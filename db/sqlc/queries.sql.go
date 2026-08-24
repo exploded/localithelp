@@ -112,7 +112,7 @@ func (q *Queries) DeletePendingByEmail(ctx context.Context, email string) error 
 
 const getBooking = `-- name: GetBooking :one
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE id = ?
 `
 
@@ -139,6 +139,8 @@ func (q *Queries) GetBooking(ctx context.Context, id int64) (Booking, error) {
 		&i.ParentBookingID,
 		&i.UpdatedAt,
 		&i.Address,
+		&i.ReminderSentAt,
+		&i.AdminAlertSentAt,
 	)
 	return i, err
 }
@@ -629,9 +631,28 @@ func (q *Queries) InsertQuote(ctx context.Context, arg InsertQuoteParams) (int64
 	return id, err
 }
 
+const insertSchedulerRun = `-- name: InsertSchedulerRun :execrows
+
+INSERT OR IGNORE INTO scheduler_runs (job, ran_on) VALUES (?, ?)
+`
+
+type InsertSchedulerRunParams struct {
+	Job   string `json:"job"`
+	RanOn string `json:"ran_on"`
+}
+
+// Scheduler
+func (q *Queries) InsertSchedulerRun(ctx context.Context, arg InsertSchedulerRunParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertSchedulerRun, arg.Job, arg.RanOn)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listBookings = `-- name: ListBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings ORDER BY id DESC
 `
 
@@ -664,6 +685,8 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 			&i.ParentBookingID,
 			&i.UpdatedAt,
 			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -680,7 +703,7 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 
 const listBookingsBetween = `-- name: ListBookingsBetween :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam')
 ORDER BY start_at
@@ -720,6 +743,8 @@ func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetwe
 			&i.ParentBookingID,
 			&i.UpdatedAt,
 			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -736,7 +761,7 @@ func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetwe
 
 const listBookingsByCustomer = `-- name: ListBookingsByCustomer :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE customer_id = ? ORDER BY id DESC
 `
 
@@ -769,6 +794,8 @@ func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) 
 			&i.ParentBookingID,
 			&i.UpdatedAt,
 			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -785,7 +812,7 @@ func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) 
 
 const listBookingsByStatus = `-- name: ListBookingsByStatus :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE status = ? ORDER BY id DESC
 `
 
@@ -818,6 +845,126 @@ func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Bo
 			&i.ParentBookingID,
 			&i.UpdatedAt,
 			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookingsForAdminAlert = `-- name: ListBookingsForAdminAlert :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+FROM bookings
+WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND admin_alert_sent_at = ''
+ORDER BY start_at
+`
+
+type ListBookingsForAdminAlertParams struct {
+	StartAt   string `json:"start_at"`
+	StartAt_2 string `json:"start_at_2"`
+}
+
+// Booked visits in [from, to) the admin has not been alerted about yet.
+func (q *Queries) ListBookingsForAdminAlert(ctx context.Context, arg ListBookingsForAdminAlertParams) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listBookingsForAdminAlert, arg.StartAt, arg.StartAt_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookingsForReminder = `-- name: ListBookingsForReminder :many
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+FROM bookings
+WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND email <> '' AND reminder_sent_at = ''
+ORDER BY start_at
+`
+
+type ListBookingsForReminderParams struct {
+	StartAt   string `json:"start_at"`
+	StartAt_2 string `json:"start_at_2"`
+}
+
+// Booked visits in [from, to) whose customer has an email and no reminder yet.
+func (q *Queries) ListBookingsForReminder(ctx context.Context, arg ListBookingsForReminderParams) ([]Booking, error) {
+	rows, err := q.db.QueryContext(ctx, listBookingsForReminder, arg.StartAt, arg.StartAt_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Booking
+	for rows.Next() {
+		var i Booking
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Phone,
+			&i.Email,
+			&i.Suburb,
+			&i.ServiceSlug,
+			&i.Mode,
+			&i.Issue,
+			&i.PreferredTime,
+			&i.Status,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.CustomerID,
+			&i.StartAt,
+			&i.DurationMin,
+			&i.AdminNotes,
+			&i.ParentBookingID,
+			&i.UpdatedAt,
+			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -834,7 +981,7 @@ func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Bo
 
 const listChildBookings = `-- name: ListChildBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE parent_booking_id = ? ORDER BY id
 `
 
@@ -867,6 +1014,8 @@ func (q *Queries) ListChildBookings(ctx context.Context, parentBookingID int64) 
 			&i.ParentBookingID,
 			&i.UpdatedAt,
 			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1217,6 +1366,54 @@ func (q *Queries) ListOptionsByGroupID(ctx context.Context, groupID int64) ([]Qu
 	return items, nil
 }
 
+const listOverdueInvoices = `-- name: ListOverdueInvoices :many
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
+FROM invoices WHERE status = 'sent' AND due_at <> '' AND due_at < ? ORDER BY due_at
+`
+
+// Sent, unpaid invoices whose due date is before the given local date.
+func (q *Queries) ListOverdueInvoices(ctx context.Context, dueAt string) ([]Invoice, error) {
+	rows, err := q.db.QueryContext(ctx, listOverdueInvoices, dueAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invoice
+	for rows.Next() {
+		var i Invoice
+		if err := rows.Scan(
+			&i.ID,
+			&i.Number,
+			&i.BookingID,
+			&i.CustomerID,
+			&i.Status,
+			&i.IssuedAt,
+			&i.DueAt,
+			&i.PaidAt,
+			&i.PaymentMethod,
+			&i.PaymentRef,
+			&i.PaymentLink,
+			&i.TotalCents,
+			&i.Notes,
+			&i.ViewToken,
+			&i.ReviewAskedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listQuotes = `-- name: ListQuotes :many
 SELECT id, user_id, name, email, mobile, address, description, total_cost, features, ai_estimate, verify_token, verified_at, status, created_at
 FROM quotes ORDER BY created_at DESC
@@ -1262,7 +1459,7 @@ func (q *Queries) ListQuotes(ctx context.Context) ([]Quote, error) {
 
 const listUnlinkedBookings = `-- name: ListUnlinkedBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id
 `
 
@@ -1295,6 +1492,8 @@ func (q *Queries) ListUnlinkedBookings(ctx context.Context) ([]Booking, error) {
 			&i.ParentBookingID,
 			&i.UpdatedAt,
 			&i.Address,
+			&i.ReminderSentAt,
+			&i.AdminAlertSentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1307,6 +1506,24 @@ func (q *Queries) ListUnlinkedBookings(ctx context.Context) ([]Booking, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const markBookingAdminAlertSent = `-- name: MarkBookingAdminAlertSent :exec
+UPDATE bookings SET admin_alert_sent_at = datetime('now') WHERE id = ?
+`
+
+func (q *Queries) MarkBookingAdminAlertSent(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, markBookingAdminAlertSent, id)
+	return err
+}
+
+const markBookingReminderSent = `-- name: MarkBookingReminderSent :exec
+UPDATE bookings SET reminder_sent_at = datetime('now') WHERE id = ?
+`
+
+func (q *Queries) MarkBookingReminderSent(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, markBookingReminderSent, id)
+	return err
 }
 
 const markInvoicePaid = `-- name: MarkInvoicePaid :execrows
@@ -1529,7 +1746,7 @@ func (q *Queries) UpdateBookingNotes(ctx context.Context, arg UpdateBookingNotes
 }
 
 const updateBookingSchedule = `-- name: UpdateBookingSchedule :exec
-UPDATE bookings SET start_at = ?, duration_min = ?, status = 'booked', updated_at = datetime('now') WHERE id = ?
+UPDATE bookings SET start_at = ?, duration_min = ?, status = 'booked', reminder_sent_at = '', admin_alert_sent_at = '', updated_at = datetime('now') WHERE id = ?
 `
 
 type UpdateBookingScheduleParams struct {
@@ -1538,6 +1755,7 @@ type UpdateBookingScheduleParams struct {
 	ID          int64  `json:"id"`
 }
 
+// Rescheduling clears the reminder stamps so the new time gets its own reminder + heads-up.
 func (q *Queries) UpdateBookingSchedule(ctx context.Context, arg UpdateBookingScheduleParams) error {
 	_, err := q.db.ExecContext(ctx, updateBookingSchedule, arg.StartAt, arg.DurationMin, arg.ID)
 	return err

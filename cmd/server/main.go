@@ -81,6 +81,7 @@ func main() {
 	}
 
 	mux := newMux(dir)
+	startScheduler()
 
 	log.Printf("listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, canonicalHost(mux)); err != nil {

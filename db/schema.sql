@@ -71,7 +71,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     admin_notes       TEXT    NOT NULL DEFAULT '',
     parent_booking_id INTEGER NOT NULL DEFAULT 0,   -- follow-up visits point at the original booking
     updated_at        TEXT    NOT NULL DEFAULT '',
-    address           TEXT    NOT NULL DEFAULT ''   -- full street address, e.g. '12 Smith St, Donvale VIC 3111'
+    address           TEXT    NOT NULL DEFAULT '',  -- full street address, e.g. '12 Smith St, Donvale VIC 3111'
+    reminder_sent_at    TEXT  NOT NULL DEFAULT '',  -- UTC datetime the day-before reminder was emailed to the customer
+    admin_alert_sent_at TEXT  NOT NULL DEFAULT ''   -- UTC datetime the 1-hour heads-up was emailed to the admin
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookings_start_at ON bookings(start_at);
@@ -127,4 +129,12 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     unit_cents  INTEGER NOT NULL DEFAULT 0,
     line_cents  INTEGER NOT NULL DEFAULT 0,   -- round(qty * unit_cents), computed at save
     sort_order  INTEGER NOT NULL DEFAULT 0
+);
+
+-- Scheduler: one row per (job, local date) the job has run, so once-a-day jobs
+-- (the morning digest) survive restarts without double-sending.
+CREATE TABLE IF NOT EXISTS scheduler_runs (
+    job    TEXT NOT NULL,
+    ran_on TEXT NOT NULL,   -- 'YYYY-MM-DD' Melbourne local
+    PRIMARY KEY (job, ran_on)
 );

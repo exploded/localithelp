@@ -149,7 +149,7 @@ var mailTmpl = template.Must(template.Must(template.New("mail").Funcs(template.F
 	"kv":    func(k, v string) map[string]string { return map[string]string{"K": k, "V": v} },
 	"money": fmtCents,
 	"btn":   func(href, label string) map[string]string { return map[string]string{"Href": href, "Label": label} },
-}).Parse(mailTmplSrc)).Parse(mailBillingTmplSrc))
+}).Parse(mailTmplSrc)).Parse(mailBillingTmplSrc + mailSchedulerTmplSrc))
 
 // renderMail executes a named body template inside the "wrap" chrome.
 func renderMail(name string, data any) (string, error) {

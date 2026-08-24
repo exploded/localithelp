@@ -238,6 +238,12 @@ func ListInvoiceItems(invoiceID int64) ([]InvoiceItem, error) {
 }
 
 // SumOutstandingCents totals invoices that have been sent but not paid.
+// ListOverdueInvoices returns sent, unpaid invoices due before the given local
+// date, oldest first.
+func ListOverdueInvoices(before time.Time) ([]Invoice, error) {
+	return sqlcInvoices(q.ListOverdueInvoices(context.Background(), FormatDate(before)))
+}
+
 func SumOutstandingCents() (int64, error) {
 	v, err := q.SumOutstandingCents(context.Background())
 	if err != nil {

@@ -46,6 +46,8 @@ type Booking struct {
 	ParentBookingID int64 // set on follow-up visits
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	ReminderSentAt  time.Time // UTC; zero until the day-before reminder went to the customer
+	AdminAlertAt    time.Time // UTC; zero until the 1-hour heads-up went to the admin
 }
 
 // EndAt is StartAt + DurationMin (zero when unscheduled).
@@ -63,6 +65,7 @@ func sqlcBooking(r sqlc.Booking) Booking {
 		Status: r.Status, IP: r.Ip, StartAt: ParseStartAt(r.StartAt), DurationMin: int(r.DurationMin),
 		AdminNotes: r.AdminNotes, ParentBookingID: r.ParentBookingID,
 		CreatedAt: parseUTC(r.CreatedAt), UpdatedAt: parseUTC(r.UpdatedAt),
+		ReminderSentAt: parseUTC(r.ReminderSentAt), AdminAlertAt: parseUTC(r.AdminAlertSentAt),
 	}
 }
 
@@ -175,4 +178,38 @@ func SetBookingCustomer(id, customerID int64) error {
 // UpdateBookingAddress sets the booking's street address and suburb.
 func UpdateBookingAddress(id int64, address, suburb string) error {
 	return q.UpdateBookingAddress(context.Background(), sqlc.UpdateBookingAddressParams{Address: address, Suburb: suburb, ID: id})
+}
+
+// ── Scheduler support ──
+
+// ListBookingsForReminder returns booked visits with from <= start < to whose
+// customer has an email and has not yet received the day-before reminder.
+func ListBookingsForReminder(from, to time.Time) ([]Booking, error) {
+	return sqlcBookings(q.ListBookingsForReminder(context.Background(), sqlc.ListBookingsForReminderParams{
+		StartAt: FormatStartAt(from), StartAt_2: FormatStartAt(to),
+	}))
+}
+
+// ListBookingsForAdminAlert returns booked visits with from <= start < to that
+// the admin has not yet been alerted about.
+func ListBookingsForAdminAlert(from, to time.Time) ([]Booking, error) {
+	return sqlcBookings(q.ListBookingsForAdminAlert(context.Background(), sqlc.ListBookingsForAdminAlertParams{
+		StartAt: FormatStartAt(from), StartAt_2: FormatStartAt(to),
+	}))
+}
+
+func MarkBookingReminderSent(id int64) error {
+	return q.MarkBookingReminderSent(context.Background(), id)
+}
+
+func MarkBookingAdminAlertSent(id int64) error {
+	return q.MarkBookingAdminAlertSent(context.Background(), id)
+}
+
+// ClaimSchedulerRun records that job ran on the given local date and reports
+// whether this call was the first to do so. Once-a-day jobs call it before
+// sending, so a restart or overlapping tick can never send twice.
+func ClaimSchedulerRun(job string, on time.Time) (bool, error) {
+	n, err := q.InsertSchedulerRun(context.Background(), sqlc.InsertSchedulerRunParams{Job: job, RanOn: FormatDate(on)})
+	return n == 1, err
 }

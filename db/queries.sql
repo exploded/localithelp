@@ -95,39 +95,39 @@ RETURNING id;
 
 -- name: GetBooking :one
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE id = ?;
 
 -- name: ListBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings ORDER BY id DESC;
 
 -- name: ListBookingsByStatus :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE status = ? ORDER BY id DESC;
 
 -- name: ListBookingsBetween :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam')
 ORDER BY start_at;
 
 -- name: ListBookingsByCustomer :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE customer_id = ? ORDER BY id DESC;
 
 -- name: ListChildBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE parent_booking_id = ? ORDER BY id;
 
 -- name: ListUnlinkedBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
 FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id;
 
 -- name: CountBookingsByStatus :many
@@ -137,7 +137,8 @@ SELECT status, COUNT(*) AS n FROM bookings GROUP BY status;
 UPDATE bookings SET status = ?, updated_at = datetime('now') WHERE id = ?;
 
 -- name: UpdateBookingSchedule :exec
-UPDATE bookings SET start_at = ?, duration_min = ?, status = 'booked', updated_at = datetime('now') WHERE id = ?;
+-- Rescheduling clears the reminder stamps so the new time gets its own reminder + heads-up.
+UPDATE bookings SET start_at = ?, duration_min = ?, status = 'booked', reminder_sent_at = '', admin_alert_sent_at = '', updated_at = datetime('now') WHERE id = ?;
 
 -- name: UpdateBookingNotes :exec
 UPDATE bookings SET admin_notes = ?, updated_at = datetime('now') WHERE id = ?;
@@ -147,6 +148,33 @@ UPDATE bookings SET customer_id = ? WHERE id = ?;
 
 -- name: UpdateBookingAddress :exec
 UPDATE bookings SET address = ?, suburb = ?, updated_at = datetime('now') WHERE id = ?;
+
+-- name: ListBookingsForReminder :many
+-- Booked visits in [from, to) whose customer has an email and no reminder yet.
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+FROM bookings
+WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND email <> '' AND reminder_sent_at = ''
+ORDER BY start_at;
+
+-- name: ListBookingsForAdminAlert :many
+-- Booked visits in [from, to) the admin has not been alerted about yet.
+SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at
+FROM bookings
+WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND admin_alert_sent_at = ''
+ORDER BY start_at;
+
+-- name: MarkBookingReminderSent :exec
+UPDATE bookings SET reminder_sent_at = datetime('now') WHERE id = ?;
+
+-- name: MarkBookingAdminAlertSent :exec
+UPDATE bookings SET admin_alert_sent_at = datetime('now') WHERE id = ?;
+
+-- Scheduler
+
+-- name: InsertSchedulerRun :execrows
+INSERT OR IGNORE INTO scheduler_runs (job, ran_on) VALUES (?, ?);
 
 -- Customers
 
@@ -227,6 +255,12 @@ FROM invoices WHERE customer_id = ? ORDER BY number DESC;
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
        total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE booking_id = ? ORDER BY number DESC;
+
+-- name: ListOverdueInvoices :many
+-- Sent, unpaid invoices whose due date is before the given local date.
+SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
+FROM invoices WHERE status = 'sent' AND due_at <> '' AND due_at < ? ORDER BY due_at;
 
 -- name: SumOutstandingCents :one
 SELECT COALESCE(SUM(total_cents), 0) FROM invoices WHERE status = 'sent';

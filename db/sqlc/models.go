@@ -5,25 +5,27 @@
 package sqlc
 
 type Booking struct {
-	ID              int64  `json:"id"`
-	Name            string `json:"name"`
-	Phone           string `json:"phone"`
-	Email           string `json:"email"`
-	Suburb          string `json:"suburb"`
-	ServiceSlug     string `json:"service_slug"`
-	Mode            string `json:"mode"`
-	Issue           string `json:"issue"`
-	PreferredTime   string `json:"preferred_time"`
-	Status          string `json:"status"`
-	Ip              string `json:"ip"`
-	CreatedAt       string `json:"created_at"`
-	CustomerID      int64  `json:"customer_id"`
-	StartAt         string `json:"start_at"`
-	DurationMin     int64  `json:"duration_min"`
-	AdminNotes      string `json:"admin_notes"`
-	ParentBookingID int64  `json:"parent_booking_id"`
-	UpdatedAt       string `json:"updated_at"`
-	Address         string `json:"address"`
+	ID               int64  `json:"id"`
+	Name             string `json:"name"`
+	Phone            string `json:"phone"`
+	Email            string `json:"email"`
+	Suburb           string `json:"suburb"`
+	ServiceSlug      string `json:"service_slug"`
+	Mode             string `json:"mode"`
+	Issue            string `json:"issue"`
+	PreferredTime    string `json:"preferred_time"`
+	Status           string `json:"status"`
+	Ip               string `json:"ip"`
+	CreatedAt        string `json:"created_at"`
+	CustomerID       int64  `json:"customer_id"`
+	StartAt          string `json:"start_at"`
+	DurationMin      int64  `json:"duration_min"`
+	AdminNotes       string `json:"admin_notes"`
+	ParentBookingID  int64  `json:"parent_booking_id"`
+	UpdatedAt        string `json:"updated_at"`
+	Address          string `json:"address"`
+	ReminderSentAt   string `json:"reminder_sent_at"`
+	AdminAlertSentAt string `json:"admin_alert_sent_at"`
 }
 
 type Customer struct {
@@ -108,6 +110,11 @@ type QuoteOptionGroup struct {
 type QuoteSetting struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type SchedulerRun struct {
+	Job   string `json:"job"`
+	RanOn string `json:"ran_on"`
 }
 
 type User struct {
