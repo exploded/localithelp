@@ -154,6 +154,13 @@ func BackupTo(ctx context.Context, path string) error {
 	return nil
 }
 
+// Ping runs a trivial query so /health reports a real DB failure (locked,
+// corrupt, disk gone) rather than just "the process is up".
+func Ping(ctx context.Context) error {
+	var one int
+	return conn.QueryRowContext(ctx, "SELECT 1").Scan(&one)
+}
+
 func Close() error {
 	if conn != nil {
 		return conn.Close()

@@ -100,6 +100,7 @@ func newMux(dir string) *http.ServeMux {
 	fs := http.FileServer(http.Dir(staticDir))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", cacheStatic(fs)))
 
+	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("GET /robots.txt", handleRobots)
 	mux.HandleFunc("GET /sitemap.xml", handleSitemap)
 	mux.HandleFunc("GET /llms.txt", handleLlmsTxt)
