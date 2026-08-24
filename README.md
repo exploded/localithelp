@@ -175,7 +175,13 @@ calendar is created on first connect and existing visits are pushed straight
 away. The page also shows the last sync time, the last error, tick boxes for
 which calendars contribute busy times, **Resync all** and **Disconnect**.
 
-One-off in the Google Cloud Console (same OAuth client as sign-in):
+This app has **its own Google Cloud project** (`localithelp`), separate from the
+shared project behind the other mchugh.au apps. Keep it that way: the consent
+screen, scopes, publishing status and verification are per-project, so adding a
+sensitive scope to the shared project would drag the other apps into the same
+verification requirement and 100-grant cap.
+
+One-off in the Google Cloud Console (both flows use the one OAuth client):
 
 1. **Enable the Google Calendar API** (APIs & Services → Library).
 2. Add the scope `https://www.googleapis.com/auth/calendar` to the OAuth
