@@ -200,32 +200,32 @@ RETURNING id;
 
 -- name: GetInvoice :one
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE id = ?;
 
 -- name: GetInvoiceByToken :one
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE view_token = ? AND view_token <> '';
 
 -- name: ListInvoices :many
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices ORDER BY number DESC;
 
 -- name: ListInvoicesByStatus :many
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE status = ? ORDER BY number DESC;
 
 -- name: ListInvoicesByCustomer :many
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE customer_id = ? ORDER BY number DESC;
 
 -- name: ListInvoicesByBooking :many
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE booking_id = ? ORDER BY number DESC;
 
 -- name: SumOutstandingCents :one
@@ -247,6 +247,10 @@ WHERE id = ? AND status = 'draft';
 UPDATE invoices SET status = 'paid', paid_at = ?, payment_method = ?, payment_ref = ?,
     issued_at = CASE WHEN issued_at = '' THEN ? ELSE issued_at END, updated_at = datetime('now')
 WHERE id = ? AND status IN ('draft', 'sent');
+
+-- name: MarkInvoiceReviewAsked :exec
+UPDATE invoices SET review_asked_at = ?, updated_at = datetime('now')
+WHERE id = ?;
 
 -- name: VoidInvoice :execrows
 UPDATE invoices SET status = 'void', updated_at = datetime('now')

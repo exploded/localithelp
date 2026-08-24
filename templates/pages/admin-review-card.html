@@ -1,0 +1,51 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — Review card</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}
+    <div class="page-header no-print">
+        <div class="container">
+            <div class="section-label">Administration</div>
+            <h1 class="section-title">Review card</h1>
+            <p class="page-header-intro">Print it as a leave-behind, or just hold your phone up and let them scan the screen.</p>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{if not $d.Configured}}
+            <div class="admin-card">
+                <h2 class="admin-card-title">Not set up yet</h2>
+                <p>Set <code>REVIEW_URL</code> in <code>.env</code> and restart, then this page shows a QR card you can print or hold up on your phone.</p>
+                <p class="admin-muted">Get the link from your Google Business Profile: choose <strong>Ask for reviews</strong> and copy the share link (it looks like <code>https://g.page/r/…/review</code>).</p>
+            </div>
+            {{else}}
+            <div class="review-card">
+                <p class="review-card-title">Happy with the help?</p>
+                <p class="review-card-lead">Scan this with your phone camera to leave a Google review. It takes about 30 seconds and helps other locals find me.</p>
+                <img class="review-card-qr" src="{{$d.QR}}" alt="QR code linking to {{$d.Display}}" width="260" height="260">
+                <p class="review-card-url">{{$d.Display}}</p>
+                <p class="review-card-sign">Local IT Help — James McHugh{{if .Site.Phone}} · {{.Site.Phone}}{{end}}</p>
+            </div>
+
+            <div class="admin-card no-print">
+                <h2 class="admin-card-title">On the day</h2>
+                <ol class="review-steps">
+                    <li><strong>Ask the moment it works</strong>, not at the door — while they're still pleased.</li>
+                    <li><strong>Do it on their computer.</strong> You've just fixed it, it's in front of you, and it's usually already signed in to Google. Type <code>{{$d.Display}}</code> into their browser and hand back the keyboard.</li>
+                    <li><strong>Offer to type for them:</strong> “Tell me what you'd say and I'll type it, then you can read it before it goes.”</li>
+                    <li><strong>Phone instead?</strong> Show this page on your phone — their camera scans it straight through.</li>
+                    <li><strong>Not signed in to Google?</strong> Don't fight it. Say you'll send a link with the receipt, then tick <em>Ask for a Google review</em> when you mark the invoice paid.</li>
+                </ol>
+                <p class="admin-muted">The QR points at <code>{{$d.ShortURL}}</code>, which redirects to <a href="{{$d.Target}}" target="_blank" rel="noopener">your Google review form</a> — so printed cards keep working even if that link changes.</p>
+                <p><button type="button" class="btn btn--primary btn--sm" onclick="window.print()">Print card</button></p>
+            </div>
+            {{end}}
+        </div>
+    </section>
+{{end}}

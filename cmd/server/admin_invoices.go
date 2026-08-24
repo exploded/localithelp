@@ -65,11 +65,12 @@ func loadInvoice(w http.ResponseWriter, r *http.Request) *db.Invoice {
 // invoiceRow decorates an invoice for lists.
 type invoiceRow struct {
 	db.Invoice
-	Ref      string
-	CustName string
-	Issued   string
-	Due      string
-	Paid     string
+	Ref         string
+	CustName    string
+	Issued      string
+	Due         string
+	Paid        string
+	ReviewAsked string
 }
 
 func invoiceRows(invs []db.Invoice) []invoiceRow {
@@ -83,7 +84,8 @@ func invoiceRows(invs []db.Invoice) []invoiceRow {
 			}
 			cache[inv.CustomerID] = name
 		}
-		out[i] = invoiceRow{Invoice: inv, Ref: inv.Ref(), CustName: name, Issued: fmtDate(inv.IssuedAt), Due: fmtDate(inv.DueAt), Paid: fmtDate(inv.PaidAt)}
+		out[i] = invoiceRow{Invoice: inv, Ref: inv.Ref(), CustName: name, Issued: fmtDate(inv.IssuedAt), Due: fmtDate(inv.DueAt),
+			Paid: fmtDate(inv.PaidAt), ReviewAsked: fmtDate(inv.ReviewAskedAt)}
 	}
 	return out
 }
@@ -184,6 +186,8 @@ type adminInvoiceData struct {
 	PublicURL      string
 	Statuses       []string
 	BankConfigured bool
+	ReviewOn       bool   // REVIEW_URL configured: show the review tick-box
+	ReviewAsked    string // date a review was requested, empty if never
 }
 
 // invoiceLine is an editable row (dollars as strings for the form).
@@ -225,6 +229,8 @@ func handleAdminInvoice(w http.ResponseWriter, r *http.Request) {
 		HasCustEmail:   v.Cust != nil && v.Cust.Email != "",
 		PublicURL:      v.PublicURL,
 		BankConfigured: site.BankBSB != "",
+		ReviewOn:       site.ReviewURL != "",
+		ReviewAsked:    fmtDate(inv.ReviewAskedAt),
 	}
 	if v.Booking != nil {
 		d.When = fmtWhen(v.Booking.StartAt)
@@ -415,7 +421,8 @@ func handleAdminInvoiceSend(w http.ResponseWriter, r *http.Request) {
 }
 
 // resendReceipt re-emails the receipt for a paid invoice (same email and
-// PAID-stamped PDF as the one sent when it was marked paid).
+// PAID-stamped PDF as the one sent when it was marked paid), optionally adding
+// the Google review ask if it wasn't included the first time.
 func resendReceipt(w http.ResponseWriter, r *http.Request, inv *db.Invoice, back string) {
 	v, err := loadInvoiceView(inv)
 	if err != nil {
@@ -432,12 +439,18 @@ func resendReceipt(w http.ResponseWriter, r *http.Request, inv *db.Invoice, back
 		redirectMsg(w, r, back, "err", "The PDF failed to render: "+err.Error())
 		return
 	}
-	if err := sendReceiptEmail(v, pdf); err != nil {
+	askReview := wantsReviewAsk(r)
+	if err := sendReceiptEmail(v, pdf, askReview); err != nil {
 		logMailErr("receipt resend", err)
 		redirectMsg(w, r, back, "err", "The receipt email failed: "+err.Error())
 		return
 	}
-	redirectMsg(w, r, back, "ok", "Receipt for "+inv.Ref()+" emailed to "+v.Cust.Email+".")
+	msg := "Receipt for " + inv.Ref() + " emailed to " + v.Cust.Email + "."
+	if askReview {
+		recordReviewAsk(inv.ID)
+		msg += " Review request included."
+	}
+	redirectMsg(w, r, back, "ok", msg)
 }
 
 func handleAdminInvoicePaid(w http.ResponseWriter, r *http.Request) {
@@ -476,12 +489,13 @@ func handleAdminInvoicePaid(w http.ResponseWriter, r *http.Request) {
 	}
 	msg := inv.Ref() + " marked paid."
 	if r.FormValue("notify") != "" {
+		askReview := wantsReviewAsk(r)
 		inv, _ = db.GetInvoice(inv.ID)
 		v, err := loadInvoiceView(inv)
 		if err == nil {
 			var pdf []byte
 			if pdf, err = invoicePDF(v); err == nil {
-				err = sendReceiptEmail(v, pdf)
+				err = sendReceiptEmail(v, pdf, askReview)
 			}
 		}
 		if err != nil {
@@ -490,8 +504,26 @@ func handleAdminInvoicePaid(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		msg += " Receipt emailed."
+		if askReview {
+			recordReviewAsk(inv.ID)
+			msg += " Review request included."
+		}
 	}
 	redirectMsg(w, r, back, "ok", msg)
+}
+
+// wantsReviewAsk reports whether the admin ticked "ask for a Google review" and
+// there is somewhere to send them.
+func wantsReviewAsk(r *http.Request) bool {
+	return r.FormValue("review") != "" && site.ReviewURL != ""
+}
+
+// recordReviewAsk stamps the invoice so the admin can see who has already been
+// asked. A failure here must not turn a successful send into an error.
+func recordReviewAsk(id int64) {
+	if err := db.MarkInvoiceReviewAsked(id, db.Today()); err != nil {
+		log.Printf("mark review asked #%d: %v", id, err)
+	}
 }
 
 func handleAdminInvoiceVoid(w http.ResponseWriter, r *http.Request) {

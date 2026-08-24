@@ -27,7 +27,8 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	site = siteConfig{BaseURL: "https://example.test", Email: "me@example.test", OnsiteFee: 80, BlockRate: 30, Suburbs: suburbs,
-		ABN: "14 723 053 435", BankName: "James McHugh", BankBSB: "000-000", BankAcct: "12345678"}
+		ABN: "14 723 053 435", BankName: "James McHugh", BankBSB: "000-000", BankAcct: "12345678",
+		ReviewURL: "https://g.page/r/TEST/review"}
 	mail = nil
 
 	sessTok := "sess-" + generateSessionToken()
@@ -290,6 +291,20 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	}
 	if inv, _ = db.GetInvoice(invID); inv.Status != db.InvoicePaid {
 		t.Fatalf("resend receipt changed status: %s", inv.Status)
+	}
+	// The review ask is opt-in and recorded: untouched by the sends above, then
+	// stamped when the box is ticked, after which the page stops offering it.
+	if !inv.ReviewAskedAt.IsZero() {
+		t.Fatalf("review asked without the tick-box: %v", inv.ReviewAskedAt)
+	}
+	if loc := post(invPath+"/send", url.Values{"review": {"1"}}); !strings.Contains(loc, "Review+request") {
+		t.Fatalf("resend receipt with review: %s", loc)
+	}
+	if inv, _ = db.GetInvoice(invID); inv.ReviewAskedAt.IsZero() {
+		t.Fatal("review ask was not recorded")
+	}
+	if page := get(invPath); !strings.Contains(page, "Review asked") || strings.Contains(page, "Ask for a Google review") {
+		t.Fatal("paid invoice page should show the review as already asked")
 	}
 
 	// 6. Follow-up booking on the same customer, unscheduled; second invoice numbers 1001.

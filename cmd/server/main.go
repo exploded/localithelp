@@ -104,6 +104,9 @@ func newMux(dir string) *http.ServeMux {
 	if site.IndexNowKey != "" {
 		mux.HandleFunc("GET /"+site.IndexNowKey+".txt", handleIndexNowKey)
 	}
+	if site.ReviewURL != "" {
+		mux.HandleFunc("GET /review", handleReview)
+	}
 	mux.HandleFunc("GET /api/pricing", handleAPIPricing)
 	mux.HandleFunc("GET /favicon.ico", handleFavicon(dir))
 
@@ -138,6 +141,7 @@ func newMux(dir string) *http.ServeMux {
 	// Admin routes (protected by Google sign-in + ADMIN_EMAIL check; POSTs need the session CSRF token)
 	mux.HandleFunc("GET /admin", requireAdmin(handleAdmin))
 	mux.HandleFunc("GET /admin/options", requireAdmin(handleAdminOptions))
+	mux.HandleFunc("GET /admin/review-card", requireAdmin(handleAdminReviewCard))
 	mux.HandleFunc("POST /api/admin/save", requireAdmin(handleAdminSave))
 	mux.HandleFunc("GET /admin/bookings", requireAdmin(handleAdminBookings))
 	mux.HandleFunc("GET /admin/bookings/new", requireAdmin(handleAdminBookingNew))
@@ -562,6 +566,7 @@ type siteConfig struct {
 	Hours       string       // trading hours for display, e.g. "Mon & Fri 11am–5pm"
 	HoursLD     []string     // same hours as schema.org openingHours strings
 	IndexNowKey string       // IndexNow API key; empty disables the /{key}.txt route
+	ReviewURL   string       // Google review link; empty hides every review feature
 	BankName    string       // bank transfer details on invoices (BSB empty = hidden)
 	BankBSB     string
 	BankAcct    string
@@ -606,6 +611,7 @@ func initSiteConfig(port string) {
 		Hours:       hoursDisplay(),
 		HoursLD:     hoursSchema(),
 		IndexNowKey: strings.TrimSpace(os.Getenv("INDEXNOW_KEY")),
+		ReviewURL:   httpsURL(os.Getenv("REVIEW_URL")),
 		BankName:    envOr("BANK_ACCOUNT_NAME", "James McHugh"),
 		BankBSB:     strings.TrimSpace(os.Getenv("BANK_BSB")),
 		BankAcct:    strings.TrimSpace(os.Getenv("BANK_ACCOUNT_NO")),
@@ -631,6 +637,17 @@ func initSiteConfig(port string) {
 	// Only tag production traffic — a local build reading a copy of the server's
 	// .env must not pollute the property or report phantom conversions.
 	site.Analytics = os.Getenv("PROD") != "" && site.TagID != ""
+}
+
+// httpsURL sanitises a configured external link: only https, no whitespace or
+// quotes (html/template would neuter anything else anyway), reasonable length.
+// Anything else comes back empty, which disables the feature that uses it.
+func httpsURL(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "https://") || strings.ContainsAny(s, " \"'<>") || len(s) > 500 {
+		return ""
+	}
+	return s
 }
 
 func envOr(key, def string) string {

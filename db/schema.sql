@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     total_cents    INTEGER NOT NULL DEFAULT 0,
     notes          TEXT    NOT NULL DEFAULT '',
     view_token     TEXT    NOT NULL DEFAULT '',       -- public /invoice/{token}
+    review_asked_at TEXT   NOT NULL DEFAULT '',       -- 'YYYY-MM-DD' a Google review was requested
     created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
 );

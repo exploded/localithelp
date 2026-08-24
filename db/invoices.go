@@ -66,6 +66,7 @@ type Invoice struct {
 	TotalCents    int64
 	Notes         string
 	ViewToken     string
+	ReviewAskedAt time.Time // local date a Google review was requested; zero if never
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -90,7 +91,7 @@ func sqlcInvoice(r sqlc.Invoice) *Invoice {
 		ID: r.ID, Number: r.Number, BookingID: r.BookingID, CustomerID: r.CustomerID, Status: r.Status,
 		IssuedAt: ParseDate(r.IssuedAt), DueAt: ParseDate(r.DueAt), PaidAt: ParseDate(r.PaidAt),
 		PaymentMethod: r.PaymentMethod, PaymentRef: r.PaymentRef, PaymentLink: r.PaymentLink,
-		TotalCents: r.TotalCents, Notes: r.Notes, ViewToken: r.ViewToken,
+		TotalCents: r.TotalCents, Notes: r.Notes, ViewToken: r.ViewToken, ReviewAskedAt: ParseDate(r.ReviewAskedAt),
 		CreatedAt: parseUTC(r.CreatedAt), UpdatedAt: parseUTC(r.UpdatedAt),
 	}
 }
@@ -266,6 +267,14 @@ func MarkInvoicePaid(id int64, paidAt time.Time, method, ref string) (bool, erro
 		PaidAt: FormatDate(paidAt), PaymentMethod: method, PaymentRef: ref, IssuedAt: FormatDate(paidAt), ID: id,
 	})
 	return n == 1, err
+}
+
+// MarkInvoiceReviewAsked records the date a Google review was requested for
+// this invoice, so the same customer isn't asked twice.
+func MarkInvoiceReviewAsked(id int64, on time.Time) error {
+	return q.MarkInvoiceReviewAsked(context.Background(), sqlc.MarkInvoiceReviewAskedParams{
+		ReviewAskedAt: FormatDate(on), ID: id,
+	})
 }
 
 // VoidInvoice flips draft|sent → void. Returns false if it was already paid/void.

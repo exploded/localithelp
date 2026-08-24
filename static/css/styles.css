@@ -2297,3 +2297,42 @@ a.area-chip:hover { border-color: var(--brand); color: var(--brand); }
     .area-hero--photo .area-photo { transform: rotate(-1.2deg); }
     .area-hero--photo .area-photo figcaption { text-align: left; padding-left: 0.25rem; }
 }
+
+/* ── Review card (/admin/review-card) ────────────────────────────────────────
+   A leave-behind card that also works held up on a phone screen: big QR, high
+   contrast, and a print rule that puts it alone on the page. */
+.review-card {
+    max-width: 380px;
+    margin: 0 auto 2rem;
+    padding: 1.75rem 1.5rem;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    text-align: center;
+}
+.review-card-title { font-size: 1.25rem; font-weight: 700; margin: 0 0 0.5rem; }
+.review-card-lead { font-size: 0.9rem; color: var(--text-secondary); margin: 0 0 1.25rem; }
+.review-card-qr { display: block; margin: 0 auto 1rem; width: 260px; height: 260px; image-rendering: pixelated; }
+.review-card-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+    word-break: break-all;
+}
+.review-card-sign { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
+.review-steps { margin: 0 0 1rem; padding-left: 1.2rem; font-size: 0.9rem; line-height: 1.6; }
+.review-steps li { margin-bottom: 0.5rem; }
+
+@media print {
+    @page { margin: 18mm; }
+    .no-print, nav, footer { display: none !important; }
+    body, .admin-section { background: #fff !important; }
+    .admin-section { padding: 0 !important; }
+    .review-card {
+        margin: 0;
+        border-color: #000;
+        box-shadow: none;
+        page-break-inside: avoid;
+    }
+}

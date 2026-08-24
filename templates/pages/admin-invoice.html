@@ -129,6 +129,7 @@
                         <form method="POST" action="/admin/invoices/{{$inv.ID}}/send">
                             {{template "csrf" $csrf}}
                             <p class="admin-muted">Emails <strong>{{$v.Cust.Email}}</strong> the receipt again — the paid invoice PDF stamped PAID.</p>
+                            {{template "review-ask" $d}}
                             <button class="btn btn--primary btn--sm" type="submit">Resend receipt</button>
                         </form>
                         {{else}}
@@ -152,6 +153,7 @@
                                 <div class="admin-field"><label for="ref">Ref (optional)</label><input class="admin-input" id="ref" name="ref" maxlength="100" placeholder="Zeller receipt no."></div>
                             </div>
                             <label class="admin-check"><input type="checkbox" name="notify" value="1"{{if $d.HasCustEmail}} checked{{else}} disabled{{end}}> Email receipt (PDF){{if not $d.HasCustEmail}} — no email on file{{end}}</label>
+                            {{template "review-ask" $d}}
                             <div><button class="btn btn--primary btn--sm" type="submit">Mark paid{{if $d.HasCustEmail}} &amp; send receipt{{end}}</button></div>
                         </form>
                         <p class="admin-muted">Paid on the day by card or cash? Mark it here — the customer just gets the receipt.</p>
@@ -170,4 +172,14 @@
         </div>
     </section>
     <script src="{{asset "js/invoice.js"}}" defer></script>
+{{end}}
+
+{{/* review-ask: the per-customer Google review tick-box. Hidden unless
+     REVIEW_URL is configured and the customer has an email address; once asked,
+     shows the date instead so nobody gets pestered twice. */}}
+{{define "review-ask"}}
+{{if and .ReviewOn .HasCustEmail}}
+{{if .ReviewAsked}}<p class="admin-ok">&#10003; Review asked {{.ReviewAsked}}</p>
+{{else}}<label class="admin-check"><input type="checkbox" name="review" value="1"> Ask for a Google review — tick for happy customers</label>
+{{end}}{{end}}
 {{end}}

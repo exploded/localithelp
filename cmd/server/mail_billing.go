@@ -74,6 +74,10 @@ const mailBillingTmplSrc = `
 </table>
 <p style="color:#666;font-size:13px">View or download it any time: <a href="{{.Link}}" style="color:#666;word-break:break-all">{{.Link}}</a></p>
 <p>If you ever need a hand again, book at <a href="{{site.BaseURL}}/book" style="color:#1c1c1c">{{site.BaseURL}}/book</a> or just reply to this email.</p>
+{{if .ReviewURL}}<hr style="border:none;border-top:1px solid #e5e1d8;margin:24px 0">
+<p style="margin:0 0 6px"><strong>One small favour?</strong></p>
+<p style="margin:0 0 16px">Most of my work comes from people finding me on Google. If I got you sorted, a short review helps other locals find me — it takes about 30 seconds.</p>
+<p style="margin:0 0 20px">{{template "btn" (btn .ReviewURL "Leave a Google review")}}</p>{{end}}
 <p>— James</p>
 {{end}}
 `
@@ -184,6 +188,9 @@ type invoiceMailData struct {
 	Paid   string
 	Method string
 	Link   string
+	// ReviewURL is set only when the admin ticked “ask for a Google review”;
+	// empty leaves the receipt exactly as it was.
+	ReviewURL string
 }
 
 func newInvoiceMailData(v *invoiceView) invoiceMailData {
@@ -223,17 +230,26 @@ func sendInvoiceEmail(v *invoiceView, pdf []byte) error {
 }
 
 // sendReceiptEmail emails the paid invoice (receipt) with the PDF attached.
-func sendReceiptEmail(v *invoiceView, pdf []byte) error {
+// askReview adds the Google review ask — the admin ticks that per customer, so
+// only people who were happy on the day get asked.
+func sendReceiptEmail(v *invoiceView, pdf []byte, askReview bool) error {
 	if v.Cust == nil || v.Cust.Email == "" {
 		return fmt.Errorf("customer has no email address")
 	}
 	d := newInvoiceMailData(v)
+	if askReview {
+		d.ReviewURL = site.ReviewURL
+	}
 	html, err := renderMail("invoice-receipt", d)
 	if err != nil {
 		return fmt.Errorf("render invoice-receipt: %w", err)
 	}
-	text := fmt.Sprintf("Receipt for %s — thank you.\n\nAmount paid: %s\nPaid on: %s\nMethod: %s\n\nView online: %s\n\n— James\n",
+	text := fmt.Sprintf("Receipt for %s — thank you.\n\nAmount paid: %s\nPaid on: %s\nMethod: %s\n\nView online: %s\n",
 		d.Ref, fmtCents(v.Inv.TotalCents), d.Paid, d.Method, d.Link)
+	if d.ReviewURL != "" {
+		text += "\nOne small favour? If I got you sorted, a short Google review helps other locals find me:\n" + d.ReviewURL + "\n"
+	}
+	text += "\n— James\n"
 	att := mailer.Attachment{Filename: d.Ref + "-receipt.pdf", ContentType: "application/pdf", Data: pdf}
 	return sendNow(v.Cust.Email, fmt.Sprintf("Receipt for %s — Local IT Help", d.Ref), html, text, site.Email, att)
 }

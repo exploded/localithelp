@@ -54,6 +54,7 @@ type Invoice struct {
 	TotalCents    int64  `json:"total_cents"`
 	Notes         string `json:"notes"`
 	ViewToken     string `json:"view_token"`
+	ReviewAskedAt string `json:"review_asked_at"`
 	CreatedAt     string `json:"created_at"`
 	UpdatedAt     string `json:"updated_at"`
 }

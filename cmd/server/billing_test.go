@@ -71,6 +71,27 @@ func TestBillingMailTemplates(t *testing.T) {
 			t.Errorf("invoice-send: missing payment details:\n%s", out)
 		}
 	}
+	// The review ask is opt-in: present only when the admin ticked the box and
+	// REVIEW_URL is configured.
+	site.ReviewURL = "https://g.page/r/TEST/review"
+	v := sampleInvoiceView(db.InvoicePaid)
+	d := newInvoiceMailData(v)
+	off, err := renderMail("invoice-receipt", d)
+	if err != nil {
+		t.Fatalf("invoice-receipt: %v", err)
+	}
+	if strings.Contains(off, site.ReviewURL) || strings.Contains(off, "Google review") {
+		t.Errorf("invoice-receipt: review ask leaked in without the tick-box:\n%s", off)
+	}
+	d.ReviewURL = site.ReviewURL
+	on, err := renderMail("invoice-receipt", d)
+	if err != nil {
+		t.Fatalf("invoice-receipt with review: %v", err)
+	}
+	if !strings.Contains(on, site.ReviewURL) || !strings.Contains(on, "Leave a Google review") {
+		t.Errorf("invoice-receipt: missing the review ask:\n%s", on)
+	}
+
 	// ICS is well-formed and UTC.
 	ics := bookingICS(b, "Email & Outlook")
 	if !strings.Contains(ics, "BEGIN:VEVENT") || !strings.Contains(ics, "DTSTART:20260819T233000Z") || !strings.Contains(ics, "DTEND:20260820T001500Z") {
@@ -83,6 +104,9 @@ func TestBillingMailTemplates(t *testing.T) {
 	}
 	if err := sendInvoiceEmail(sampleInvoiceView(db.InvoiceSent), []byte("%PDF-")); err != nil {
 		t.Errorf("invoice with nil mailer: %v", err)
+	}
+	if err := sendReceiptEmail(sampleInvoiceView(db.InvoicePaid), []byte("%PDF-"), true); err != nil {
+		t.Errorf("receipt with nil mailer: %v", err)
 	}
 	b.Email = ""
 	if err := sendBookingCancellation(b, ""); err == nil {

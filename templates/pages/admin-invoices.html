@@ -26,7 +26,7 @@
             {{if $d.Rows}}
             <div class="admin-quotes-table-wrap">
                 <table class="admin-quotes-table">
-                    <thead><tr><th>Invoice</th><th>Customer</th><th>Issued</th><th>Due</th><th>Paid</th><th class="td-num">Total</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Invoice</th><th>Customer</th><th>Issued</th><th>Due</th><th>Paid</th><th class="td-num">Total</th><th>Status</th><th title="Google review requested">&#9733;</th></tr></thead>
                     <tbody>
                     {{range $d.Rows}}
                         <tr>
@@ -37,6 +37,7 @@
                             <td>{{.Paid}}</td>
                             <td class="td-num">{{money .TotalCents}}</td>
                             <td>{{template "badge" .Status}}</td>
+                            <td>{{if .ReviewAsked}}<span class="admin-ok" title="Review asked {{.ReviewAsked}}">&#10003;</span>{{end}}</td>
                         </tr>
                     {{end}}
                     </tbody>

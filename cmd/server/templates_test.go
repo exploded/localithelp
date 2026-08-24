@@ -21,6 +21,7 @@ func TestTemplatesRender(t *testing.T) {
 	site = siteConfig{
 		BaseURL: "https://example.test", Phone: "0400 000 000", PhoneHref: "tel:+61400000000",
 		Email: "test@example.test", OnsiteFee: 80, BlockRate: 30, SeniorsPct: 20, Suburbs: suburbs,
+		ReviewURL: "https://g.page/r/TEST/review",
 	}
 
 	svc := featuredService()
@@ -96,15 +97,25 @@ func TestTemplatesRender(t *testing.T) {
 			v := sampleInvoiceView(db.InvoiceDraft)
 			return adminInvoiceData{V: v, Ref: "INV-1001", Total: "$229.50", TotalDollars: "229.50", Editable: true, CanSend: true, CanPay: true, CanVoid: true,
 				Lines: []invoiceLine{{"Fee", "1", "80.00", "$80.00", "$80.00"}}, Blank: 2, DueValue: "2026-08-27", PaidValue: "2026-08-20", Methods: db.PaymentMethods,
-				When: "Thu 20 Aug", BlockRate: "30", OnsiteFee: "80", SeniorsPct: "20", HasCustEmail: true, PublicURL: v.PublicURL, BankConfigured: true}
+				When: "Thu 20 Aug", BlockRate: "30", OnsiteFee: "80", SeniorsPct: "20", HasCustEmail: true, PublicURL: v.PublicURL, BankConfigured: true,
+				ReviewOn: true}
 		}(),
 		"admin-invoice-sent": func() adminInvoiceData {
 			v := sampleInvoiceView(db.InvoicePaid)
 			return adminInvoiceData{V: v, Ref: "INV-1001", Total: "$229.50", TotalDollars: "229.50", CanResend: false,
-				Lines: []invoiceLine{{"Fee", "1", "80.00", "$80.00", "$80.00"}}, Methods: db.PaymentMethods, PaymentMethod: "Zeller payment link", PublicURL: v.PublicURL}
+				Lines: []invoiceLine{{"Fee", "1", "80.00", "$80.00", "$80.00"}}, Methods: db.PaymentMethods, PaymentMethod: "Zeller payment link", PublicURL: v.PublicURL,
+				CanResendRcpt: true, HasCustEmail: true, ReviewOn: true, ReviewAsked: "24 Aug 2026"}
 		}(),
-		"admin-customers": adminCustomersData{Query: "ann", Rows: []db.Customer{*cust}},
-		"admin-customer":  adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}},
+		"admin-review-card": func() adminReviewCardData {
+			qr, err := reviewQRDataURI(256)
+			if err != nil {
+				t.Fatalf("review qr: %v", err)
+			}
+			return adminReviewCardData{Configured: true, QR: qr, ShortURL: reviewShortURL(), Display: stripScheme(reviewShortURL()), Target: site.ReviewURL}
+		}(),
+		"admin-review-card-empty": adminReviewCardData{},
+		"admin-customers":         adminCustomersData{Query: "ann", Rows: []db.Customer{*cust}},
+		"admin-customer":          adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}},
 		"invoice-public": func() invoicePublicData {
 			v := sampleInvoiceView(db.InvoiceSent)
 			return invoicePublicData{V: v, Ref: "INV-1001", Total: "$229.50", Lines: []invoiceLine{{"Fee", "1", "$80.00", "$80.00", "$80.00"}}, Issued: "20 Aug 2026", Due: "27 Aug 2026", When: "Thu 20 Aug"}
@@ -116,7 +127,7 @@ func TestTemplatesRender(t *testing.T) {
 	}
 	// Variants (name suffix after the page) reuse the same template with different data.
 	pageOf := func(name string) string {
-		for _, p := range []string{"admin-booking-nocust", "admin-invoice-sent", "invoice-public-paid"} {
+		for _, p := range []string{"admin-booking-nocust", "admin-invoice-sent", "invoice-public-paid", "admin-review-card-empty"} {
 			if name == p {
 				return name[:strings.LastIndex(name, "-")]
 			}

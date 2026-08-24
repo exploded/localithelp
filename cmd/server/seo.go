@@ -18,7 +18,7 @@ import (
 // robotsDisallow lists paths crawlers should skip: nothing here is content, and
 // several are token/secret or thank-you pages that are noindex anyway.
 var robotsDisallow = []string{
-	"/admin", "/api/", "/auth/", "/invoice/", "/quote/verify", "/quote/sent", "/book/thanks",
+	"/admin", "/api/", "/auth/", "/invoice/", "/quote/verify", "/quote/sent", "/book/thanks", "/review",
 }
 
 // aiCrawlers get their own robots.txt group so intent is explicit: AI

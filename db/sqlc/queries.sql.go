@@ -214,7 +214,7 @@ func (q *Queries) GetCustomerByPhoneNorm(ctx context.Context, phoneNorm string) 
 
 const getInvoice = `-- name: GetInvoice :one
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE id = ?
 `
 
@@ -236,6 +236,7 @@ func (q *Queries) GetInvoice(ctx context.Context, id int64) (Invoice, error) {
 		&i.TotalCents,
 		&i.Notes,
 		&i.ViewToken,
+		&i.ReviewAskedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -244,7 +245,7 @@ func (q *Queries) GetInvoice(ctx context.Context, id int64) (Invoice, error) {
 
 const getInvoiceByToken = `-- name: GetInvoiceByToken :one
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE view_token = ? AND view_token <> ''
 `
 
@@ -266,6 +267,7 @@ func (q *Queries) GetInvoiceByToken(ctx context.Context, viewToken string) (Invo
 		&i.TotalCents,
 		&i.Notes,
 		&i.ViewToken,
+		&i.ReviewAskedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -956,7 +958,7 @@ func (q *Queries) ListInvoiceItems(ctx context.Context, invoiceID int64) ([]Invo
 
 const listInvoices = `-- name: ListInvoices :many
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices ORDER BY number DESC
 `
 
@@ -984,6 +986,7 @@ func (q *Queries) ListInvoices(ctx context.Context) ([]Invoice, error) {
 			&i.TotalCents,
 			&i.Notes,
 			&i.ViewToken,
+			&i.ReviewAskedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1002,7 +1005,7 @@ func (q *Queries) ListInvoices(ctx context.Context) ([]Invoice, error) {
 
 const listInvoicesByBooking = `-- name: ListInvoicesByBooking :many
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE booking_id = ? ORDER BY number DESC
 `
 
@@ -1030,6 +1033,7 @@ func (q *Queries) ListInvoicesByBooking(ctx context.Context, bookingID int64) ([
 			&i.TotalCents,
 			&i.Notes,
 			&i.ViewToken,
+			&i.ReviewAskedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1048,7 +1052,7 @@ func (q *Queries) ListInvoicesByBooking(ctx context.Context, bookingID int64) ([
 
 const listInvoicesByCustomer = `-- name: ListInvoicesByCustomer :many
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE customer_id = ? ORDER BY number DESC
 `
 
@@ -1076,6 +1080,7 @@ func (q *Queries) ListInvoicesByCustomer(ctx context.Context, customerID int64) 
 			&i.TotalCents,
 			&i.Notes,
 			&i.ViewToken,
+			&i.ReviewAskedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1094,7 +1099,7 @@ func (q *Queries) ListInvoicesByCustomer(ctx context.Context, customerID int64) 
 
 const listInvoicesByStatus = `-- name: ListInvoicesByStatus :many
 SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, payment_method, payment_ref, payment_link,
-       total_cents, notes, view_token, created_at, updated_at
+       total_cents, notes, view_token, review_asked_at, created_at, updated_at
 FROM invoices WHERE status = ? ORDER BY number DESC
 `
 
@@ -1122,6 +1127,7 @@ func (q *Queries) ListInvoicesByStatus(ctx context.Context, status string) ([]In
 			&i.TotalCents,
 			&i.Notes,
 			&i.ViewToken,
+			&i.ReviewAskedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1329,6 +1335,21 @@ func (q *Queries) MarkInvoicePaid(ctx context.Context, arg MarkInvoicePaidParams
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const markInvoiceReviewAsked = `-- name: MarkInvoiceReviewAsked :exec
+UPDATE invoices SET review_asked_at = ?, updated_at = datetime('now')
+WHERE id = ?
+`
+
+type MarkInvoiceReviewAskedParams struct {
+	ReviewAskedAt string `json:"review_asked_at"`
+	ID            int64  `json:"id"`
+}
+
+func (q *Queries) MarkInvoiceReviewAsked(ctx context.Context, arg MarkInvoiceReviewAskedParams) error {
+	_, err := q.db.ExecContext(ctx, markInvoiceReviewAsked, arg.ReviewAskedAt, arg.ID)
+	return err
 }
 
 const markInvoiceSent = `-- name: MarkInvoiceSent :execrows
