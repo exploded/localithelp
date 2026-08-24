@@ -105,6 +105,30 @@
         </div>
     </section>
 
+    <section class="stack-section">
+        <div class="container">
+            <div class="section-label reveal">The stack</div>
+            <h2 class="section-title reveal">What I build on — and what I'd recommend.</h2>
+            <p class="section-intro reveal">No mystery ingredients. These are the tools behind the projects in my <a href="/portfolio">portfolio</a>, chosen because they're proven, well documented and cheap to run. Every account is set up in <strong>your</strong> name, on plans you can see and cancel — so nothing here locks you to me.</p>
+            <div class="stack-grid">
+                {{range .PageData.Stack}}
+                <div class="stack-group reveal">
+                    <div class="stack-kicker">{{.Kicker}}</div>
+                    <ul class="stack-list">
+                        {{range .Items}}
+                        <li class="stack-item">
+                            <span class="stack-name">{{if .URL}}<a href="{{.URL}}" target="_blank" rel="noopener">{{.Name}} &#8599;</a>{{else}}{{.Name}}{{end}}</span>
+                            <span class="stack-note">{{.Note}}</span>
+                        </li>
+                        {{end}}
+                    </ul>
+                </div>
+                {{end}}
+            </div>
+            <p class="stack-disclaimer">Product names and trade marks belong to their respective owners. Listing them here says what I use and recommend — it doesn't imply any partnership or endorsement.</p>
+        </div>
+    </section>
+
     <section class="portfolio-cta-section">
         <div class="container">
             <div class="portfolio-cta reveal">

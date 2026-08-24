@@ -41,18 +41,27 @@ func handleService(w http.ResponseWriter, r *http.Request) {
 	}{s, relatedServices(s), guidesForService(s.Slug)})
 }
 
+type softwareDevPageData struct {
+	S        *Service
+	Packages []Package
+	Hourly   string
+	Stack    []TechGroup
+	Related  []*Service
+}
+
 func handleSoftwareDev(w http.ResponseWriter, r *http.Request) {
 	s := featuredService()
 	if s == nil {
 		notFound(w, r)
 		return
 	}
-	render(w, r, "software-development", struct {
-		S        *Service
-		Packages []Package
-		Hourly   string
-		Related  []*Service
-	}{s, softwarePackages, softwareHourly, relatedServices(s)})
+	render(w, r, "software-development", softwareDevPageData{
+		S:        s,
+		Packages: softwarePackages,
+		Hourly:   softwareHourly,
+		Stack:    techStack,
+		Related:  relatedServices(s),
+	})
 }
 
 // ── Pricing ──

@@ -1063,6 +1063,8 @@ footer {
     .portfolio-section { padding: 3rem 1.25rem 4rem; }
     .domains-section { padding: 2rem 1.25rem 4rem; }
     .portfolio-grid { grid-template-columns: 1fr; }
+    .stack-section { padding: 3rem 1.25rem 4rem; }
+    .stack-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
@@ -1617,6 +1619,53 @@ a.service-card {
     font-size: 0.9rem;
     line-height: 1.65;
     margin-bottom: 1rem;
+}
+
+/* ── Tech stack (software development) ── */
+.stack-section {
+    padding: 4rem 2rem 5rem;
+    border-top: 1px solid var(--border);
+}
+.stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+}
+.stack-group {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.75rem;
+}
+.stack-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--brand);
+    margin-bottom: 1.25rem;
+}
+.stack-list { list-style: none; display: flex; flex-direction: column; gap: 1.1rem; }
+.stack-item { display: flex; flex-direction: column; gap: 0.2rem; }
+.stack-name {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+}
+.stack-name a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--border-brand); }
+.stack-name a:hover { color: var(--brand); border-bottom-color: var(--brand); }
+.stack-note {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+.stack-disclaimer {
+    margin-top: 2rem;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    max-width: 640px;
 }
 
 /* ── Payment methods ── */

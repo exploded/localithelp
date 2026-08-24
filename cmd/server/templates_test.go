@@ -48,12 +48,13 @@ func TestTemplatesRender(t *testing.T) {
 			Related []*Service
 			Guides  []*Guide
 		}{email, relatedServices(email), guidesForService(email.Slug)},
-		"software-development": struct {
-			S        *Service
-			Packages []Package
-			Hourly   string
-			Related  []*Service
-		}{svc, softwarePackages, softwareHourly, relatedServices(svc)},
+		"software-development": softwareDevPageData{
+			S:        svc,
+			Packages: softwarePackages,
+			Hourly:   softwareHourly,
+			Stack:    techStack,
+			Related:  relatedServices(svc),
+		},
 		"book":        bookPageData{Services: services, Form: bookForm{}, Errors: map[string]string{"name": "x", "contact": "y"}, TS: 1},
 		"pricing":     pricingPageData{Packages: softwarePackages, Hourly: softwareHourly, HourTotal: 200, SeniorsHour: 160},
 		"book-thanks": nil,
