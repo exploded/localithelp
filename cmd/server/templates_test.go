@@ -56,7 +56,7 @@ func TestTemplatesRender(t *testing.T) {
 			Related:  relatedServices(svc),
 		},
 		"book":        bookPageData{Services: services, Form: bookForm{}, Errors: map[string]string{"name": "x", "contact": "y"}, TS: 1},
-		"pricing":     pricingPageData{Packages: softwarePackages, Hourly: softwareHourly, HourTotal: 200, SeniorsHour: 160},
+		"pricing":     pricingPageData{Packages: softwarePackages, Hourly: softwareHourly, HourTotal: 200, SeniorsHour: 160, SeniorsQuick: 88},
 		"book-thanks": nil,
 		"guides":      struct{ Groups []guideGroup }{groupGuides()},
 		"guide": struct {

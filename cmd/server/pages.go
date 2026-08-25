@@ -67,19 +67,22 @@ func handleSoftwareDev(w http.ResponseWriter, r *http.Request) {
 // ── Pricing ──
 
 type pricingPageData struct {
-	Packages    []Package
-	Hourly      string
-	HourTotal   int // one-hour visit: fee + 4 blocks
-	SeniorsHour int // the same hour with the Seniors Card discount
+	Packages     []Package
+	Hourly       string
+	HourTotal    int // one-hour visit: fee + 4 blocks
+	SeniorsHour  int // the same hour with the Seniors Card discount
+	SeniorsQuick int // a 15-minute visit (fee + 1 block) with the Seniors Card discount
 }
 
 func handlePricing(w http.ResponseWriter, r *http.Request) {
 	hour := site.OnsiteFee + 4*site.BlockRate
+	quick := site.OnsiteFee + site.BlockRate
 	render(w, r, "pricing", pricingPageData{
-		Packages:    softwarePackages,
-		Hourly:      softwareHourly,
-		HourTotal:   hour,
-		SeniorsHour: hour - hour*site.SeniorsPct/100,
+		Packages:     softwarePackages,
+		Hourly:       softwareHourly,
+		HourTotal:    hour,
+		SeniorsHour:  hour - hour*site.SeniorsPct/100,
+		SeniorsQuick: quick - quick*site.SeniorsPct/100,
 	})
 }
 

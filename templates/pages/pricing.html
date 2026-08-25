@@ -113,6 +113,18 @@
                         <li>SSD upgrade with your data cloned</li>
                     </ul>
                 </div>
+                {{if .Site.SeniorsPct}}
+                <div class="package-card reveal">
+                    <div class="package-name">Basic help, Seniors Card — about 15 minutes</div>
+                    <div class="package-from"><strong>${{.PageData.SeniorsQuick}}</strong></div>
+                    <p class="package-blurb">A short visit for one small thing, with {{.Site.SeniorsPct}}% off for Seniors Card holders.</p>
+                    <ul class="checklist checklist--small">
+                        <li>A forgotten password reset</li>
+                        <li>A suspicious email checked</li>
+                        <li>A quick lesson on one app</li>
+                    </ul>
+                </div>
+                {{end}}
             </div>
         </div>
     </section>
