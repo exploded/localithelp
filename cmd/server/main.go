@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -16,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -268,11 +271,28 @@ func render(w http.ResponseWriter, r *http.Request, page string, data any) {
 		CSRF:     csrf,
 		PageData: data,
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, "base", pd); err != nil {
+	// Render into a buffer first. Executing straight into w would leave a
+	// truncated page behind a 200 if a template failed part-way down, and the
+	// 500 below could never be sent because the header had already gone out.
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "base", pd); err != nil {
 		log.Printf("render %s: %v", page, err)
 		http.Error(w, "render error", http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := buf.WriteTo(w); err != nil && !isClientGone(err) {
+		log.Printf("render %s: write: %v", page, err)
+	}
+}
+
+// isClientGone reports whether err is the client hanging up mid-response
+// rather than a fault on our side. Nothing can be sent in reply and there is
+// nothing to fix, so these are not worth logging.
+func isClientGone(err error) bool {
+	return errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, context.Canceled)
 }
 
 // getSession returns the live session for the request cookie, or nil.
