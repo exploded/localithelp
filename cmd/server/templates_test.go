@@ -101,7 +101,7 @@ func TestTemplatesRender(t *testing.T) {
 				ConnectedAt: time.Now(), LastSyncAt: time.Now(), LastError: "boom"},
 			Calendars: []calSettingsCal{{ID: "cal1", Name: "Local IT Help", IsApp: true}, {ID: "p", Name: "Personal", Primary: true}, {ID: "s", Name: "Sport", Skipped: true}}},
 		"admin-calendar-settings-off": calSettingsData{Configured: true, AdminEmail: "me@example.test"},
-		"admin-invoices": adminInvoicesData{Status: "sent", Statuses: []string{"draft", "sent"}, Rows: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, TotalOut: 500},
+		"admin-invoices":              adminInvoicesData{Status: "sent", Statuses: []string{"draft", "sent"}, Rows: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, TotalOut: 500},
 		"admin-invoice": func() adminInvoiceData {
 			v := sampleInvoiceView(db.InvoiceDraft)
 			return adminInvoiceData{V: v, Ref: "INV-1001", Total: "$229.50", TotalDollars: "229.50", Editable: true, CanSend: true, CanPay: true, CanVoid: true,
@@ -124,7 +124,10 @@ func TestTemplatesRender(t *testing.T) {
 		}(),
 		"admin-review-card-empty": adminReviewCardData{},
 		"admin-customers":         adminCustomersData{Query: "ann", Rows: []db.Customer{*cust}},
-		"admin-customer":          adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, Services: services, SoftwareHourly: softwareHourly},
+		"admin-customer-new": adminCustomerNewData{Flash: flash{Err: "already on file"},
+			Form:   customerForm{Name: "Ann", Email: "ann@x", Phone: "0400 000 000", Suburb: "Donvale"},
+			Errors: map[string]string{"contact": "y", "email": "z"}},
+		"admin-customer": adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, Services: services, SoftwareHourly: softwareHourly},
 		"invoice-public": func() invoicePublicData {
 			v := sampleInvoiceView(db.InvoiceSent)
 			return invoicePublicData{V: v, Ref: "INV-1001", Total: "$229.50", Lines: []invoiceLine{{"Fee", "1", "$80.00", "$80.00", "$80.00"}}, Issued: "20 Aug 2026", Due: "27 Aug 2026", When: "Thu 20 Aug"}

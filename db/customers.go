@@ -93,6 +93,33 @@ func findOrCreateCustomer(qq *sqlc.Queries, name, email, phone, suburb string) (
 	return id, nil
 }
 
+// FindCustomer returns the customer matching email (then phone digits), or nil
+// when nobody matches. Same matching rules as FindOrCreateCustomer without the
+// create, so a caller can tell "this is a new person" from "you already have
+// them" before adding a duplicate.
+func FindCustomer(email, phone string) (*Customer, error) {
+	ctx := context.Background()
+	if email = strings.ToLower(strings.TrimSpace(email)); email != "" {
+		r, err := q.GetCustomerByEmail(ctx, email)
+		if err == nil {
+			return sqlcCustomer(r), nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("find customer by email: %w", err)
+		}
+	}
+	if norm := NormalizePhone(phone); norm != "" {
+		r, err := q.GetCustomerByPhoneNorm(ctx, norm)
+		if err == nil {
+			return sqlcCustomer(r), nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("find customer by phone: %w", err)
+		}
+	}
+	return nil, nil
+}
+
 func UpdateCustomer(c *Customer) error {
 	return q.UpdateCustomer(context.Background(), sqlc.UpdateCustomerParams{
 		Name: c.Name, Email: strings.ToLower(strings.TrimSpace(c.Email)), Phone: c.Phone,

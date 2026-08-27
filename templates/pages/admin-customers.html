@@ -22,6 +22,7 @@
                 <div class="admin-field admin-field--wide"><label for="q">Search</label><input class="admin-input" id="q" name="q" value="{{$d.Query}}" placeholder="name, email, phone or suburb"></div>
                 <button class="btn btn--ghost btn--sm" type="submit">Search</button>
                 {{if $d.Query}}<a class="btn btn--ghost btn--sm" href="/admin/customers">Clear</a>{{end}}
+                <a class="btn btn--primary btn--sm" href="/admin/customers/new">New customer</a>
             </form>
             {{if $d.Rows}}
             <div class="admin-quotes-table-wrap">

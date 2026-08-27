@@ -701,6 +701,84 @@ func handleAdminCustomers(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "admin-customers", adminCustomersData{Flash: readFlash(r), Query: q, Rows: rows})
 }
 
+// customerForm keeps the New customer fields sticky across a failed submit.
+type customerForm struct {
+	Name, Email, Phone, Address, Suburb, Notes string
+}
+
+type adminCustomerNewData struct {
+	Flash  flash
+	Form   customerForm
+	Errors map[string]string
+}
+
+func handleAdminCustomerNew(w http.ResponseWriter, r *http.Request) {
+	render(w, r, "admin-customer-new", adminCustomerNewData{Flash: readFlash(r)})
+}
+
+// handleAdminCustomerCreate adds a customer by hand, for work that never came
+// in as a booking. Contact details are matched against the existing customers
+// first, so re-adding a regular opens their record rather than splitting their
+// bookings and invoices across two rows.
+func handleAdminCustomerCreate(w http.ResponseWriter, r *http.Request) {
+	get := func(k string, max int) string {
+		v := strings.TrimSpace(r.FormValue(k))
+		if len(v) > max {
+			v = v[:max]
+		}
+		return v
+	}
+	f := customerForm{Name: get("name", 120), Email: get("email", 120), Phone: get("phone", 40),
+		Address: get("address", 200), Suburb: get("suburb", 80), Notes: get("notes", 5000)}
+	errs := map[string]string{}
+	if n := len([]rune(f.Name)); n < 2 || n > 100 {
+		errs["name"] = "Please enter the customer's name."
+	}
+	if f.Email == "" && f.Phone == "" {
+		errs["contact"] = "An email address or a phone number is needed — invoices are emailed to the address on the customer record."
+	}
+	if f.Email != "" && !validEmail(f.Email) {
+		errs["email"] = "That email address doesn't look right."
+	}
+	if len(errs) > 0 {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		render(w, r, "admin-customer-new", adminCustomerNewData{Form: f, Errors: errs})
+		return
+	}
+	existing, err := db.FindCustomer(f.Email, f.Phone)
+	if err != nil {
+		log.Printf("find customer: %v", err)
+		redirectMsg(w, r, "/admin/customers", "err", "Could not add the customer.")
+		return
+	}
+	if existing != nil {
+		who := existing.Name
+		if who == "" {
+			who = "a customer already on file"
+		}
+		redirectMsg(w, r, "/admin/customers/"+strconv.FormatInt(existing.ID, 10), "err",
+			"Those contact details already belong to "+who+" — here's that record.")
+		return
+	}
+	id, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.Suburb)
+	if err != nil {
+		log.Printf("create customer: %v", err)
+		redirectMsg(w, r, "/admin/customers", "err", "Could not add the customer.")
+		return
+	}
+	// Address and notes aren't part of FindOrCreateCustomer, which only carries
+	// what an enquiry knows; save them over the top.
+	if f.Address != "" || f.Notes != "" {
+		if c, err := db.GetCustomer(id); err == nil {
+			c.Address, c.Notes = f.Address, f.Notes
+			if err := db.UpdateCustomer(c); err != nil {
+				log.Printf("customer #%d address/notes: %v", id, err)
+			}
+		}
+	}
+	redirectMsg(w, r, "/admin/customers/"+strconv.FormatInt(id, 10), "ok", "Customer added — raise an invoice or a booking below.")
+}
+
 type adminCustomerData struct {
 	Flash          flash
 	C              *db.Customer

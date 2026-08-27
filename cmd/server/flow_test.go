@@ -59,6 +59,8 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	mux.HandleFunc("POST /admin/invoices/{id}/paid", requireAdmin(handleAdminInvoicePaid))
 	mux.HandleFunc("POST /admin/invoices/{id}/void", requireAdmin(handleAdminInvoiceVoid))
 	mux.HandleFunc("GET /admin/customers", requireAdmin(handleAdminCustomers))
+	mux.HandleFunc("GET /admin/customers/new", requireAdmin(handleAdminCustomerNew))
+	mux.HandleFunc("POST /admin/customers/new", requireAdmin(handleAdminCustomerCreate))
 	mux.HandleFunc("GET /admin/customers/{id}", requireAdmin(handleAdminCustomer))
 	mux.HandleFunc("POST /admin/customers/{id}", requireAdmin(handleAdminCustomerSave))
 	mux.HandleFunc("POST /admin/customers/{id}/bookings", requireAdmin(handleAdminCustomerBooking))
@@ -439,6 +441,54 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	if rr := do("POST", "/admin/invoices/new", url.Values{}, true); rr.Code != http.StatusSeeOther ||
 		!strings.Contains(rr.Header().Get("Location"), "err=") {
 		t.Fatalf("invoice with no customer should flash an error: %d", rr.Code)
+	}
+
+	// 10. Adding a customer by hand, with no booking anywhere in sight.
+	if !strings.Contains(get("/admin/customers"), "/admin/customers/new") {
+		t.Fatal("customers list should link to the new-customer form")
+	}
+	if p := get("/admin/customers/new"); !strings.Contains(p, "Add someone without a booking") {
+		t.Fatalf("new-customer form missing content: %s", p)
+	}
+	// No name, and no contact details, are both rejected with the form re-rendered.
+	if rr := do("POST", "/admin/customers/new", url.Values{"email": {"nobody@example.test"}}, true); rr.Code != http.StatusUnprocessableEntity ||
+		!strings.Contains(rr.Body.String(), "enter the customer") {
+		t.Fatalf("nameless customer should 422: %d", rr.Code)
+	}
+	if rr := do("POST", "/admin/customers/new", url.Values{"name": {"No Contact"}}, true); rr.Code != http.StatusUnprocessableEntity ||
+		!strings.Contains(rr.Body.String(), "email address or a phone number") {
+		t.Fatalf("contactless customer should 422: %d", rr.Code)
+	}
+	if rr := do("POST", "/admin/customers/new", url.Values{"name": {"Bad Email"}, "email": {"not-an-address"}}, true); rr.Code != http.StatusUnprocessableEntity ||
+		!strings.Contains(rr.Body.String(), "look right") {
+		t.Fatalf("bad email should 422: %d", rr.Code)
+	}
+	loc = post("/admin/customers/new", url.Values{"name": {"Dev Client"}, "email": {"Dev@Example.test"}, "phone": {"0400 111 222"},
+		"address": {"9 Software Way"}, "suburb": {"Ringwood"}, "notes": {"Prefers email."}})
+	dev, _ := db.GetCustomer(lastSeg(strings.SplitN(loc, "?", 2)[0]))
+	if dev == nil || dev.Name != "Dev Client" || dev.Email != "dev@example.test" ||
+		dev.Address != "9 Software Way" || dev.Suburb != "Ringwood" || dev.Notes != "Prefers email." {
+		t.Fatalf("hand-added customer: %+v", dev)
+	}
+	// Re-adding the same person lands on their record instead of duplicating them.
+	rr = do("POST", "/admin/customers/new", url.Values{"name": {"Dev Client Again"}, "email": {"dev@example.test"}}, true)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "err=") ||
+		lastSeg(strings.SplitN(rr.Header().Get("Location"), "?", 2)[0]) != dev.ID {
+		t.Fatalf("duplicate customer should reopen the original: %d %s", rr.Code, rr.Header().Get("Location"))
+	}
+	// Matching on phone digits alone counts too, however the number is spaced.
+	rr = do("POST", "/admin/customers/new", url.Values{"name": {"Dev Client"}, "phone": {"0400111222"}}, true)
+	if lastSeg(strings.SplitN(rr.Header().Get("Location"), "?", 2)[0]) != dev.ID {
+		t.Fatalf("phone match should reopen the original: %s", rr.Header().Get("Location"))
+	}
+	// And the whole point: bill them, with no booking ever created.
+	loc = post("/admin/invoices/new", url.Values{"customer": {itoa(dev.ID)}, "kind": {"software"}})
+	dinv, _ := db.GetInvoice(lastSeg(strings.SplitN(loc, "?", 2)[0]))
+	if dinv == nil || dinv.CustomerID != dev.ID || dinv.BookingID != 0 {
+		t.Fatalf("invoice for hand-added customer: %+v", dinv)
+	}
+	if bs, _ := db.ListBookingsByCustomer(dev.ID); len(bs) != 0 {
+		t.Fatalf("hand-added customer should have no bookings: %+v", bs)
 	}
 
 	// Anonymous admin access is redirected; CSRF-less POST refused.

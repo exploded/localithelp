@@ -1,0 +1,67 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — New customer</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}{{$f := $d.Form}}{{$e := $d.Errors}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label"><a href="/admin/customers">Customers</a> / new</div>
+            <h1 class="section-title">New customer</h1>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            {{template "flash" $d.Flash}}
+            <div class="admin-grid">
+                <div class="admin-col">
+                    <div class="admin-card">
+                        <h2 class="admin-card-title">Add someone without a booking</h2>
+                        <p class="admin-muted">For work that never came in as a booking — a software job, say. If these contact details are already on file you'll be sent to that record instead of a second one. The email address is where their invoices and receipts go; the address prints on the invoice.</p>
+                        <form method="POST" action="/admin/customers/new" class="admin-form-stack">
+                            {{template "csrf" $.CSRF}}
+                            <div class="admin-field">
+                                <label for="name">Name</label>
+                                <input class="admin-input" id="name" name="name" value="{{$f.Name}}" maxlength="100" required autofocus>
+                                {{with $e.name}}<span class="field-error">{{.}}</span>{{end}}
+                            </div>
+                            <div class="admin-form-inline">
+                                <div class="admin-field">
+                                    <label for="phone">Phone</label>
+                                    <input class="admin-input" id="phone" name="phone" type="tel" value="{{$f.Phone}}" maxlength="40">
+                                </div>
+                                <div class="admin-field admin-field--wide">
+                                    <label for="email">Email</label>
+                                    <input class="admin-input" id="email" name="email" type="email" value="{{$f.Email}}" maxlength="120">
+                                </div>
+                            </div>
+                            {{with $e.contact}}<span class="field-error">{{.}}</span>{{end}}
+                            {{with $e.email}}<span class="field-error">{{.}}</span>{{end}}
+                            <div class="admin-field addr-wrap">
+                                <label for="address">Address (optional)</label>
+                                <input class="admin-input addr-input" type="text" id="address" name="address" value="{{$f.Address}}" maxlength="200"
+                                       placeholder="Start typing the address&#8230;" autocomplete="one-time-code" data-suburb-target="#suburb">
+                                <ul class="addr-suggestions" hidden></ul>
+                            </div>
+                            <div class="admin-field">
+                                <label for="suburb">Suburb</label>
+                                <input class="admin-input" id="suburb" name="suburb" value="{{$f.Suburb}}" maxlength="80">
+                            </div>
+                            <div class="admin-field">
+                                <label for="notes">Notes</label>
+                                <textarea class="admin-input" id="notes" name="notes" rows="3" maxlength="5000" placeholder="Anything worth remembering next time">{{$f.Notes}}</textarea>
+                            </div>
+                            <div><button class="btn btn--primary btn--sm" type="submit">Add customer &#8594;</button></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script src="{{asset "js/address.js"}}" defer></script>
+{{end}}
