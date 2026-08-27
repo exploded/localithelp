@@ -124,7 +124,7 @@ func TestTemplatesRender(t *testing.T) {
 		}(),
 		"admin-review-card-empty": adminReviewCardData{},
 		"admin-customers":         adminCustomersData{Query: "ann", Rows: []db.Customer{*cust}},
-		"admin-customer":          adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}},
+		"admin-customer":          adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, Services: services, SoftwareHourly: softwareHourly},
 		"invoice-public": func() invoicePublicData {
 			v := sampleInvoiceView(db.InvoiceSent)
 			return invoicePublicData{V: v, Ref: "INV-1001", Total: "$229.50", Lines: []invoiceLine{{"Fee", "1", "$80.00", "$80.00", "$80.00"}}, Issued: "20 Aug 2026", Due: "27 Aug 2026", When: "Thu 20 Aug"}

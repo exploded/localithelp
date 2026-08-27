@@ -393,6 +393,54 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 		t.Fatalf("repeat caller should not change address: %+v", pc)
 	}
 
+	// 9. Invoice raised from the customer alone, with no booking behind it —
+	// the way a software-development job is billed.
+	if page := get(cpath); !strings.Contains(page, `name="customer" value="`+itoa(b.CustomerID)) {
+		t.Fatal("customer page should offer New invoice")
+	}
+	loc = post("/admin/invoices/new", url.Values{"customer": {itoa(b.CustomerID)}, "kind": {"software"}})
+	sinv, _ := db.GetInvoice(lastSeg(strings.SplitN(loc, "?", 2)[0]))
+	if sinv == nil || sinv.BookingID != 0 || sinv.CustomerID != b.CustomerID || sinv.Status != db.InvoiceDraft {
+		t.Fatalf("standalone invoice: %+v", sinv)
+	}
+	sitems, _ := db.ListInvoiceItems(sinv.ID)
+	if len(sitems) != 1 || sitems[0].UnitCents != softwareHourlyDollars*100 {
+		t.Fatalf("software seed lines: %+v", sitems)
+	}
+	spath := "/admin/invoices/" + itoa(sinv.ID)
+	// Bill 12 hours, send it, and take payment — no booking status to mirror.
+	post(spath+"/items", url.Values{
+		"desc": {"Software development — booking system"}, "qty": {"12"}, "unit": {itoa(softwareHourlyDollars)},
+		"due": {db.FormatDate(db.Today().AddDate(0, 0, 14))}, "payment_link": {"https://pay.example.test/abc"},
+	})
+	if sinv, _ = db.GetInvoice(sinv.ID); sinv.TotalCents != int64(12*softwareHourlyDollars*100) {
+		t.Fatalf("software total: %d", sinv.TotalCents)
+	}
+	post(spath+"/send", nil)
+	post(spath+"/paid", url.Values{"method": {"bank_transfer"}, "notify": {"1"}})
+	if sinv, _ = db.GetInvoice(sinv.ID); sinv.Status != db.InvoicePaid {
+		t.Fatalf("software invoice status: %s", sinv.Status)
+	}
+	// The public view and PDF must not assume a booking.
+	if rr := do("GET", "/invoice/"+sinv.ViewToken, nil, false); rr.Code != 200 ||
+		!strings.Contains(rr.Body.String(), "booking system") {
+		t.Fatalf("public standalone invoice: %d", rr.Code)
+	}
+	if rr := do("GET", "/invoice/"+sinv.ViewToken+"/pdf", nil, false); rr.Code != 200 || rr.Body.Len() < 1000 {
+		t.Fatalf("standalone receipt PDF: %d %d bytes", rr.Code, rr.Body.Len())
+	}
+	// A blank draft starts with no lines at all.
+	loc = post("/admin/invoices/new", url.Values{"customer": {itoa(b.CustomerID)}, "kind": {"blank"}})
+	binv, _ := db.GetInvoice(lastSeg(strings.SplitN(loc, "?", 2)[0]))
+	if items, _ := db.ListInvoiceItems(binv.ID); len(items) != 0 {
+		t.Fatalf("blank seed lines: %+v", items)
+	}
+	// Without a customer there is nothing to invoice.
+	if rr := do("POST", "/admin/invoices/new", url.Values{}, true); rr.Code != http.StatusSeeOther ||
+		!strings.Contains(rr.Header().Get("Location"), "err=") {
+		t.Fatalf("invoice with no customer should flash an error: %d", rr.Code)
+	}
+
 	// Anonymous admin access is redirected; CSRF-less POST refused.
 	if rr := do("GET", "/admin/bookings", nil, false); rr.Code != http.StatusSeeOther {
 		t.Fatalf("anon admin: %d", rr.Code)

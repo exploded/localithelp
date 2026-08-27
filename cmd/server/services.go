@@ -157,8 +157,13 @@ var softwarePackages = []Package{
 	},
 }
 
-// hourlyRate is the published rate for ad-hoc software work.
-const softwareHourly = "$120/hr"
+// softwareHourlyDollars is the published rate for ad-hoc software work, in whole
+// dollars. It is the one source of truth: the marketing copy below and the
+// invoice line seeded by handleAdminInvoiceNew both derive from it.
+const softwareHourlyDollars = 120
+
+// softwareHourly is that rate as published on the site.
+var softwareHourly = fmt.Sprintf("$%d/hr", softwareHourlyDollars)
 
 // services is the catalogue, ordered roughly by how often each comes up.
 var services = []Service{

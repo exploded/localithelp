@@ -70,6 +70,20 @@
                             {{range $d.Invoices}}<li><a href="/admin/invoices/{{.ID}}">{{.Ref}}</a> {{money .TotalCents}}{{if .Issued}} · {{.Issued}}{{end}} {{template "badge" .Status}}</li>{{end}}
                         </ul>
                         {{else}}<p class="admin-empty">None yet.</p>{{end}}
+                        <form method="POST" action="/admin/invoices/new" class="admin-form-stack">
+                            {{template "csrf" $csrf}}
+                            <input type="hidden" name="customer" value="{{$c.ID}}">
+                            <div class="admin-form-inline">
+                                <div class="admin-field"><label for="kind">Starting lines</label>
+                                    <select class="admin-input" id="kind" name="kind">
+                                        <option value="blank">Blank</option>
+                                        <option value="software">Software development ({{$d.SoftwareHourly}})</option>
+                                        <option value="onsite">Onsite visit (fee + 15-min blocks)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div><button class="btn btn--ghost btn--sm" type="submit">New invoice</button></div>
+                        </form>
                     </div>
                 </div>
             </div>

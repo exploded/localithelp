@@ -113,11 +113,19 @@ func handleAdminInvoices(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleAdminInvoiceNew creates a draft for a booking, prefilled with the
-// service fee and labour from the booking's duration, then opens it for editing.
+// handleAdminInvoiceNew creates a draft and opens it for editing. It works from
+// a booking (prefilled from the booking's service and duration) or from a
+// customer alone, for work that never had a booking — a software job, say.
 func handleAdminInvoiceNew(w http.ResponseWriter, r *http.Request) {
 	bookingID, _ := strconv.ParseInt(r.FormValue("booking"), 10, 64)
 	customerID, _ := strconv.ParseInt(r.FormValue("customer"), 10, 64)
+	back := "/admin/bookings"
+	if bookingID == 0 {
+		back = "/admin/customers"
+		if customerID != 0 {
+			back += "/" + strconv.FormatInt(customerID, 10)
+		}
+	}
 	var b *db.Booking
 	if bookingID != 0 {
 		var err error
@@ -128,7 +136,7 @@ func handleAdminInvoiceNew(w http.ResponseWriter, r *http.Request) {
 		customerID = b.CustomerID
 	}
 	if customerID == 0 {
-		redirectMsg(w, r, "/admin/bookings", "err", "The booking has no customer linked, so an invoice can't be created.")
+		redirectMsg(w, r, back, "err", "The booking has no customer linked, so an invoice can't be created.")
 		return
 	}
 	// Reuse an existing draft for the same booking rather than minting numbers.
@@ -142,21 +150,48 @@ func handleAdminInvoiceNew(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	items := seedInvoiceItems(b, r.FormValue("kind"))
+	id, err := db.CreateInvoice(bookingID, customerID, db.Today().AddDate(0, 0, 7), "", generateSessionToken(), items)
+	if err != nil {
+		log.Printf("create invoice: %v", err)
+		redirectMsg(w, r, back, "err", "Could not create the invoice.")
+		return
+	}
+	redirectMsg(w, r, "/admin/invoices/"+strconv.FormatInt(id, 10), "ok", "Draft created — check the lines, add any hardware, then send.")
+}
+
+// seedInvoiceItems prefills a new draft. kind comes from the New invoice button
+// and wins when set; otherwise it follows the booking's service, so a software
+// job is billed at the hourly rate rather than as a visit plus 15-minute blocks.
+// A booking-less draft starts empty — handleAdminInvoice always offers blank
+// rows, so there is nothing to delete before typing the real lines.
+func seedInvoiceItems(b *db.Booking, kind string) []db.InvoiceItem {
+	if kind == "" {
+		switch {
+		case b == nil:
+			kind = "blank"
+		case b.ServiceSlug == "software-development":
+			kind = "software"
+		default:
+			kind = "onsite"
+		}
+	}
+	switch kind {
+	case "blank":
+		return nil
+	case "software":
+		return []db.InvoiceItem{
+			{Description: "Software development", Qty: 1, UnitCents: softwareHourlyDollars * 100},
+		}
+	}
 	units := 4
 	if b != nil && b.DurationMin > 0 {
 		units = (b.DurationMin + calSlotMin - 1) / calSlotMin
 	}
-	items := []db.InvoiceItem{
+	return []db.InvoiceItem{
 		{Description: "Visit fee — includes travel", Qty: 1, UnitCents: int64(site.OnsiteFee) * 100},
 		{Description: fmt.Sprintf("Labour — %d × 15 min", units), Qty: float64(units), UnitCents: int64(site.BlockRate) * 100},
 	}
-	id, err := db.CreateInvoice(bookingID, customerID, db.Today().AddDate(0, 0, 7), "", generateSessionToken(), items)
-	if err != nil {
-		log.Printf("create invoice: %v", err)
-		redirectMsg(w, r, "/admin/bookings", "err", "Could not create the invoice.")
-		return
-	}
-	redirectMsg(w, r, "/admin/invoices/"+strconv.FormatInt(id, 10), "ok", "Draft created — check the lines, add any hardware, then send.")
 }
 
 type adminInvoiceData struct {
@@ -667,11 +702,12 @@ func handleAdminCustomers(w http.ResponseWriter, r *http.Request) {
 }
 
 type adminCustomerData struct {
-	Flash    flash
-	C        *db.Customer
-	Bookings []bookingRow
-	Invoices []invoiceRow
-	Services []Service
+	Flash          flash
+	C              *db.Customer
+	Bookings       []bookingRow
+	Invoices       []invoiceRow
+	Services       []Service
+	SoftwareHourly string // label for the New invoice "software" option
 }
 
 func handleAdminCustomer(w http.ResponseWriter, r *http.Request) {
@@ -682,7 +718,8 @@ func handleAdminCustomer(w http.ResponseWriter, r *http.Request) {
 	}
 	bs, _ := db.ListBookingsByCustomer(c.ID)
 	invs, _ := db.ListInvoicesByCustomer(c.ID)
-	render(w, r, "admin-customer", adminCustomerData{Flash: readFlash(r), C: c, Bookings: bookingRows(bs), Invoices: invoiceRows(invs), Services: services})
+	render(w, r, "admin-customer", adminCustomerData{Flash: readFlash(r), C: c, Bookings: bookingRows(bs), Invoices: invoiceRows(invs),
+		Services: services, SoftwareHourly: softwareHourly})
 }
 
 // handleAdminCustomerBooking creates a new unscheduled booking for the
