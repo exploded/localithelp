@@ -30,7 +30,10 @@ func invoicePDF(v *invoiceView) ([]byte, error) {
 	pdf.SetAutoPageBreak(true, 20)
 	pdf.AddPage()
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	const w = 170.0 // printable width
+	const (
+		w         = 170.0 // printable width
+		footerTop = 267.0 // y of the page footer; content must stay above it
+	)
 
 	// ── Header: logo + business (left) / document title (right) ──
 	y0 := pdf.GetY()
@@ -182,59 +185,87 @@ func invoicePDF(v *invoiceView) ([]byte, error) {
 	pdf.Ln(8)
 
 	// ── Payment box ──
-	pdf.SetFillColor(250, 249, 246)
-	pdf.SetDrawColor(220, 217, 210)
-	xb, yb := pdf.GetX(), pdf.GetY()
-	pdf.SetXY(xb+5, yb+4)
-	if paid {
-		pdf.SetFont("Helvetica", "B", 10)
-		pdf.CellFormat(w-10, 5, "Payment received - thank you", "", 2, "L", false, 0, "")
-		pdf.SetFont("Helvetica", "", 10)
-		pdf.SetX(xb + 5)
-		line := fmtDate(inv.PaidAt) + " via " + db.PaymentMethodLabel(inv.PaymentMethod)
+	// Build the lines first: the height has to be known up front so the box
+	// can move to a fresh page whole. Letting the auto page break split it
+	// leaves the rectangle stranded — drawn on the next page with the
+	// previous page's coordinates, which reads as a big empty box.
+	type boxLine struct {
+		label string // left column of a key/value row; "" for a full-width line
+		text  string
+		link  string // renders text as an underlined link
+		bold  bool
+		muted bool
+		h     float64 // line height in mm
+	}
+	var lines []boxLine
+	switch {
+	case paid:
+		received := fmtDate(inv.PaidAt) + " via " + db.PaymentMethodLabel(inv.PaymentMethod)
 		if inv.PaymentRef != "" {
-			line += " (ref " + inv.PaymentRef + ")"
+			received += " (ref " + inv.PaymentRef + ")"
 		}
-		pdf.CellFormat(w-10, 5, tr(line), "", 2, "L", false, 0, "")
-	} else if inv.Status == db.InvoiceVoid {
-		pdf.SetFont("Helvetica", "B", 10)
-		pdf.CellFormat(w-10, 5, "This invoice has been voided - nothing is payable.", "", 2, "L", false, 0, "")
-	} else {
-		pdf.SetFont("Helvetica", "B", 10)
-		pdf.CellFormat(w-10, 5, "How to pay", "", 2, "L", false, 0, "")
-		pdf.SetFont("Helvetica", "", 10)
+		lines = append(lines,
+			boxLine{text: "Payment received - thank you", bold: true, h: 5},
+			boxLine{text: tr(received), h: 5})
+	case inv.Status == db.InvoiceVoid:
+		lines = append(lines, boxLine{text: "This invoice has been voided - nothing is payable.", bold: true, h: 5})
+	default:
+		lines = append(lines, boxLine{text: "How to pay", bold: true, h: 5})
 		if inv.PaymentLink != "" {
-			pdf.SetX(xb + 5)
-			pdf.CellFormat(w-10, 5, "Card online (Visa, Mastercard, Amex, Apple Pay, Google Pay):", "", 2, "L", false, 0, "")
-			pdf.SetX(xb + 5)
-			pdf.SetTextColor(20, 80, 160)
-			pdf.SetFont("Helvetica", "U", 10)
-			pdf.WriteLinkString(5, inv.PaymentLink, inv.PaymentLink)
-			pdf.Ln(6)
-			pdf.SetTextColor(28, 28, 28)
-			pdf.SetFont("Helvetica", "", 10)
+			lines = append(lines,
+				boxLine{text: "Card online (Visa, Mastercard, Amex, Apple Pay, Google Pay):", h: 5},
+				boxLine{text: inv.PaymentLink, link: inv.PaymentLink, h: 6})
 		}
 		if site.BankBSB != "" {
-			pdf.SetX(xb + 5)
-			pdf.CellFormat(w-10, 5, "Bank transfer:", "", 2, "L", false, 0, "")
+			lines = append(lines, boxLine{text: "Bank transfer:", h: 5})
 			for _, kv := range [][2]string{
 				{"Account name", site.BankName}, {"BSB", site.BankBSB}, {"Account", site.BankAcct}, {"Reference", inv.Ref()},
 			} {
-				pdf.SetX(xb + 5)
-				pdf.SetTextColor(110, 110, 110)
-				pdf.CellFormat(32, 5, kv[0], "", 0, "L", false, 0, "")
-				pdf.SetTextColor(28, 28, 28)
-				pdf.CellFormat(w-10-32, 5, tr(kv[1]), "", 1, "L", false, 0, "")
+				lines = append(lines, boxLine{label: kv[0], text: tr(kv[1]), h: 5})
 			}
 		}
-		pdf.SetX(xb + 5)
-		pdf.SetTextColor(110, 110, 110)
-		pdf.CellFormat(w-10, 5, "Or tap-to-pay by card or cash on the day. Please quote "+inv.Ref()+" with any payment.", "", 1, "L", false, 0, "")
-		pdf.SetTextColor(28, 28, 28)
+		lines = append(lines, boxLine{text: "Please quote " + inv.Ref() + " with any payment.", muted: true, h: 5})
 	}
-	yEnd := pdf.GetY() + 4
-	pdf.Rect(xb, yb, w, yEnd-yb, "D")
-	pdf.SetY(yEnd)
+	boxH := 8.0 // 4 mm padding above and below
+	for _, l := range lines {
+		boxH += l.h
+	}
+	if pdf.GetY()+boxH > footerTop {
+		pdf.AddPage()
+	}
+	pdf.SetDrawColor(220, 217, 210)
+	xb, yb := 20.0, pdf.GetY()
+	pdf.Rect(xb, yb, w, boxH, "D")
+	pdf.SetY(yb + 4)
+	for _, l := range lines {
+		pdf.SetX(xb + 5)
+		switch {
+		case l.link != "":
+			pdf.SetTextColor(20, 80, 160)
+			pdf.SetFont("Helvetica", "U", 10)
+			pdf.WriteLinkString(5, l.text, l.link)
+			pdf.Ln(l.h)
+			pdf.SetTextColor(28, 28, 28)
+		case l.label != "":
+			pdf.SetFont("Helvetica", "", 10)
+			pdf.SetTextColor(110, 110, 110)
+			pdf.CellFormat(32, l.h, l.label, "", 0, "L", false, 0, "")
+			pdf.SetTextColor(28, 28, 28)
+			pdf.CellFormat(w-10-32, l.h, l.text, "", 1, "L", false, 0, "")
+		default:
+			style := ""
+			if l.bold {
+				style = "B"
+			}
+			pdf.SetFont("Helvetica", style, 10)
+			if l.muted {
+				pdf.SetTextColor(110, 110, 110)
+			}
+			pdf.CellFormat(w-10, l.h, l.text, "", 1, "L", false, 0, "")
+			pdf.SetTextColor(28, 28, 28)
+		}
+	}
+	pdf.SetY(yb + boxH)
 	pdf.Ln(6)
 
 	if inv.Notes != "" {
