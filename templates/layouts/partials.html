@@ -177,5 +177,19 @@ gtag('event', '{{.Event}}');
 {{if .Err}}<div class="admin-status admin-status--error admin-flash" role="alert">{{.Err}}</div>{{end}}
 {{end}}
 
+{{/* flash-swap: the flash region as an htmx side-swap, for responses that have
+     no redirect to carry the message. Always emitted, even when empty, so the
+     previous action's message is cleared rather than left sitting there.
+
+     Deliberately a body swap rather than an HX-Trigger toast: HTTP headers are
+     ASCII-only, and these messages carry em dashes and apostrophes. */}}
+{{define "flash-swap"}}<hx-partial hx-target="#admin-flash" hx-swap="innerHTML">{{template "flash" .}}</hx-partial>{{end}}
+
+{{/* flash-response: the whole htmx reply for an action that changes nothing on
+     the page except the message. Pair it with hx-swap="none" on the form —
+     htmx still applies hx-partial swaps when the main swap is none. Works for
+     any page whose data struct has a Flash field. */}}
+{{define "flash-response"}}{{template "flash-swap" .PageData.Flash}}{{end}}
+
 {{/* badge: takes a status string */}}
 {{define "badge"}}<span class="status-badge status-badge--{{.}}">{{.}}</span>{{end}}

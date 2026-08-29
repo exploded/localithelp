@@ -698,7 +698,15 @@ func handleAdminCustomers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to load customers", http.StatusInternalServerError)
 		return
 	}
-	render(w, r, "admin-customers", adminCustomersData{Flash: readFlash(r), Query: q, Rows: rows})
+	d := adminCustomersData{Flash: readFlash(r), Query: q, Rows: rows}
+	// Search-as-you-type asks for just the results table; a normal visit (or a
+	// back/forward restore, which htmx 4 does as a real page request) gets the
+	// whole page.
+	if isHTMX(r) {
+		renderFragment(w, r, "admin-customers", "customer-results", http.StatusOK, d)
+		return
+	}
+	render(w, r, "admin-customers", d)
 }
 
 // customerForm keeps the New customer fields sticky across a failed submit.

@@ -2188,6 +2188,22 @@ a.service-card {
 .admin-details summary { cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); margin: 0.5rem 0; }
 .admin-details form { margin-top: 0.75rem; }
 .admin-search { margin-bottom: 1.25rem; }
+
+/* Search-as-you-type indicator. Absolutely positioned inside the field so it
+   overlays the input instead of widening the row — a spinner that takes part in
+   the flex layout shunts the whole row sideways every time it appears.
+   The 200ms transition-delay means it never shows at all on a fast search. */
+.admin-search .admin-field--wide { position: relative; }
+.admin-search-indicator {
+    position: absolute;
+    right: .6rem;
+    bottom: .6rem;
+    font-size: .75rem;
+    color: var(--muted, #6b7280);
+    pointer-events: none;
+}
+.htmx-request .admin-search-indicator,
+.htmx-request.admin-search-indicator { transition: opacity 150ms ease-in 200ms; }
 .btn--sm { padding: 0.5rem 0.9rem; font-size: 0.8rem; }
 .btn--danger { color: #991b1b; border-color: rgba(185, 28, 28, 0.35); }
 .btn--danger:hover { background: #fef2f2; }

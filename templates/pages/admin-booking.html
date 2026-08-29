@@ -22,7 +22,7 @@
 
     <section class="admin-section">
         <div class="container">
-            {{template "flash" $d.Flash}}
+            <div id="admin-flash">{{template "flash" $d.Flash}}</div>
 
             <div class="admin-grid">
                 <div class="admin-col">
@@ -57,47 +57,13 @@
                         <p class="admin-muted">Pick from the suggestions — a complete Victorian address is required. Saved to the customer record (shown on invoices).</p>
                     </div>
 
-                    <div class="admin-card">
-                        <h2 class="admin-card-title">The problem</h2>
-                        {{if $b.PreferredTime}}<p class="admin-muted">Preferred: {{$b.PreferredTime}}</p>{{end}}
-                        <form method="POST" action="/admin/bookings/{{$b.ID}}/issue">
-                            {{template "csrf" $csrf}}
-                            <textarea name="issue" rows="4" class="admin-input" maxlength="5000" required>{{$b.Issue}}</textarea>
-                            <div class="admin-row-actions"><button class="btn btn--ghost btn--sm" type="submit">Save problem</button></div>
-                        </form>
-                        <p class="admin-muted">The customer's words to start with; correct it once you know the real fault. It shows on the calendar event.</p>
-                    </div>
+                    {{template "booking-issue-card" .}}
 
-                    <div class="admin-card">
-                        <h2 class="admin-card-title">Notes (private)</h2>
-                        <form method="POST" action="/admin/bookings/{{$b.ID}}/notes">
-                            {{template "csrf" $csrf}}
-                            <textarea name="notes" rows="4" class="admin-input" placeholder="What was done, parts, passwords reset, follow-ups…">{{$b.AdminNotes}}</textarea>
-                            <div class="admin-row-actions"><button class="btn btn--ghost btn--sm" type="submit">Save notes</button></div>
-                        </form>
-                    </div>
+                    {{template "booking-notes-card" .}}
                 </div>
 
                 <div class="admin-col">
-                    <div class="admin-card">
-                        <h2 class="admin-card-title">{{if $b.StartAt.IsZero}}Schedule the visit{{else}}Scheduled: {{$d.Row.When}} ({{$b.DurationMin}} min){{end}}</h2>
-                        <form method="POST" action="/admin/bookings/{{$b.ID}}/schedule" class="admin-form-inline">
-                            {{template "csrf" $csrf}}
-                            <div class="admin-field">
-                                <label for="start">Start</label>
-                                <input class="admin-input" type="datetime-local" id="start" name="start" value="{{$d.StartValue}}" step="900" required>
-                            </div>
-                            <div class="admin-field admin-field--narrow">
-                                <label for="duration">Duration</label>
-                                <select class="admin-input" id="duration" name="duration">
-                                    {{range $d.Durations}}<option value="{{.}}"{{if eq . $b.DurationMin}} selected{{end}}>{{.}} min</option>{{end}}
-                                </select>
-                            </div>
-                            <label class="admin-check"><input type="checkbox" name="notify" value="1"{{if $b.Email}} checked{{else}} disabled{{end}}> Email confirmation{{if not $b.Email}} (no email){{end}}</label>
-                            <button class="btn btn--primary btn--sm" type="submit">{{if $b.StartAt.IsZero}}Book it{{else}}Reschedule{{end}}</button>
-                        </form>
-                        <p class="admin-muted">Or <a href="/admin/calendar?for={{$b.ID}}{{if not $b.StartAt.IsZero}}&week={{$b.StartAt.Format "2006-01-02"}}{{end}}">pick a free slot on the calendar &#8594;</a></p>
-                    </div>
+                    {{template "booking-schedule-card" .}}
 
                     {{template "booking-status-card" .}}
 
@@ -140,6 +106,88 @@
     <script src="{{asset "js/address.js"}}" defer></script>
 {{end}}
 
+{{/* ── htmx card fragments ────────────────────────────────────────────────
+     Each card below is rendered two ways: inline when the whole page loads,
+     and on its own as an htmx swap target when one of its forms is submitted.
+     The paired *-swap template is what the handler actually returns — the card
+     plus an hx-partial for the flash region, plus any other region the action
+     changed.
+
+     Every form keeps its method/action, so with the script blocked the page
+     still posts and redirects exactly as it did before.
+
+     Two cards are deliberately NOT htmx:
+       · Address — the autocomplete is wired by address.js, which is shared with
+         the public booking form. Swapping the card would drop those listeners,
+         and re-initialising it means changing public JS for an admin feature.
+       · Follow-up — it redirects to the new booking, so it is a navigation, not
+         an in-place update. htmx would add nothing.                          */}}
+
+{{define "booking-issue-card"}}
+    {{$d := .PageData}}{{$b := $d.B}}{{$csrf := .CSRF}}
+    <div class="admin-card" id="issue-card">
+        <h2 class="admin-card-title">The problem</h2>
+        {{if $b.PreferredTime}}<p class="admin-muted">Preferred: {{$b.PreferredTime}}</p>{{end}}
+        <form method="POST" action="/admin/bookings/{{$b.ID}}/issue"
+              hx-post="/admin/bookings/{{$b.ID}}/issue" hx-target="#issue-card" hx-swap="outerHTML" hx-disable="find button">
+            {{template "csrf" $csrf}}
+            <textarea name="issue" rows="4" class="admin-input" maxlength="5000" required>{{$b.Issue}}</textarea>
+            <div class="admin-row-actions"><button class="btn btn--ghost btn--sm" type="submit">Save problem</button></div>
+        </form>
+        <p class="admin-muted">The customer's words to start with; correct it once you know the real fault. It shows on the calendar event.</p>
+    </div>
+{{end}}
+
+{{define "booking-issue-swap"}}{{template "booking-issue-card" .}}{{template "flash-swap" .PageData.Flash}}{{end}}
+
+{{define "booking-notes-card"}}
+    {{$d := .PageData}}{{$b := $d.B}}{{$csrf := .CSRF}}
+    <div class="admin-card" id="notes-card">
+        <h2 class="admin-card-title">Notes (private)</h2>
+        <form method="POST" action="/admin/bookings/{{$b.ID}}/notes"
+              hx-post="/admin/bookings/{{$b.ID}}/notes" hx-target="#notes-card" hx-swap="outerHTML" hx-disable="find button">
+            {{template "csrf" $csrf}}
+            <textarea name="notes" rows="4" class="admin-input" placeholder="What was done, parts, passwords reset, follow-ups…">{{$b.AdminNotes}}</textarea>
+            <div class="admin-row-actions"><button class="btn btn--ghost btn--sm" type="submit">Save notes</button></div>
+        </form>
+    </div>
+{{end}}
+
+{{define "booking-notes-swap"}}{{template "booking-notes-card" .}}{{template "flash-swap" .PageData.Flash}}{{end}}
+
+{{define "booking-schedule-card"}}
+    {{$d := .PageData}}{{$b := $d.B}}{{$csrf := .CSRF}}
+    <div class="admin-card" id="schedule-card">
+        <h2 class="admin-card-title">{{if $b.StartAt.IsZero}}Schedule the visit{{else}}Scheduled: {{$d.Row.When}} ({{$b.DurationMin}} min){{end}}</h2>
+        <form method="POST" action="/admin/bookings/{{$b.ID}}/schedule" class="admin-form-inline"
+              hx-post="/admin/bookings/{{$b.ID}}/schedule" hx-target="#schedule-card" hx-swap="outerHTML" hx-disable="find button">
+            {{template "csrf" $csrf}}
+            <div class="admin-field">
+                <label for="start">Start</label>
+                <input class="admin-input" type="datetime-local" id="start" name="start" value="{{$d.StartValue}}" step="900" required>
+            </div>
+            <div class="admin-field admin-field--narrow">
+                <label for="duration">Duration</label>
+                <select class="admin-input" id="duration" name="duration">
+                    {{range $d.Durations}}<option value="{{.}}"{{if eq . $b.DurationMin}} selected{{end}}>{{.}} min</option>{{end}}
+                </select>
+            </div>
+            <label class="admin-check"><input type="checkbox" name="notify" value="1"{{if $b.Email}} checked{{else}} disabled{{end}}> Email confirmation{{if not $b.Email}} (no email){{end}}</label>
+            <button class="btn btn--primary btn--sm" type="submit">{{if $b.StartAt.IsZero}}Book it{{else}}Reschedule{{end}}</button>
+        </form>
+        <p class="admin-muted">Or <a href="/admin/calendar?for={{$b.ID}}{{if not $b.StartAt.IsZero}}&week={{$b.StartAt.Format "2006-01-02"}}{{end}}">pick a free slot on the calendar &#8594;</a></p>
+    </div>
+{{end}}
+
+{{/* Scheduling also flips the booking to "booked", so the status card and the
+     heading badge both have to catch up — three regions from one request. */}}
+{{define "booking-schedule-swap"}}
+    {{template "booking-schedule-card" .}}
+    <hx-partial hx-target="#status-card" hx-swap="outerHTML">{{template "booking-status-card" .}}</hx-partial>
+    <hx-partial hx-target="#booking-badge" hx-swap="innerHTML">{{template "badge" .PageData.B.Status}}</hx-partial>
+    {{template "flash-swap" .PageData.Flash}}
+{{end}}
+
 {{/* The status card, rendered both inline on the page and on its own as the
      htmx swap target. hx-target/hx-swap sit on the card with :inherited so the
      five forms inside don't each repeat them — htmx 4 does not inherit
@@ -151,7 +199,6 @@
          hx-target:inherited="#status-card"
          hx-swap:inherited="outerHTML">
         <h2 class="admin-card-title">Status</h2>
-        {{if $d.StatusErr}}<p class="admin-status admin-status--error" role="alert">{{$d.StatusErr}}</p>{{end}}
         <div class="admin-btn-row">
             {{if ne $b.Status "contacted"}}
             <form method="POST" action="/admin/bookings/{{$b.ID}}/status" hx-post="/admin/bookings/{{$b.ID}}/status" hx-disable="find button">{{template "csrf" $csrf}}<input type="hidden" name="status" value="contacted"><button class="btn btn--ghost btn--sm" type="submit">Contacted</button></form>
@@ -188,4 +235,5 @@
 {{define "booking-status-swap"}}
     {{template "booking-status-card" .}}
     <hx-partial hx-target="#booking-badge" hx-swap="innerHTML">{{template "badge" .PageData.B.Status}}</hx-partial>
+    {{template "flash-swap" .PageData.Flash}}
 {{end}}

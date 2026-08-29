@@ -116,10 +116,6 @@ type adminBookingData struct {
 	Statuses     []string
 	CanInvoice   bool
 	FollowupText string
-	// StatusErr is shown inside the status card. It is only set on the htmx
-	// path, where the card is swapped on its own and there is no page reload
-	// to carry a flash message.
-	StatusErr string
 }
 
 func loadBooking(w http.ResponseWriter, r *http.Request) *db.Booking {
@@ -141,6 +137,13 @@ func handleAdminBooking(w http.ResponseWriter, r *http.Request) {
 	if b == nil {
 		return
 	}
+	render(w, r, "admin-booking", buildBookingData(r, b))
+}
+
+// buildBookingData assembles everything the booking page and its htmx card
+// fragments render from. The action handlers reuse it so a swapped-in card
+// shows exactly what a full page reload would have shown.
+func buildBookingData(r *http.Request, b *db.Booking) adminBookingData {
 	d := adminBookingData{
 		Flash: readFlash(r), B: b, Row: newBookingRow(*b), Durations: durationChoices, Statuses: db.BookingStatuses,
 		FollowupText: "Follow-up visit — return repaired equipment and check everything is working.",
@@ -167,7 +170,31 @@ func handleAdminBooking(w http.ResponseWriter, r *http.Request) {
 	kids, _ := db.ListChildBookings(b.ID)
 	d.Children = bookingRows(kids)
 	d.CanInvoice = b.CustomerID != 0 && b.Status != db.BookingSpam && b.Status != db.BookingCancelled
-	render(w, r, "admin-booking", d)
+	return d
+}
+
+// bookingCard finishes a booking action: an htmx request gets the named card
+// fragment back with msg in the flash region, anything else gets the redirect
+// and query-string flash it always got. key is "ok" or "err".
+func bookingCard(w http.ResponseWriter, r *http.Request, b *db.Booking, fragment string, code int, key, msg string) {
+	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
+	if !isHTMX(r) {
+		redirectMsg(w, r, back, key, msg)
+		return
+	}
+	// Re-read so the card redraws from what is actually stored, not from the
+	// in-memory copy the handler happened to mutate.
+	fresh, err := db.GetBooking(b.ID)
+	if err != nil {
+		fresh = b
+	}
+	d := buildBookingData(r, fresh)
+	if key == "ok" {
+		d.Flash = flash{OK: msg}
+	} else {
+		d.Flash = flash{Err: msg}
+	}
+	renderFragment(w, r, "admin-booking", fragment, code, d)
 }
 
 func handleAdminBookingSchedule(w http.ResponseWriter, r *http.Request) {
@@ -175,10 +202,9 @@ func handleAdminBookingSchedule(w http.ResponseWriter, r *http.Request) {
 	if b == nil {
 		return
 	}
-	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
 	start, err := time.ParseInLocation("2006-01-02T15:04", r.FormValue("start"), db.Melbourne)
 	if err != nil {
-		redirectMsg(w, r, back, "err", "Please choose a valid date and time.")
+		bookingCard(w, r, b, "booking-schedule-swap", http.StatusUnprocessableEntity, "err", "Please choose a valid date and time.")
 		return
 	}
 	dur, _ := strconv.Atoi(r.FormValue("duration"))
@@ -188,7 +214,7 @@ func handleAdminBookingSchedule(w http.ResponseWriter, r *http.Request) {
 	rescheduled := b.Status == db.BookingBooked && !b.StartAt.IsZero() && !b.StartAt.Equal(start)
 	if err := db.ScheduleBooking(b.ID, start, dur); err != nil {
 		log.Printf("schedule booking #%d: %v", b.ID, err)
-		redirectMsg(w, r, back, "err", "Could not save the schedule.")
+		bookingCard(w, r, b, "booking-schedule-swap", http.StatusInternalServerError, "err", "Could not save the schedule.")
 		return
 	}
 	b.StartAt, b.DurationMin, b.Status = start, dur, db.BookingBooked
@@ -197,12 +223,13 @@ func handleAdminBookingSchedule(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("notify") != "" {
 		if err := sendBookingConfirmation(b, rescheduled); err != nil {
 			logMailErr("booking confirmation", err)
-			redirectMsg(w, r, back, "err", msg+" But the confirmation email failed: "+err.Error())
+			bookingCard(w, r, b, "booking-schedule-swap", http.StatusInternalServerError, "err",
+				msg+" But the confirmation email failed: "+err.Error())
 			return
 		}
 		msg += " Confirmation emailed."
 	}
-	redirectMsg(w, r, back, "ok", msg)
+	bookingCard(w, r, b, "booking-schedule-swap", http.StatusOK, "ok", msg)
 }
 
 // allowedManualStatuses are the statuses the admin can set directly; invoiced/paid
@@ -216,33 +243,14 @@ func handleAdminBookingStatus(w http.ResponseWriter, r *http.Request) {
 	if b == nil {
 		return
 	}
-	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
-
-	// statusFail reports the problem the way the caller can use it: htmx gets
-	// the status card back with the message inside it, a plain form post gets
-	// the usual flash-and-redirect. code is only read on the htmx path.
-	statusFail := func(code int, msg string) {
-		if !isHTMX(r) {
-			redirectMsg(w, r, back, "err", msg)
-			return
-		}
-		// Re-read so the card redraws the status the booking actually has.
-		fresh, err := db.GetBooking(b.ID)
-		if err != nil {
-			fresh = b
-		}
-		renderFragment(w, r, "admin-booking", "booking-status-swap", code,
-			adminBookingData{B: fresh, StatusErr: msg})
-	}
-
 	status := r.FormValue("status")
 	if !allowedManualStatuses[status] {
-		statusFail(http.StatusUnprocessableEntity, "That status can't be set by hand.")
+		bookingCard(w, r, b, "booking-status-swap", http.StatusUnprocessableEntity, "err", "That status can't be set by hand.")
 		return
 	}
 	if err := db.UpdateBookingStatus(b.ID, status); err != nil {
 		log.Printf("booking #%d status: %v", b.ID, err)
-		statusFail(http.StatusInternalServerError, "Could not update the status.")
+		bookingCard(w, r, b, "booking-status-swap", http.StatusInternalServerError, "err", "Could not update the status.")
 		return
 	}
 	syncBookingSoon(b.ID)
@@ -251,19 +259,14 @@ func handleAdminBookingStatus(w http.ResponseWriter, r *http.Request) {
 		if err := sendBookingCancellation(b, strings.TrimSpace(r.FormValue("reason"))); err != nil {
 			logMailErr("booking cancellation", err)
 			// The status did change, so this is a partial success: the card
-			// below will show the new status alongside the mail failure.
-			statusFail(http.StatusInternalServerError, msg+" But the cancellation email failed: "+err.Error())
+			// shows the new status alongside the mail failure.
+			bookingCard(w, r, b, "booking-status-swap", http.StatusInternalServerError, "err",
+				msg+" But the cancellation email failed: "+err.Error())
 			return
 		}
 		msg += " Customer emailed."
 	}
-	if isHTMX(r) {
-		b.Status = status
-		renderFragment(w, r, "admin-booking", "booking-status-swap", http.StatusOK,
-			adminBookingData{B: b})
-		return
-	}
-	redirectMsg(w, r, back, "ok", msg)
+	bookingCard(w, r, b, "booking-status-swap", http.StatusOK, "ok", msg)
 }
 
 func handleAdminBookingNotes(w http.ResponseWriter, r *http.Request) {
@@ -271,17 +274,16 @@ func handleAdminBookingNotes(w http.ResponseWriter, r *http.Request) {
 	if b == nil {
 		return
 	}
-	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
 	notes := strings.TrimSpace(r.FormValue("notes"))
 	if len(notes) > 5000 {
 		notes = notes[:5000]
 	}
 	if err := db.UpdateBookingNotes(b.ID, notes); err != nil {
-		redirectMsg(w, r, back, "err", "Could not save notes.")
+		bookingCard(w, r, b, "booking-notes-swap", http.StatusInternalServerError, "err", "Could not save notes.")
 		return
 	}
 	syncBookingSoon(b.ID)
-	redirectMsg(w, r, back, "ok", "Notes saved.")
+	bookingCard(w, r, b, "booking-notes-swap", http.StatusOK, "ok", "Notes saved.")
 }
 
 // handleAdminBookingIssue rewrites the problem description. What the customer
@@ -291,22 +293,21 @@ func handleAdminBookingIssue(w http.ResponseWriter, r *http.Request) {
 	if b == nil {
 		return
 	}
-	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
 	issue := strings.TrimSpace(r.FormValue("issue"))
 	if rs := []rune(issue); len(rs) > 5000 {
 		issue = string(rs[:5000])
 	}
 	if issue == "" {
-		redirectMsg(w, r, back, "err", "The problem can't be empty.")
+		bookingCard(w, r, b, "booking-issue-swap", http.StatusUnprocessableEntity, "err", "The problem can't be empty.")
 		return
 	}
 	if err := db.UpdateBookingIssue(b.ID, issue); err != nil {
-		redirectMsg(w, r, back, "err", "Could not save the problem.")
+		bookingCard(w, r, b, "booking-issue-swap", http.StatusInternalServerError, "err", "Could not save the problem.")
 		return
 	}
 	// The issue is part of the calendar event description.
 	syncBookingSoon(b.ID)
-	redirectMsg(w, r, back, "ok", "Problem updated.")
+	bookingCard(w, r, b, "booking-issue-swap", http.StatusOK, "ok", "Problem updated.")
 }
 
 // handleAdminBookingAddress saves a verified street address against the

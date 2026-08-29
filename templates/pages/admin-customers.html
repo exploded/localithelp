@@ -17,33 +17,52 @@
 
     <section class="admin-section">
         <div class="container">
-            {{template "flash" $d.Flash}}
+            <div id="admin-flash">{{template "flash" $d.Flash}}</div>
+            {{/* Search-as-you-type. The form keeps method/action so pressing
+                 Enter with the script blocked still does a normal GET, and
+                 hx-push-url keeps the address bar and back button honest. */}}
             <form method="GET" action="/admin/customers" class="admin-form-inline admin-search">
-                <div class="admin-field admin-field--wide"><label for="q">Search</label><input class="admin-input" id="q" name="q" value="{{$d.Query}}" placeholder="name, email, phone or suburb"></div>
+                <div class="admin-field admin-field--wide">
+                    <label for="q">Search</label>
+                    <input class="admin-input" id="q" name="q" value="{{$d.Query}}"
+                           placeholder="name, email, phone or suburb"
+                           hx-get="/admin/customers"
+                           hx-trigger="input changed delay:300ms, search"
+                           hx-target="#customer-results"
+                           hx-swap="innerHTML"
+                           hx-push-url="true"
+                           hx-indicator="#search-indicator">
+                    <span id="search-indicator" class="htmx-indicator admin-search-indicator" aria-hidden="true">Searching…</span>
+                </div>
                 <button class="btn btn--ghost btn--sm" type="submit">Search</button>
                 {{if $d.Query}}<a class="btn btn--ghost btn--sm" href="/admin/customers">Clear</a>{{end}}
                 <a class="btn btn--primary btn--sm" href="/admin/customers/new">New customer</a>
             </form>
-            {{if $d.Rows}}
-            <div class="admin-quotes-table-wrap">
-                <table class="admin-quotes-table">
-                    <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Suburb</th><th>Since</th></tr></thead>
-                    <tbody>
-                    {{range $d.Rows}}
-                        <tr>
-                            <td><a href="/admin/customers/{{.ID}}">{{if .Name}}{{.Name}}{{else}}(no name){{end}}</a></td>
-                            <td>{{if .Phone}}<a href="tel:{{.Phone}}">{{.Phone}}</a>{{end}}</td>
-                            <td>{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
-                            <td>{{.Suburb}}</td>
-                            <td>{{.CreatedAt.Format "Jan 2006"}}</td>
-                        </tr>
-                    {{end}}
-                    </tbody>
-                </table>
-            </div>
-            {{else}}
-            <p class="admin-empty">No customers{{if $d.Query}} match “{{$d.Query}}”{{end}}.</p>
-            {{end}}
+            <div id="customer-results">{{template "customer-results" .}}</div>
         </div>
     </section>
+{{end}}
+
+{{define "customer-results"}}
+    {{$d := .PageData}}
+    {{if $d.Rows}}
+    <div class="admin-quotes-table-wrap">
+        <table class="admin-quotes-table">
+            <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Suburb</th><th>Since</th></tr></thead>
+            <tbody>
+            {{range $d.Rows}}
+                <tr>
+                    <td><a href="/admin/customers/{{.ID}}">{{if .Name}}{{.Name}}{{else}}(no name){{end}}</a></td>
+                    <td>{{if .Phone}}<a href="tel:{{.Phone}}">{{.Phone}}</a>{{end}}</td>
+                    <td>{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
+                    <td>{{.Suburb}}</td>
+                    <td>{{.CreatedAt.Format "Jan 2006"}}</td>
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{else}}
+    <p class="admin-empty">No customers{{if $d.Query}} match “{{$d.Query}}”{{end}}.</p>
+    {{end}}
 {{end}}

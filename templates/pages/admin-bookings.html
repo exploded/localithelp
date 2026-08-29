@@ -17,7 +17,7 @@
 
     <section class="admin-section">
         <div class="container">
-            {{template "flash" $d.Flash}}
+            <div id="admin-flash">{{template "flash" $d.Flash}}</div>
 
             <div class="admin-filters">
                 <a href="/admin/bookings"{{if eq $d.Status ""}} class="active"{{end}}>All</a>

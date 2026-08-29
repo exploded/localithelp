@@ -87,16 +87,15 @@ func handleAdminCalendarSettings(w http.ResponseWriter, r *http.Request) {
 // The form posts one "use" checkbox per calendar, so anything unticked (and not
 // the app's own calendar) becomes a skip.
 func handleAdminCalendarBusy(w http.ResponseWriter, r *http.Request) {
-	const back = "/admin/calendar/settings"
 	conn, err := db.GetGoogleCalendar()
 	if err != nil || !conn.Connected() {
-		redirectMsg(w, r, back, "err", "Calendar sync is not connected.")
+		calSettingsMsg(w, r, http.StatusUnprocessableEntity, "err", "Calendar sync is not connected.")
 		return
 	}
 	// requireAdmin only parses the form when the CSRF token came in the body,
 	// so parse defensively before reading the repeated fields.
 	if err := r.ParseForm(); err != nil {
-		redirectMsg(w, r, back, "err", "Could not read the form.")
+		calSettingsMsg(w, r, http.StatusUnprocessableEntity, "err", "Could not read the form.")
 		return
 	}
 	used := map[string]bool{}
@@ -111,25 +110,42 @@ func handleAdminCalendarBusy(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := db.SetGoogleCalendarSkips(skips); err != nil {
 		log.Printf("gcal skips: %v", err)
-		redirectMsg(w, r, back, "err", "Could not save the busy-time calendars.")
+		calSettingsMsg(w, r, http.StatusInternalServerError, "err", "Could not save the busy-time calendars.")
 		return
 	}
 	busyCache.clear()
-	redirectMsg(w, r, back, "ok", "Busy-time calendars saved.")
+	calSettingsMsg(w, r, http.StatusOK, "ok", "Busy-time calendars saved.")
+}
+
+// calSettingsMsg finishes a calendar settings action. Neither action changes
+// anything visible on the page beyond the message, so the htmx reply is just
+// the flash region; a plain form post still redirects as before.
+func calSettingsMsg(w http.ResponseWriter, r *http.Request, code int, key, msg string) {
+	const back = "/admin/calendar/settings"
+	if !isHTMX(r) {
+		redirectMsg(w, r, back, key, msg)
+		return
+	}
+	d := calSettingsData{}
+	if key == "ok" {
+		d.Flash = flash{OK: msg}
+	} else {
+		d.Flash = flash{Err: msg}
+	}
+	renderFragment(w, r, "admin-calendar-settings", "flash-response", code, d)
 }
 
 // handleAdminCalendarResync re-pushes every current booking. It runs inline so
 // the flash message can report the result — the admin asked for it and is
 // waiting on it.
 func handleAdminCalendarResync(w http.ResponseWriter, r *http.Request) {
-	const back = "/admin/calendar/settings"
 	conn, err := db.GetGoogleCalendar()
 	if err != nil || !conn.Connected() {
-		redirectMsg(w, r, back, "err", "Calendar sync is not connected.")
+		calSettingsMsg(w, r, http.StatusUnprocessableEntity, "err", "Calendar sync is not connected.")
 		return
 	}
 	n := resyncAllBookings()
-	redirectMsg(w, r, back, "ok", "Resynced "+plural(n, "booking", "bookings")+".")
+	calSettingsMsg(w, r, http.StatusOK, "ok", "Resynced "+plural(n, "booking", "bookings")+".")
 }
 
 // plural renders "1 booking" / "3 bookings".

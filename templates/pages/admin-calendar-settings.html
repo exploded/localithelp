@@ -17,8 +17,10 @@
 
     <section class="admin-section">
         <div class="container">
+            <div id="admin-flash">
             {{if $d.Flash.OK}}<div class="admin-status admin-status--success admin-flash">{{$d.Flash.OK}}</div>{{end}}
             {{if $d.Flash.Err}}<div class="admin-status admin-status--error admin-flash">{{$d.Flash.Err}}</div>{{end}}
+            </div>
 
             <div class="cal-toolbar">
                 <a class="btn btn--ghost btn--sm" href="/admin/calendar">&#8592; Back to calendar</a>
@@ -48,7 +50,10 @@
                     customer gets the confirmation email.
                 </p>
                 <div class="admin-actions">
-                    <form method="post" action="/admin/calendar/resync">
+                    {{/* Nothing on the page changes except the message, so the
+                         main swap is none and only the flash region moves. */}}
+                    <form method="post" action="/admin/calendar/resync"
+                          hx-post="/admin/calendar/resync" hx-swap="none" hx-disable="find button">
                         <input type="hidden" name="csrf" value="{{.CSRF}}">
                         <button class="btn btn--ghost btn--sm" type="submit">Resync all visits</button>
                     </form>
@@ -69,7 +74,11 @@
                 {{if $d.ListErr}}
                 <div class="admin-status admin-status--error">Couldn't list your calendars: {{$d.ListErr}}</div>
                 {{else}}
-                <form method="post" action="/admin/calendar/busy">
+                {{/* Same again: the tick-boxes already show what was chosen, so
+                     re-rendering them would mean another Google API call for no
+                     visible change. Only the message moves. */}}
+                <form method="post" action="/admin/calendar/busy"
+                      hx-post="/admin/calendar/busy" hx-swap="none" hx-disable="find button">
                     <input type="hidden" name="csrf" value="{{.CSRF}}">
                     <ul class="admin-checklist">
                         {{range $d.Calendars}}
