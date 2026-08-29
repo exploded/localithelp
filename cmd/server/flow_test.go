@@ -47,6 +47,7 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	mux.HandleFunc("POST /admin/bookings/{id}/schedule", requireAdmin(handleAdminBookingSchedule))
 	mux.HandleFunc("POST /admin/bookings/{id}/status", requireAdmin(handleAdminBookingStatus))
 	mux.HandleFunc("POST /admin/bookings/{id}/notes", requireAdmin(handleAdminBookingNotes))
+	mux.HandleFunc("POST /admin/bookings/{id}/issue", requireAdmin(handleAdminBookingIssue))
 	mux.HandleFunc("POST /admin/bookings/{id}/followup", requireAdmin(handleAdminBookingFollowup))
 	mux.HandleFunc("POST /admin/bookings/{id}/address", requireAdmin(handleAdminBookingAddress))
 	mux.HandleFunc("GET /admin/calendar", requireAdmin(handleAdminCalendar))
@@ -372,13 +373,28 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 		"address": {"9 Sample St, Ringwood VIC 3134"}, "addr_street": {"9 Sample St"},
 		"addr_suburb": {"Ringwood"}, "addr_state": {"VIC"}, "addr_postcode": {"3134"},
 		"service": {"email-outlook"}, "issue": {"NBN dropouts every evening"},
+		"notes": {"Dog in the yard; use the side gate."},
 	})
 	pid := lastSeg(strings.SplitN(loc, "?", 2)[0])
 	pb, _ := db.GetBooking(pid)
 	if pb == nil || pb.CustomerID == 0 || pb.CustomerID == b.CustomerID || pb.Status != db.BookingNew ||
 		pb.Mode != "onsite" || pb.ServiceSlug != "email-outlook" || pb.Suburb != "Ringwood" ||
-		pb.Address != "9 Sample St, Ringwood VIC 3134" || !pb.StartAt.IsZero() {
+		pb.Address != "9 Sample St, Ringwood VIC 3134" || !pb.StartAt.IsZero() ||
+		pb.AdminNotes != "Dog in the yard; use the side gate." {
 		t.Fatalf("phone booking: %+v", pb)
+	}
+	// The problem can be corrected once the real fault is known; it cannot be blanked.
+	ppath := "/admin/bookings/" + itoa(pid)
+	if rr := do("POST", ppath+"/issue", url.Values{"issue": {"  "}}, true); !strings.Contains(rr.Header().Get("Location"), "err=") {
+		t.Fatalf("empty issue should be rejected: %d %s", rr.Code, rr.Header().Get("Location"))
+	}
+	post(ppath+"/issue", url.Values{"issue": {"Router on its last legs — replace it"}})
+	pb, _ = db.GetBooking(pid)
+	if pb.Issue != "Router on its last legs — replace it" {
+		t.Fatalf("issue not updated: %+v", pb)
+	}
+	if page := get(ppath); !strings.Contains(page, "Router on its last legs") {
+		t.Fatal("booking page does not show the edited problem")
 	}
 	if pc, _ := db.GetCustomer(pb.CustomerID); pc.Address != "9 Sample St, Ringwood VIC 3134" || pc.Suburb != "Ringwood" {
 		t.Fatalf("phone booking customer address: %+v", pc)

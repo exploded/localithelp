@@ -159,6 +159,7 @@ func newMux(dir string) *http.ServeMux {
 	mux.HandleFunc("POST /admin/bookings/{id}/schedule", requireAdmin(handleAdminBookingSchedule))
 	mux.HandleFunc("POST /admin/bookings/{id}/status", requireAdmin(handleAdminBookingStatus))
 	mux.HandleFunc("POST /admin/bookings/{id}/notes", requireAdmin(handleAdminBookingNotes))
+	mux.HandleFunc("POST /admin/bookings/{id}/issue", requireAdmin(handleAdminBookingIssue))
 	mux.HandleFunc("POST /admin/bookings/{id}/followup", requireAdmin(handleAdminBookingFollowup))
 	mux.HandleFunc("POST /admin/bookings/{id}/address", requireAdmin(handleAdminBookingAddress))
 	mux.HandleFunc("GET /admin/address-search", requireAdmin(handleAdminAddressSearch))
@@ -286,6 +287,57 @@ func render(w http.ResponseWriter, r *http.Request, page string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := buf.WriteTo(w); err != nil && !isClientGone(err) {
 		log.Printf("render %s: write: %v", page, err)
+	}
+}
+
+// isHTMX reports whether the request came from htmx rather than a plain form
+// post or link. Every htmx-enhanced handler still has to work without it: the
+// forms keep their method/action so the page degrades to a normal POST and
+// redirect when the script has not loaded.
+func isHTMX(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true"
+}
+
+// renderFragment writes one named template out of a page's set, without the
+// surrounding "base" layout, for htmx to swap into the page. It wraps data in
+// the same pageData envelope render uses, so a fragment template reads .CSRF
+// and .PageData exactly as it does when the whole page is rendered.
+//
+// status is the HTTP status to send. htmx 4 swaps every response except 204
+// and 304, so an error fragment can go out under a real 4xx/5xx and still
+// land in the page.
+func renderFragment(w http.ResponseWriter, r *http.Request, page, name string, status int, data any) {
+	tmpl, ok := pages[page]
+	if !ok {
+		http.Error(w, "page not found", http.StatusNotFound)
+		return
+	}
+	sess := getSession(r)
+	var user *db.User
+	csrf := ""
+	if sess != nil {
+		user, csrf = sess.User, sess.CSRF
+	}
+	pd := pageData{
+		User:     user,
+		IsAdmin:  isAdmin(user),
+		Site:     site,
+		Path:     r.URL.Path,
+		CSRF:     csrf,
+		PageData: data,
+	}
+	// Buffer first, same reasoning as render: a half-written fragment behind a
+	// 200 would be swapped into the page as if it were good.
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, name, pd); err != nil {
+		log.Printf("render fragment %s/%s: %v", page, name, err)
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	if _, err := buf.WriteTo(w); err != nil && !isClientGone(err) {
+		log.Printf("render fragment %s/%s: write: %v", page, name, err)
 	}
 }
 

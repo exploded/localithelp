@@ -116,6 +116,10 @@ type adminBookingData struct {
 	Statuses     []string
 	CanInvoice   bool
 	FollowupText string
+	// StatusErr is shown inside the status card. It is only set on the htmx
+	// path, where the card is swapped on its own and there is no page reload
+	// to carry a flash message.
+	StatusErr string
 }
 
 func loadBooking(w http.ResponseWriter, r *http.Request) *db.Booking {
@@ -213,14 +217,32 @@ func handleAdminBookingStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
+
+	// statusFail reports the problem the way the caller can use it: htmx gets
+	// the status card back with the message inside it, a plain form post gets
+	// the usual flash-and-redirect. code is only read on the htmx path.
+	statusFail := func(code int, msg string) {
+		if !isHTMX(r) {
+			redirectMsg(w, r, back, "err", msg)
+			return
+		}
+		// Re-read so the card redraws the status the booking actually has.
+		fresh, err := db.GetBooking(b.ID)
+		if err != nil {
+			fresh = b
+		}
+		renderFragment(w, r, "admin-booking", "booking-status-swap", code,
+			adminBookingData{B: fresh, StatusErr: msg})
+	}
+
 	status := r.FormValue("status")
 	if !allowedManualStatuses[status] {
-		redirectMsg(w, r, back, "err", "That status can't be set by hand.")
+		statusFail(http.StatusUnprocessableEntity, "That status can't be set by hand.")
 		return
 	}
 	if err := db.UpdateBookingStatus(b.ID, status); err != nil {
 		log.Printf("booking #%d status: %v", b.ID, err)
-		redirectMsg(w, r, back, "err", "Could not update the status.")
+		statusFail(http.StatusInternalServerError, "Could not update the status.")
 		return
 	}
 	syncBookingSoon(b.ID)
@@ -228,10 +250,18 @@ func handleAdminBookingStatus(w http.ResponseWriter, r *http.Request) {
 	if status == db.BookingCancelled && r.FormValue("notify") != "" {
 		if err := sendBookingCancellation(b, strings.TrimSpace(r.FormValue("reason"))); err != nil {
 			logMailErr("booking cancellation", err)
-			redirectMsg(w, r, back, "err", msg+" But the cancellation email failed: "+err.Error())
+			// The status did change, so this is a partial success: the card
+			// below will show the new status alongside the mail failure.
+			statusFail(http.StatusInternalServerError, msg+" But the cancellation email failed: "+err.Error())
 			return
 		}
 		msg += " Customer emailed."
+	}
+	if isHTMX(r) {
+		b.Status = status
+		renderFragment(w, r, "admin-booking", "booking-status-swap", http.StatusOK,
+			adminBookingData{B: b})
+		return
 	}
 	redirectMsg(w, r, back, "ok", msg)
 }
@@ -252,6 +282,31 @@ func handleAdminBookingNotes(w http.ResponseWriter, r *http.Request) {
 	}
 	syncBookingSoon(b.ID)
 	redirectMsg(w, r, back, "ok", "Notes saved.")
+}
+
+// handleAdminBookingIssue rewrites the problem description. What the customer
+// typed (or said on the phone) is often not what the fault turns out to be.
+func handleAdminBookingIssue(w http.ResponseWriter, r *http.Request) {
+	b := loadBooking(w, r)
+	if b == nil {
+		return
+	}
+	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
+	issue := strings.TrimSpace(r.FormValue("issue"))
+	if rs := []rune(issue); len(rs) > 5000 {
+		issue = string(rs[:5000])
+	}
+	if issue == "" {
+		redirectMsg(w, r, back, "err", "The problem can't be empty.")
+		return
+	}
+	if err := db.UpdateBookingIssue(b.ID, issue); err != nil {
+		redirectMsg(w, r, back, "err", "Could not save the problem.")
+		return
+	}
+	// The issue is part of the calendar event description.
+	syncBookingSoon(b.ID)
+	redirectMsg(w, r, back, "ok", "Problem updated.")
 }
 
 // handleAdminBookingAddress saves a verified street address against the
@@ -331,6 +386,7 @@ func handleAdminBookingFollowup(w http.ResponseWriter, r *http.Request) {
 // phoneBookingForm holds the new-booking form values for re-rendering on error.
 type phoneBookingForm struct {
 	Name, Phone, Email, Suburb, Service, Issue string
+	Notes                                      string // private admin notes, saved with the booking
 	Address                                    string // the visible autocomplete field
 	AddrStreet, AddrSuburb                     string // hidden structured parts, set only when a suggestion is picked
 	AddrState, AddrPostcode                    string
@@ -362,7 +418,7 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 		Suburb: trim("suburb"), Service: trim("service"), Issue: trim("issue"),
 		Address: trim("address"), AddrStreet: trim("addr_street"), AddrSuburb: trim("addr_suburb"),
 		AddrState: strings.ToUpper(trim("addr_state")), AddrPostcode: trim("addr_postcode"),
-		Source: trim("source"),
+		Source: trim("source"), Notes: trim("notes"),
 	}
 	if !db.ValidSource(f.Source) {
 		f.Source = db.SourcePhone
@@ -394,6 +450,9 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if rs := []rune(f.Issue); len(rs) > 5000 {
 		f.Issue = string(rs[:5000])
+	}
+	if rs := []rune(f.Notes); len(rs) > 5000 {
+		f.Notes = string(rs[:5000])
 	}
 	if _, ok := findService(f.Service); !ok {
 		f.Service = ""
@@ -431,7 +490,7 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 	id, err := db.InsertBooking(&db.Booking{
 		CustomerID: customerID, Name: f.Name, Phone: f.Phone, Email: f.Email,
 		Suburb: f.Suburb, Address: fullAddress, ServiceSlug: f.Service, Mode: "onsite", Issue: f.Issue,
-		Source: f.Source,
+		Source: f.Source, AdminNotes: f.Notes,
 	})
 	if err != nil {
 		log.Printf("phone booking: insert: %v", err)

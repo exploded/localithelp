@@ -90,7 +90,7 @@ func InsertBooking(b *Booking) (int64, error) {
 	return q.InsertBooking(context.Background(), sqlc.InsertBookingParams{
 		Name: b.Name, Phone: b.Phone, Email: b.Email, Suburb: b.Suburb, Address: b.Address,
 		ServiceSlug: b.ServiceSlug, Mode: b.Mode, Issue: b.Issue, PreferredTime: b.PreferredTime,
-		Ip: b.IP, CustomerID: b.CustomerID, Source: b.Source,
+		Ip: b.IP, CustomerID: b.CustomerID, Source: b.Source, AdminNotes: b.AdminNotes,
 	})
 }
 
@@ -175,6 +175,12 @@ func ScheduleBooking(id int64, start time.Time, durationMin int) error {
 
 func UpdateBookingNotes(id int64, notes string) error {
 	return q.UpdateBookingNotes(context.Background(), sqlc.UpdateBookingNotesParams{AdminNotes: notes, ID: id})
+}
+
+// UpdateBookingIssue rewrites the customer's problem description. The admin
+// edits it after the phone call, once the real fault is clear.
+func UpdateBookingIssue(id int64, issue string) error {
+	return q.UpdateBookingIssue(context.Background(), sqlc.UpdateBookingIssueParams{Issue: issue, ID: id})
 }
 
 // SetBookingCustomer links a booking to a customer record.

@@ -31,9 +31,14 @@
     <link rel="preload" href="/static/fonts/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/static/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{asset "css/styles.css"}}">
+    {{/* htmx is admin-only: the public pages are static server-rendered content
+         and must not pay for it. */}}
+    {{if .IsAdmin}}<script src="{{asset "js/htmx.min.js"}}" defer></script>{{end}}
     {{block "head" .}}{{end}}
 </head>
-<body>
+{{/* htmx 4 needs :inherited or the CSRF header never reaches the elements
+     inside, and every admin POST is rejected by requireCSRF. */}}
+<body{{if .IsAdmin}} hx-headers:inherited='{"X-CSRF-Token": "{{.CSRF}}"}'{{end}}>
 
 <div class="glow-orb glow-orb--amber"></div>
 <div class="glow-orb glow-orb--blue"></div>

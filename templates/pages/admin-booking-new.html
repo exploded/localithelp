@@ -78,6 +78,10 @@
                                 <label for="issue">What's the problem?</label>
                                 <textarea class="admin-input" id="issue" name="issue" rows="4" maxlength="5000" placeholder="e.g. Laptop won't start, blue screen on boot">{{$f.Issue}}</textarea>
                             </div>
+                            <div class="admin-field">
+                                <label for="notes">Notes (private)</label>
+                                <textarea class="admin-input" id="notes" name="notes" rows="3" maxlength="5000" placeholder="Anything the customer shouldn't see &mdash; access, parking, what to bring&#8230;">{{$f.Notes}}</textarea>
+                            </div>
                             <div><button class="btn btn--primary btn--sm" type="submit">Create booking &amp; pick a time &#8594;</button></div>
                         </form>
                     </div>

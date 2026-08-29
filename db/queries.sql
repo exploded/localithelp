@@ -84,8 +84,8 @@ SELECT COUNT(*) FROM quote_settings WHERE key = ?;
 -- Bookings
 
 -- name: InsertBooking :one
-INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, source, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, source, admin_notes, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 RETURNING id;
 
 -- name: InsertFollowupBooking :one
@@ -142,6 +142,9 @@ UPDATE bookings SET start_at = ?, duration_min = ?, status = 'booked', reminder_
 
 -- name: UpdateBookingNotes :exec
 UPDATE bookings SET admin_notes = ?, updated_at = datetime('now') WHERE id = ?;
+
+-- name: UpdateBookingIssue :exec
+UPDATE bookings SET issue = ?, updated_at = datetime('now') WHERE id = ?;
 
 -- name: SetBookingCustomer :exec
 UPDATE bookings SET customer_id = ? WHERE id = ?;

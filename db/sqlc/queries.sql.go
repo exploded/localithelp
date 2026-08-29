@@ -460,8 +460,8 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 
 const insertBooking = `-- name: InsertBooking :one
 
-INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, source, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, source, admin_notes, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 RETURNING id
 `
 
@@ -478,6 +478,7 @@ type InsertBookingParams struct {
 	Ip            string `json:"ip"`
 	CustomerID    int64  `json:"customer_id"`
 	Source        string `json:"source"`
+	AdminNotes    string `json:"admin_notes"`
 }
 
 // Bookings
@@ -495,6 +496,7 @@ func (q *Queries) InsertBooking(ctx context.Context, arg InsertBookingParams) (i
 		arg.Ip,
 		arg.CustomerID,
 		arg.Source,
+		arg.AdminNotes,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -2048,6 +2050,20 @@ type UpdateBookingAddressParams struct {
 
 func (q *Queries) UpdateBookingAddress(ctx context.Context, arg UpdateBookingAddressParams) error {
 	_, err := q.db.ExecContext(ctx, updateBookingAddress, arg.Address, arg.Suburb, arg.ID)
+	return err
+}
+
+const updateBookingIssue = `-- name: UpdateBookingIssue :exec
+UPDATE bookings SET issue = ?, updated_at = datetime('now') WHERE id = ?
+`
+
+type UpdateBookingIssueParams struct {
+	Issue string `json:"issue"`
+	ID    int64  `json:"id"`
+}
+
+func (q *Queries) UpdateBookingIssue(ctx context.Context, arg UpdateBookingIssueParams) error {
+	_, err := q.db.ExecContext(ctx, updateBookingIssue, arg.Issue, arg.ID)
 	return err
 }
 
