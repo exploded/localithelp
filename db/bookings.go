@@ -50,6 +50,7 @@ type Booking struct {
 	AdminAlertAt    time.Time // UTC; zero until the 1-hour heads-up went to the admin
 	GCalEventID     string    // Google Calendar event id; empty until pushed
 	GCalSyncedAt    time.Time // UTC; zero until the first successful push
+	Source          string    // where it came from: google-ads, phone, referral… ("" on pre-migration rows)
 }
 
 // EndAt is StartAt + DurationMin (zero when unscheduled).
@@ -68,7 +69,7 @@ func sqlcBooking(r sqlc.Booking) Booking {
 		AdminNotes: r.AdminNotes, ParentBookingID: r.ParentBookingID,
 		CreatedAt: parseUTC(r.CreatedAt), UpdatedAt: parseUTC(r.UpdatedAt),
 		ReminderSentAt: parseUTC(r.ReminderSentAt), AdminAlertAt: parseUTC(r.AdminAlertSentAt),
-		GCalEventID: r.GcalEventID, GCalSyncedAt: parseUTC(r.GcalSyncedAt),
+		GCalEventID: r.GcalEventID, GCalSyncedAt: parseUTC(r.GcalSyncedAt), Source: r.Source,
 	}
 }
 
@@ -89,26 +90,29 @@ func InsertBooking(b *Booking) (int64, error) {
 	return q.InsertBooking(context.Background(), sqlc.InsertBookingParams{
 		Name: b.Name, Phone: b.Phone, Email: b.Email, Suburb: b.Suburb, Address: b.Address,
 		ServiceSlug: b.ServiceSlug, Mode: b.Mode, Issue: b.Issue, PreferredTime: b.PreferredTime,
-		Ip: b.IP, CustomerID: b.CustomerID,
+		Ip: b.IP, CustomerID: b.CustomerID, Source: b.Source,
 	})
 }
 
 // CreateFollowup creates a new booking for the same customer as parent (e.g.
-// returning a repaired machine) and returns its id. It starts unscheduled.
+// returning a repaired machine) and returns its id. It starts unscheduled and
+// inherits the parent's source — the work still traces back to that first click.
 func CreateFollowup(parent *Booking, issue string) (int64, error) {
 	return q.InsertFollowupBooking(context.Background(), sqlc.InsertFollowupBookingParams{
 		Name: parent.Name, Phone: parent.Phone, Email: parent.Email, Suburb: parent.Suburb,
 		Address: parent.Address, ServiceSlug: parent.ServiceSlug, Mode: parent.Mode, Issue: issue,
-		CustomerID: parent.CustomerID, ParentBookingID: parent.ID,
+		CustomerID: parent.CustomerID, ParentBookingID: parent.ID, Source: parent.Source,
 	})
 }
 
 // CreateForCustomer creates a new unscheduled booking for an existing
-// customer (admin-initiated, e.g. a phone enquiry) and returns its id.
+// customer (admin-initiated, e.g. a phone enquiry) and returns its id. An
+// existing customer coming back is repeat business, not a fresh lead.
 func CreateForCustomer(c *Customer, serviceSlug, issue string) (int64, error) {
 	return InsertBooking(&Booking{
 		CustomerID: c.ID, Name: c.Name, Phone: c.Phone, Email: c.Email, Suburb: c.Suburb,
 		Address: c.Address, ServiceSlug: serviceSlug, Mode: "onsite", Issue: issue,
+		Source: SourceRepeat,
 	})
 }
 

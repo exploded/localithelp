@@ -86,6 +86,7 @@ const mailTmplSrc = `
 {{template "row" (kv "Address" .B.Address)}}
 {{template "row" (kv "Service" .ServiceTitle)}}
 {{template "row" (kv "Preferred time" .B.PreferredTime)}}
+{{template "row" (kv "Found you via" (srcLabel .B.Source))}}
 {{template "row" (kv "IP" .B.IP)}}
 </table>
 <p style="margin:0 0 6px;color:#666">The problem:</p>
@@ -145,10 +146,11 @@ const mailTmplSrc = `
 `
 
 var mailTmpl = template.Must(template.Must(template.New("mail").Funcs(template.FuncMap{
-	"site":  func() *siteConfig { return &site },
-	"kv":    func(k, v string) map[string]string { return map[string]string{"K": k, "V": v} },
-	"money": fmtCents,
-	"btn":   func(href, label string) map[string]string { return map[string]string{"Href": href, "Label": label} },
+	"site":     func() *siteConfig { return &site },
+	"kv":       func(k, v string) map[string]string { return map[string]string{"K": k, "V": v} },
+	"money":    fmtCents,
+	"btn":      func(href, label string) map[string]string { return map[string]string{"Href": href, "Label": label} },
+	"srcLabel": db.SourceLabel,
 }).Parse(mailTmplSrc)).Parse(mailBillingTmplSrc + mailSchedulerTmplSrc))
 
 // renderMail executes a named body template inside the "wrap" chrome.

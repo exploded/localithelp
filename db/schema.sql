@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     reminder_sent_at    TEXT  NOT NULL DEFAULT '',  -- UTC datetime the day-before reminder was emailed to the customer
     admin_alert_sent_at TEXT  NOT NULL DEFAULT '',  -- UTC datetime the 1-hour heads-up was emailed to the admin
     gcal_event_id       TEXT  NOT NULL DEFAULT '',  -- Google Calendar event id; '' = no event pushed yet
-    gcal_synced_at      TEXT  NOT NULL DEFAULT ''   -- UTC datetime of the last successful push; < updated_at = dirty
+    gcal_synced_at      TEXT  NOT NULL DEFAULT '',  -- UTC datetime of the last successful push; < updated_at = dirty
+    source              TEXT  NOT NULL DEFAULT ''   -- where the booking came from: google-ads, phone, referral… ('' = unknown, pre-migration)
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookings_start_at ON bookings(start_at);

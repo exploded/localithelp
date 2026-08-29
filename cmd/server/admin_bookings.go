@@ -334,6 +334,7 @@ type phoneBookingForm struct {
 	Address                                    string // the visible autocomplete field
 	AddrStreet, AddrSuburb                     string // hidden structured parts, set only when a suggestion is picked
 	AddrState, AddrPostcode                    string
+	Source                                     string // how they found us; defaults to a phone call
 }
 
 type adminBookingNewData struct {
@@ -341,11 +342,13 @@ type adminBookingNewData struct {
 	Form     phoneBookingForm
 	Errors   map[string]string
 	Services []Service
+	Sources  []db.BookingSource
 }
 
 func handleAdminBookingNew(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "admin-booking-new", adminBookingNewData{
 		Flash: readFlash(r), Services: services, Errors: map[string]string{},
+		Sources: db.BookingSources, Form: phoneBookingForm{Source: db.SourcePhone},
 	})
 }
 
@@ -359,6 +362,10 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 		Suburb: trim("suburb"), Service: trim("service"), Issue: trim("issue"),
 		Address: trim("address"), AddrStreet: trim("addr_street"), AddrSuburb: trim("addr_suburb"),
 		AddrState: strings.ToUpper(trim("addr_state")), AddrPostcode: trim("addr_postcode"),
+		Source: trim("source"),
+	}
+	if !db.ValidSource(f.Source) {
+		f.Source = db.SourcePhone
 	}
 	errs := map[string]string{}
 	if n := len([]rune(f.Name)); n < 2 || n > 100 {
@@ -393,7 +400,7 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(errs) > 0 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		render(w, r, "admin-booking-new", adminBookingNewData{Form: f, Errors: errs, Services: services})
+		render(w, r, "admin-booking-new", adminBookingNewData{Form: f, Errors: errs, Services: services, Sources: db.BookingSources})
 		return
 	}
 	if f.Issue == "" {
@@ -424,6 +431,7 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 	id, err := db.InsertBooking(&db.Booking{
 		CustomerID: customerID, Name: f.Name, Phone: f.Phone, Email: f.Email,
 		Suburb: f.Suburb, Address: fullAddress, ServiceSlug: f.Service, Mode: "onsite", Issue: f.Issue,
+		Source: f.Source,
 	})
 	if err != nil {
 		log.Printf("phone booking: insert: %v", err)

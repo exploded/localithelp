@@ -155,7 +155,7 @@ func (q *Queries) DeleteSchedulerRun(ctx context.Context, arg DeleteSchedulerRun
 
 const getBooking = `-- name: GetBooking :one
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings WHERE id = ?
 `
 
@@ -186,6 +186,7 @@ func (q *Queries) GetBooking(ctx context.Context, id int64) (Booking, error) {
 		&i.AdminAlertSentAt,
 		&i.GcalEventID,
 		&i.GcalSyncedAt,
+		&i.Source,
 	)
 	return i, err
 }
@@ -459,8 +460,8 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 
 const insertBooking = `-- name: InsertBooking :one
 
-INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, source, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 RETURNING id
 `
 
@@ -476,6 +477,7 @@ type InsertBookingParams struct {
 	PreferredTime string `json:"preferred_time"`
 	Ip            string `json:"ip"`
 	CustomerID    int64  `json:"customer_id"`
+	Source        string `json:"source"`
 }
 
 // Bookings
@@ -492,6 +494,7 @@ func (q *Queries) InsertBooking(ctx context.Context, arg InsertBookingParams) (i
 		arg.PreferredTime,
 		arg.Ip,
 		arg.CustomerID,
+		arg.Source,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -532,8 +535,8 @@ func (q *Queries) InsertCustomer(ctx context.Context, arg InsertCustomerParams) 
 }
 
 const insertFollowupBooking = `-- name: InsertFollowupBooking :one
-INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, status, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, 'new', datetime('now'))
+INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, source, status, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, ?, 'new', datetime('now'))
 RETURNING id
 `
 
@@ -548,6 +551,7 @@ type InsertFollowupBookingParams struct {
 	Issue           string `json:"issue"`
 	CustomerID      int64  `json:"customer_id"`
 	ParentBookingID int64  `json:"parent_booking_id"`
+	Source          string `json:"source"`
 }
 
 func (q *Queries) InsertFollowupBooking(ctx context.Context, arg InsertFollowupBookingParams) (int64, error) {
@@ -562,6 +566,7 @@ func (q *Queries) InsertFollowupBooking(ctx context.Context, arg InsertFollowupB
 		arg.Issue,
 		arg.CustomerID,
 		arg.ParentBookingID,
+		arg.Source,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -729,7 +734,7 @@ func (q *Queries) InsertSchedulerRun(ctx context.Context, arg InsertSchedulerRun
 
 const listBookings = `-- name: ListBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings ORDER BY id DESC
 `
 
@@ -766,6 +771,7 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -782,7 +788,7 @@ func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {
 
 const listBookingsBetween = `-- name: ListBookingsBetween :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam')
 ORDER BY start_at
@@ -826,6 +832,7 @@ func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetwe
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -842,7 +849,7 @@ func (q *Queries) ListBookingsBetween(ctx context.Context, arg ListBookingsBetwe
 
 const listBookingsByCustomer = `-- name: ListBookingsByCustomer :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings WHERE customer_id = ? ORDER BY id DESC
 `
 
@@ -879,6 +886,7 @@ func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) 
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -895,7 +903,7 @@ func (q *Queries) ListBookingsByCustomer(ctx context.Context, customerID int64) 
 
 const listBookingsByStatus = `-- name: ListBookingsByStatus :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings WHERE status = ? ORDER BY id DESC
 `
 
@@ -932,6 +940,7 @@ func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Bo
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -948,7 +957,7 @@ func (q *Queries) ListBookingsByStatus(ctx context.Context, status string) ([]Bo
 
 const listBookingsForAdminAlert = `-- name: ListBookingsForAdminAlert :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND admin_alert_sent_at = ''
 ORDER BY start_at
@@ -993,6 +1002,7 @@ func (q *Queries) ListBookingsForAdminAlert(ctx context.Context, arg ListBooking
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -1009,7 +1019,7 @@ func (q *Queries) ListBookingsForAdminAlert(ctx context.Context, arg ListBooking
 
 const listBookingsForCalendarBackfill = `-- name: ListBookingsForCalendarBackfill :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings
 WHERE (start_at >= ? AND start_at < ?) OR gcal_event_id <> ''
 ORDER BY start_at, id
@@ -1054,6 +1064,7 @@ func (q *Queries) ListBookingsForCalendarBackfill(ctx context.Context, arg ListB
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -1071,7 +1082,7 @@ func (q *Queries) ListBookingsForCalendarBackfill(ctx context.Context, arg ListB
 const listBookingsForCalendarSync = `-- name: ListBookingsForCalendarSync :many
 
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings
 WHERE (
         gcal_synced_at = '' OR gcal_synced_at < updated_at
@@ -1133,6 +1144,7 @@ func (q *Queries) ListBookingsForCalendarSync(ctx context.Context, arg ListBooki
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -1149,7 +1161,7 @@ func (q *Queries) ListBookingsForCalendarSync(ctx context.Context, arg ListBooki
 
 const listBookingsForReminder = `-- name: ListBookingsForReminder :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings
 WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND email <> '' AND reminder_sent_at = ''
 ORDER BY start_at
@@ -1194,6 +1206,7 @@ func (q *Queries) ListBookingsForReminder(ctx context.Context, arg ListBookingsF
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -1210,7 +1223,7 @@ func (q *Queries) ListBookingsForReminder(ctx context.Context, arg ListBookingsF
 
 const listChildBookings = `-- name: ListChildBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings WHERE parent_booking_id = ? ORDER BY id
 `
 
@@ -1247,6 +1260,7 @@ func (q *Queries) ListChildBookings(ctx context.Context, parentBookingID int64) 
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -1690,7 +1704,7 @@ func (q *Queries) ListQuotes(ctx context.Context) ([]Quote, error) {
 
 const listUnlinkedBookings = `-- name: ListUnlinkedBookings :many
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
-       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at
+       customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id
 `
 
@@ -1727,6 +1741,7 @@ func (q *Queries) ListUnlinkedBookings(ctx context.Context) ([]Booking, error) {
 			&i.AdminAlertSentAt,
 			&i.GcalEventID,
 			&i.GcalSyncedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}

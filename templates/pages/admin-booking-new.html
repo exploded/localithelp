@@ -68,6 +68,12 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="admin-field admin-field--wide">
+                                <label for="source">How did they find you?</label>
+                                <select class="admin-input" id="source" name="source">
+                                    {{range $d.Sources}}<option value="{{.Value}}"{{if eq .Value $f.Source}} selected{{end}}>{{.Label}}</option>{{end}}
+                                </select>
+                            </div>
                             <div class="admin-field">
                                 <label for="issue">What's the problem?</label>
                                 <textarea class="admin-input" id="issue" name="issue" rows="4" maxlength="5000" placeholder="e.g. Laptop won't start, blue screen on boot">{{$f.Issue}}</textarea>

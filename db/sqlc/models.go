@@ -28,6 +28,7 @@ type Booking struct {
 	AdminAlertSentAt string `json:"admin_alert_sent_at"`
 	GcalEventID      string `json:"gcal_event_id"`
 	GcalSyncedAt     string `json:"gcal_synced_at"`
+	Source           string `json:"source"`
 }
 
 type Customer struct {

@@ -38,7 +38,7 @@ type suburbGroup struct {
 }
 
 // lgaOrder controls the order of council groups on /areas (closest first).
-var lgaOrder = []string{"Manningham", "Whitehorse", "Maroondah", "Boroondara", "Nillumbik", "Yarra Ranges", "Knox", "Monash"}
+var lgaOrder = []string{"Manningham", "Whitehorse", "Maroondah", "Boroondara", "Nillumbik", "Banyule", "Yarra Ranges", "Knox", "Monash"}
 
 var (
 	suburbs       []string // display names, in catalogue order (used by templates + JSON-LD areaServed)
@@ -57,9 +57,8 @@ func init() {
 // URLs don't become 404s. Keep until Search Console shows them dropped.
 var retiredSuburbs = map[string]bool{
 	"camberwell": true, "canterbury": true, "chirnside-park": true,
-	"eaglemont": true, "eltham": true, "eltham-north": true,
-	"greensborough": true, "heidelberg": true, "knoxfield": true,
-	"lilydale": true, "lower-plenty": true, "montmorency": true,
+	"eltham": true, "eltham-north": true, "greensborough": true,
+	"knoxfield": true, "lilydale": true, "lower-plenty": true,
 	"rosanna": true, "viewbank": true, "watsonia": true, "wheelers-hill": true,
 }
 
@@ -285,6 +284,23 @@ var suburbList = []Suburb{
 	{Name: "North Warrandyte", Slug: "north-warrandyte", Postcode: "3113", LGA: "Nillumbik", DriveMin: 15,
 		Blurb:    "Across the bridge on the Nillumbik side, where the blocks are bush and the internet is often the weakest link. North Warrandyte visits lean heavily towards connectivity — mobile broadband, Starlink, mesh Wi-Fi out to studios and sheds — plus backups and data recovery for people with years of photos on a single ageing drive.",
 		MetaDesc: "Internet, Wi-Fi and computer help in North Warrandyte 3113 — mobile broadband, Starlink, mesh Wi-Fi, backups and data recovery. Local; no fix, no fee."},
+
+	// ── Banyule ──
+	// Kept for the organic demand Search Console shows on these three ("computer
+	// repairs heidelberg/eaglemont", /areas/montmorency). Outside the Google Ads
+	// radius on purpose — the pages earn impressions, the ads don't chase them.
+	{Name: "Montmorency", Slug: "montmorency", Postcode: "3094", LGA: "Banyule", DriveMin: 22,
+		Blurb:    "A village feel around Were Street and the station, with leafy streets running down to the Plenty River. Montmorency's a friendly, settled place with a good mix of young families and long-time residents, and the calls reflect that — kids' devices and Wi-Fi one day, a patient email or scam-call sit-down the next.",
+		MetaDesc: "Computer help at your place in Montmorency 3094 — Wi-Fi, family devices, email, scam clean-ups, printers and repairs. Friendly, local, no fix no fee.",
+		Photo:    &Photo{Artist: "Philip Mallis", Licence: "CC BY-SA 2.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/2.0", Source: "https://commons.wikimedia.org/wiki/File:Plenty_River,_Montmorency.jpg"}},
+	{Name: "Heidelberg", Slug: "heidelberg", Postcode: "3084", LGA: "Banyule", DriveMin: 22,
+		Blurb:    "Heidelberg's got the hospital precinct, Burgundy Street's shops and cafes, and a lot of homes and units in between. I visit households, home offices and small businesses here — email that won't sync, a laptop that's on its last legs, a Wi-Fi network that drops out at the worst moment.",
+		MetaDesc: "Computer help at your home or business in Heidelberg 3084 — email, laptops, Wi-Fi drop-outs, printers, backups and repairs. Local, no fix no fee.",
+		Photo:    &Photo{Artist: "Bananabones", Licence: "CC BY-SA 4.0", LicenceURL: "https://creativecommons.org/licenses/by-sa/4.0", Source: "https://commons.wikimedia.org/wiki/File:Heidelberg_Station_View.jpg"}},
+	{Name: "Eaglemont", Slug: "eaglemont", Postcode: "3084", LGA: "Banyule", DriveMin: 22,
+		Blurb:    "The hilltop village and its heritage streets. Eaglemont homes are beautiful and, like a lot of older houses, not built with Wi-Fi in mind. I'll get the signal to every room, help with email, banking and staying safe online, and take my time explaining things — no rush and no jargon.",
+		MetaDesc: "Patient at-home computer help in Eaglemont 3084 — Wi-Fi in older homes, email, safe online banking, scam protection and one-on-one help. No fix, no fee.",
+		Photo:    &Photo{Artist: "Ottre", Licence: "Public domain", LicenceURL: "", Source: "https://commons.wikimedia.org/wiki/File:House_at_Eaglemont1.jpg"}},
 
 	// ── Knox ──
 	{Name: "Bayswater", Slug: "bayswater", Postcode: "3153", LGA: "Knox", DriveMin: 20,

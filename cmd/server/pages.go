@@ -425,6 +425,7 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 		Issue:         f.Issue,
 		PreferredTime: f.PreferredTime,
 		IP:            ip,
+		Source:        bookingSource(r),
 	}
 	id, err := db.InsertBooking(b)
 	if err != nil {

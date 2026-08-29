@@ -13,6 +13,7 @@
             <h1 class="section-title">{{$b.Name}} {{template "badge" $b.Status}}</h1>
             <p class="page-header-intro">
                 {{if $d.Row.ServiceTitle}}{{$d.Row.ServiceTitle}} · {{end}}{{if $b.Suburb}}{{$b.Suburb}} · {{end}}received {{$b.CreatedAt.Format "2 Jan 2006"}}
+                {{if $b.Source}} · via {{srcLabel $b.Source}}{{end}}
                 {{if $d.Parent}} · follow-up to <a href="/admin/bookings/{{$d.Parent.ID}}">#{{$d.Parent.ID}}</a>{{end}}
             </p>
             {{template "admin-nav" .Path}}

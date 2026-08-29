@@ -89,7 +89,7 @@ func main() {
 	startScheduler()
 
 	log.Printf("listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, canonicalHost(mux)); err != nil {
+	if err := http.ListenAndServe(":"+port, canonicalHost(trackSource(mux))); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -216,6 +216,7 @@ func loadTemplates(dir string) (map[string]*template.Template, error) {
 		"add":       func(a, b int) int { return a + b },
 		"mul":       func(a, b int) int { return a * b },
 		"money":     fmtCents,
+		"srcLabel":  db.SourceLabel,
 		"dict":      dict,
 		"seq":       seq,
 		"crumbs":    crumbs,
