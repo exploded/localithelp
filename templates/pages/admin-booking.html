@@ -226,6 +226,9 @@
             </form>
         </details>
         {{end}}
+        {{if not $b.StartAt.IsZero}}
+        <p class="admin-muted">The visit stays scheduled, on the calendar and reminded whatever the status — only Cancel or Spam removes it.</p>
+        {{end}}
     </div>
 {{end}}
 

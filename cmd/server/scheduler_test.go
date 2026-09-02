@@ -48,9 +48,13 @@ func TestScheduler(t *testing.T) {
 	soon := mk("Dan", "dan@example.test", now.Add(50*time.Minute), db.BookingBooked)
 	later := mk("Eve", "eve@example.test", now.Add(90*time.Minute), db.BookingBooked)
 	fresh := mk("Fay", "fay@example.test", time.Time{}, "") // status new → digest only
+	// A scheduled visit stepped back to contacted still gets its reminder and
+	// heads-up — only cancelled/spam switch them off.
+	conRemind := mk("Hal", "hal@example.test", tomorrow.Add(-4*time.Hour), db.BookingContacted) // tomorrow 13:00
+	conSoon := mk("Ivy", "ivy@example.test", now.Add(55*time.Minute), db.BookingContacted)
 
 	s := runScheduledJobs(now)
-	if s.Reminders != 1 || s.Alerts != 1 || !s.Digest { // first tick after 07:30 also claims the day's digest
+	if s.Reminders != 2 || s.Alerts != 2 || !s.Digest { // first tick after 07:30 also claims the day's digest
 		t.Fatalf("first tick: %+v", s)
 	}
 	stamped := func(id int64) (bool, bool) {
@@ -63,6 +67,9 @@ func TestScheduler(t *testing.T) {
 	if r, _ := stamped(remind); !r {
 		t.Error("tomorrow's booking should be stamped as reminded")
 	}
+	if r, _ := stamped(conRemind); !r {
+		t.Error("tomorrow's contacted booking should be stamped as reminded")
+	}
 	for _, id := range []int64{noEmail, cancelled, soon, later} {
 		if r, _ := stamped(id); r {
 			t.Errorf("booking %d should not be reminded", id)
@@ -70,6 +77,9 @@ func TestScheduler(t *testing.T) {
 	}
 	if _, a := stamped(soon); !a {
 		t.Error("booking in 50 min should be alerted")
+	}
+	if _, a := stamped(conSoon); !a {
+		t.Error("contacted booking in 55 min should be alerted")
 	}
 	if _, a := stamped(later); a {
 		t.Error("booking in 90 min should not be alerted yet")

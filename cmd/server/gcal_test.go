@@ -207,6 +207,16 @@ func TestSyncBookingLifecycle(t *testing.T) {
 		t.Errorf("patched start = %q, want the new time", got)
 	}
 
+	// Stepping the status back to contacted keeps the visit on the calendar —
+	// the schedule decides, not the status; only cancel/spam remove it.
+	if err := db.UpdateBookingStatus(id, db.BookingContacted); err != nil {
+		t.Fatal(err)
+	}
+	sync()
+	if f.deletes != 0 || eventID() != first {
+		t.Errorf("after contacted: deletes=%d event=%q, want the event kept", f.deletes, eventID())
+	}
+
 	// Cancelling deletes the event and forgets the id.
 	if err := db.UpdateBookingStatus(id, db.BookingCancelled); err != nil {
 		t.Fatal(err)
@@ -344,6 +354,22 @@ func TestSyncCalendarReconcile(t *testing.T) {
 	}
 	if f.inserts != 3 {
 		t.Errorf("inserts = %d, want the missing event recreated", f.inserts)
+	}
+
+	// A scheduled visit flipped to contacted still belongs in Google. A row
+	// that lost its event (the old rule deleted it on that status change)
+	// heals on the next pass without being re-booked.
+	if err := db.UpdateBookingStatus(2, db.BookingContacted); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SetBookingCalendarEvent(2, ""); err != nil {
+		t.Fatal(err)
+	}
+	if n := syncCalendar(now); n != 1 {
+		t.Errorf("contacted visit with no event synced %d, want 1 (self-heal)", n)
+	}
+	if f.inserts != 4 {
+		t.Errorf("inserts = %d, want the contacted visit's event recreated", f.inserts)
 	}
 }
 

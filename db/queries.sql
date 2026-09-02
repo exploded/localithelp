@@ -153,19 +153,21 @@ UPDATE bookings SET customer_id = ? WHERE id = ?;
 UPDATE bookings SET address = ?, suburb = ?, updated_at = datetime('now') WHERE id = ?;
 
 -- name: ListBookingsForReminder :many
--- Booked visits in [from, to) whose customer has an email and no reminder yet.
+-- Scheduled visits in [from, to) whose customer has an email and no reminder
+-- yet. Any status short of cancelled/spam counts - same rule as the calendar.
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
        customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings
-WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND email <> '' AND reminder_sent_at = ''
+WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam') AND email <> '' AND reminder_sent_at = ''
 ORDER BY start_at;
 
 -- name: ListBookingsForAdminAlert :many
--- Booked visits in [from, to) the admin has not been alerted about yet.
+-- Scheduled visits in [from, to) the admin has not been alerted about yet.
+-- Any status short of cancelled/spam counts - same rule as the calendar.
 SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time, status, ip, created_at,
        customer_id, start_at, duration_min, admin_notes, parent_booking_id, updated_at, address, reminder_sent_at, admin_alert_sent_at, gcal_event_id, gcal_synced_at, source
 FROM bookings
-WHERE start_at >= ? AND start_at < ? AND status = 'booked' AND admin_alert_sent_at = ''
+WHERE start_at >= ? AND start_at < ? AND status NOT IN ('cancelled', 'spam') AND admin_alert_sent_at = ''
 ORDER BY start_at;
 
 -- name: MarkBookingReminderSent :exec
@@ -182,7 +184,9 @@ UPDATE bookings SET admin_alert_sent_at = datetime('now') WHERE id = ?;
 -- window are still deleted). A row qualifies when either:
 --   * it changed since the last successful push, or
 --   * its stored state disagrees with what Google should hold - a visit with no
---     event, or an event on a booking that should no longer have one.
+--     event, or an event on a booking that should no longer have one. The rule
+--     (mirroring wantsEvent) is: any scheduled visit belongs in Google unless
+--     it is cancelled or spam.
 -- The second test matters because updated_at and gcal_synced_at only have
 -- one-second resolution: an edit landing in the same second as a push would
 -- otherwise look clean. It also retries anything Google rejected last time.
@@ -191,8 +195,8 @@ SELECT id, name, phone, email, suburb, service_slug, mode, issue, preferred_time
 FROM bookings
 WHERE (
         gcal_synced_at = '' OR gcal_synced_at < updated_at
-        OR (gcal_event_id =  '' AND start_at <> '' AND status IN ('booked', 'done', 'invoiced', 'paid'))
-        OR (gcal_event_id <> '' AND (start_at =  '' OR status NOT IN ('booked', 'done', 'invoiced', 'paid')))
+        OR (gcal_event_id =  '' AND start_at <> '' AND status NOT IN ('cancelled', 'spam'))
+        OR (gcal_event_id <> '' AND (start_at =  '' OR status IN ('cancelled', 'spam')))
       )
   AND ((start_at >= ? AND start_at < ?) OR gcal_event_id <> '')
 ORDER BY start_at, id

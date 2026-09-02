@@ -10,7 +10,7 @@ import (
 // Booking statuses.
 const (
 	BookingNew       = "new"       // enquiry received
-	BookingContacted = "contacted" // spoken to the customer, not yet scheduled
+	BookingContacted = "contacted" // spoken to the customer
 	BookingBooked    = "booked"    // start_at set, confirmation sent
 	BookingDone      = "done"      // visit complete, not yet invoiced
 	BookingInvoiced  = "invoiced"  // invoice sent

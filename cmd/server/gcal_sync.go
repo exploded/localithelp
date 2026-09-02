@@ -27,17 +27,15 @@ const (
 // event can still be matched if gcal_event_id is ever lost.
 const bookingIDProp = "localithelp_booking_id"
 
-// wantsEvent reports whether a booking should exist in Google Calendar: a real,
-// scheduled visit that hasn't been cancelled or marked spam.
+// wantsEvent reports whether a booking should exist in Google Calendar: any
+// scheduled visit that hasn't been cancelled or marked spam. The status is
+// otherwise irrelevant — the schedule decides, the same rule the dashboard's
+// "This week" widget and the admin calendar use (ListBookingsBetween).
 func wantsEvent(b *db.Booking) bool {
 	if b.StartAt.IsZero() {
 		return false
 	}
-	switch b.Status {
-	case db.BookingBooked, db.BookingDone, db.BookingInvoiced, db.BookingPaid:
-		return true
-	}
-	return false
+	return b.Status != db.BookingCancelled && b.Status != db.BookingSpam
 }
 
 // eventForBooking maps a booking onto the Google Calendar event fields the app
