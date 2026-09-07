@@ -133,6 +133,10 @@ FROM bookings WHERE customer_id = 0 AND status <> 'spam' ORDER BY id;
 -- name: CountBookingsByStatus :many
 SELECT status, COUNT(*) AS n FROM bookings GROUP BY status;
 
+-- name: CountBookingsBySource :many
+-- Spam never came from anywhere worth counting.
+SELECT source, COUNT(*) AS n FROM bookings WHERE status <> 'spam' GROUP BY source;
+
 -- name: UpdateBookingStatus :exec
 UPDATE bookings SET status = ?, updated_at = datetime('now') WHERE id = ?;
 
@@ -340,7 +344,29 @@ SELECT id, number, booking_id, customer_id, status, issued_at, due_at, paid_at, 
 FROM invoices WHERE status = 'sent' AND due_at <> '' AND due_at < ? ORDER BY due_at;
 
 -- name: SumOutstandingCents :one
-SELECT COALESCE(SUM(total_cents), 0) FROM invoices WHERE status = 'sent';
+-- The CAST is load-bearing: COALESCE(SUM(...)) on its own types as interface{}
+-- and a bare SUM(...) as sql.NullFloat64. Neither is any use for cents.
+SELECT CAST(COALESCE(SUM(total_cents), 0) AS INTEGER) AS cents
+FROM invoices WHERE status = 'sent';
+
+-- name: SumPaidCents :one
+-- Every paid dollar, including invoices raised without a booking. The
+-- denominator for SumPaidBySource, which can only see invoices that have one.
+SELECT CAST(COALESCE(SUM(total_cents), 0) AS INTEGER) AS cents
+FROM invoices WHERE status = 'paid';
+
+-- name: SumPaidBySource :many
+-- Paid revenue grouped by where the booking came from. Counting distinct
+-- bookings, not invoices: a job split across a deposit and a final invoice is
+-- still one job.
+SELECT b.source,
+       COUNT(DISTINCT b.id) AS jobs,
+       CAST(COALESCE(SUM(i.total_cents), 0) AS INTEGER) AS cents
+FROM invoices i
+JOIN bookings b ON b.id = i.booking_id
+WHERE i.status = 'paid'
+GROUP BY b.source
+ORDER BY cents DESC;
 
 -- name: UpdateInvoiceDraft :exec
 UPDATE invoices SET due_at = ?, notes = ?, payment_link = ?, total_cents = ?, updated_at = datetime('now')
@@ -380,3 +406,24 @@ FROM invoice_items WHERE invoice_id = ? ORDER BY sort_order, id;
 
 -- name: CountBookingsWithCalendarEvent :one
 SELECT COUNT(*) AS n FROM bookings WHERE gcal_event_id <> '';
+
+-- Ad clicks
+
+-- name: InsertAdClick :exec
+INSERT INTO ad_clicks (token, source, gclid, keyword, campaign, landing)
+VALUES (?, ?, ?, ?, ?, ?);
+
+-- name: LinkAdClick :execrows
+-- Claim-once: a click already spent on an earlier booking is never re-linked.
+UPDATE ad_clicks SET booking_id = ? WHERE token = ? AND booking_id = 0;
+
+-- name: GetAdClickByToken :one
+SELECT id, token, source, gclid, keyword, campaign, landing, booking_id, created_at
+FROM ad_clicks WHERE token = ?;
+
+-- name: GetAdClickByBooking :one
+SELECT id, token, source, gclid, keyword, campaign, landing, booking_id, created_at
+FROM ad_clicks WHERE booking_id = ? ORDER BY id LIMIT 1;
+
+-- name: CountAdClicksSince :one
+SELECT COUNT(*) AS n FROM ad_clicks WHERE created_at >= ?;

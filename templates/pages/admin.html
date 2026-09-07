@@ -35,6 +35,33 @@
                 </a>
             </div>
 
+            {{if .PageData.Sources}}
+            <h2 class="admin-heading">Where work comes from</h2>
+            <div class="admin-quotes-table-wrap">
+                <table class="admin-quotes-table">
+                    <thead><tr><th>Source</th><th>Bookings</th><th>Paid jobs</th><th>Paid</th></tr></thead>
+                    <tbody>
+                        {{range .PageData.Sources}}
+                        <tr>
+                            <td><a href="/admin/bookings?source={{.Value}}">{{.Label}}</a></td>
+                            <td>{{.N}}</td>
+                            <td>{{if .Jobs}}{{.Jobs}}{{else}}<span class="admin-muted">–</span>{{end}}</td>
+                            <td>{{if .Cents}}{{money .Cents}}{{else}}<span class="admin-muted">–</span>{{end}}</td>
+                        </tr>
+                        {{end}}
+                        {{if .PageData.Unattributed}}
+                        <tr class="admin-muted">
+                            <td>Unattributed <span class="admin-muted">(invoices with no booking)</span></td>
+                            <td>–</td>
+                            <td>–</td>
+                            <td>{{money .PageData.Unattributed}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{end}}
+
             <h2 class="admin-heading">This week <a class="admin-heading-link" href="/admin/calendar">Calendar &#8594;</a></h2>
             <p class="admin-note admin-note--small">Google Calendar sync: {{if .PageData.CalendarOn}}connected{{else}}not connected{{end}} &middot; <a href="/admin/calendar/settings">settings</a></p>
             {{if .PageData.Week}}

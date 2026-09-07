@@ -66,6 +66,7 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	mux.HandleFunc("POST /admin/customers/{id}", requireAdmin(handleAdminCustomerSave))
 	mux.HandleFunc("POST /admin/customers/{id}/bookings", requireAdmin(handleAdminCustomerBooking))
 
+	var extraCookies []*http.Cookie
 	do := func(method, path string, form url.Values, admin bool) *httptest.ResponseRecorder {
 		t.Helper()
 		var req *http.Request
@@ -82,6 +83,9 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 			req = httptest.NewRequest(method, path, nil)
 		}
 		req.RemoteAddr = "203.0.113.5:1234"
+		for _, c := range extraCookies {
+			req.AddCookie(c)
+		}
 		if admin {
 			req.AddCookie(&http.Cookie{Name: "user_session", Value: sessTok})
 		}
@@ -121,6 +125,13 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	if rr.Code != http.StatusUnprocessableEntity || !strings.Contains(rr.Body.String(), "pick the address") {
 		t.Fatalf("enquiry without picked address should 422: %d", rr.Code)
 	}
+	// This one arrives on an ad first, so the booking should end up carrying
+	// both the source and the click behind it.
+	landing := httptest.NewRecorder()
+	trackSource(mux).ServeHTTP(landing, httptest.NewRequest("GET",
+		"/?gclid=flow123&utm_medium=cpc&utm_campaign=42&utm_term=outlook+password+help", nil))
+	extraCookies = landing.Result().Cookies()
+
 	rr = do("POST", "/book", url.Values{
 		"name": {"Zoë O'Brien"}, "phone": {"0400 000 001"}, "email": {"Zoe@Example.test"},
 		"address": {"12 Sample St, Donvale VIC 3111"}, "addr_street": {"12 Sample St"},
@@ -137,6 +148,22 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	}
 	b := bs[0]
 	bid := b.ID
+	if b.Source != db.SourceGoogleAds {
+		t.Fatalf("enquiry source = %q, want %q", b.Source, db.SourceGoogleAds)
+	}
+	click, err := db.GetAdClickByBooking(bid)
+	if err != nil || click == nil {
+		t.Fatalf("ad click not linked to booking #%d: %+v, %v", bid, click, err)
+	}
+	if click.Keyword != "outlook password help" || click.Campaign != "42" || click.GCLID != "flow123" {
+		t.Fatalf("ad click = %+v", click)
+	}
+	// The click is spent: the cookie must not follow the visitor into a second
+	// booking.
+	if c := cookieByName(rr.Result().Cookies(), clickCookie); c == nil || c.MaxAge >= 0 {
+		t.Errorf("booking left the click cookie = %+v, want it expired", c)
+	}
+	extraCookies = nil
 	if b.Address != "12 Sample St, Donvale VIC 3111" || b.Suburb != "Donvale" {
 		t.Fatalf("enquiry address not stored: %q / %q", b.Address, b.Suburb)
 	}

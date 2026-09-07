@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -569,28 +570,92 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("admin: week bookings: %v", err)
 	}
+	sources, unattributed := sourceRows()
 	render(w, r, "admin", adminDashData{
-		Quotes:      quotes,
-		NewCount:    counts[db.BookingNew],
-		BookedCount: counts[db.BookingBooked],
-		DoneCount:   counts[db.BookingDone],
-		SentCount:   counts[db.BookingInvoiced],
-		Outstanding: outstanding,
-		Week:        bookingRows(week),
-		CalendarOn:  calendarSyncConnected(),
+		Quotes:       quotes,
+		NewCount:     counts[db.BookingNew],
+		BookedCount:  counts[db.BookingBooked],
+		DoneCount:    counts[db.BookingDone],
+		SentCount:    counts[db.BookingInvoiced],
+		Outstanding:  outstanding,
+		Week:         bookingRows(week),
+		CalendarOn:   calendarSyncConnected(),
+		Sources:      sources,
+		Unattributed: unattributed,
 	})
 }
 
 // adminDashData is the /admin dashboard view model.
 type adminDashData struct {
-	Quotes      []db.Quote
-	NewCount    int
-	BookedCount int
-	DoneCount   int
-	SentCount   int
-	Outstanding int64 // cents, invoices sent but unpaid
-	Week        []bookingRow
-	CalendarOn  bool // Google Calendar sync is connected
+	Quotes       []db.Quote
+	NewCount     int
+	BookedCount  int
+	DoneCount    int
+	SentCount    int
+	Outstanding  int64 // cents, invoices sent but unpaid
+	Week         []bookingRow
+	CalendarOn   bool // Google Calendar sync is connected
+	Sources      []sourceRow
+	Unattributed int64 // cents paid on invoices with no booking behind them
+}
+
+// sourceRow is one line of "where the work comes from": every source that has
+// ever sent a booking, with what it has actually been paid.
+type sourceRow struct {
+	Value string
+	Label string
+	N     int   // bookings, spam excluded
+	Jobs  int   // bookings that have a paid invoice
+	Cents int64 // paid
+}
+
+// sourceRows joins booking counts to paid revenue. Counting and earning are
+// separate questions - a source can have plenty of enquiries and no money, and
+// that gap is the thing worth seeing.
+func sourceRows() ([]sourceRow, int64) {
+	counts, err := db.CountBookingsBySource()
+	if err != nil {
+		log.Printf("admin: count bookings by source: %v", err)
+		return nil, 0
+	}
+	paid, err := db.SumPaidBySource()
+	if err != nil {
+		log.Printf("admin: paid by source: %v", err)
+	}
+	rows := make([]sourceRow, 0, len(counts))
+	byValue := map[string]int{}
+	for v, n := range counts {
+		byValue[v] = len(rows)
+		rows = append(rows, sourceRow{Value: sourceParam(v), Label: db.SourceLabel(v), N: n})
+	}
+	var attributed int64
+	for _, p := range paid {
+		attributed += p.Cents
+		i, ok := byValue[p.Source]
+		if !ok { // every booking of this source is spam, but it still earned
+			byValue[p.Source] = len(rows)
+			rows = append(rows, sourceRow{Value: sourceParam(p.Source), Label: db.SourceLabel(p.Source)})
+			i = len(rows) - 1
+		}
+		rows[i].Jobs, rows[i].Cents = p.Jobs, p.Cents
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].Cents != rows[j].Cents {
+			return rows[i].Cents > rows[j].Cents
+		}
+		if rows[i].N != rows[j].N {
+			return rows[i].N > rows[j].N
+		}
+		return rows[i].Label < rows[j].Label
+	})
+
+	// Anything paid that no booking can explain, so the block adds up.
+	total, err := db.SumPaidCents()
+	if err != nil {
+		log.Printf("admin: paid total: %v", err)
+		return rows, 0
+	}
+	return rows, total - attributed
 }
 
 // adminOptionsData is the /admin/options view model: the quote option groups

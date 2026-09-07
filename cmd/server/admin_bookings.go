@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -67,9 +68,51 @@ func readFlash(r *http.Request) flash {
 type adminBookingsData struct {
 	Flash    flash
 	Status   string // active filter ("" = all except spam)
+	Source   string // active source filter ("" = every source)
 	Statuses []string
 	Counts   map[string]int
+	Sources  []sourceCount // sources present in the rows on show, biggest first
 	Rows     []bookingRow
+}
+
+// sourceCount is one "Google Ads 3" chip above the bookings table.
+type sourceCount struct {
+	Value string
+	Label string
+	N     int
+}
+
+// sourceParam is the ?source= value for a stored source. Pre-migration rows
+// hold "", which would read as "no filter" in a URL, so they travel as
+// "unknown" and are mapped back on the way in.
+const unknownSource = "unknown"
+
+func sourceParam(v string) string {
+	if v == "" {
+		return unknownSource
+	}
+	return v
+}
+
+// countSources tallies the bookings actually listed, rather than asking the
+// database: the chips then always add up to the rows underneath them, whatever
+// the status filter is hiding.
+func countSources(bs []db.Booking) []sourceCount {
+	n := map[string]int{}
+	for _, b := range bs {
+		n[b.Source]++
+	}
+	out := make([]sourceCount, 0, len(n))
+	for v, c := range n {
+		out = append(out, sourceCount{Value: sourceParam(v), Label: db.SourceLabel(v), N: c})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].N != out[j].N {
+			return out[i].N > out[j].N
+		}
+		return out[i].Label < out[j].Label
+	})
+	return out
 }
 
 func handleAdminBookings(w http.ResponseWriter, r *http.Request) {
@@ -98,8 +141,28 @@ func handleAdminBookings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	counts, _ := db.CountBookingsByStatus()
+
+	// Chips are counted before the source filter runs, so they still show what
+	// else is there once one is picked. Six bookings don't need a query of
+	// their own to filter.
+	sources := countSources(bs)
+	source := r.URL.Query().Get("source")
+	if source != "" {
+		want := source
+		if want == unknownSource {
+			want = ""
+		}
+		kept := bs[:0]
+		for _, b := range bs {
+			if b.Source == want {
+				kept = append(kept, b)
+			}
+		}
+		bs = kept
+	}
 	render(w, r, "admin-bookings", adminBookingsData{
-		Flash: readFlash(r), Status: status, Statuses: db.BookingStatuses, Counts: counts, Rows: bookingRows(bs),
+		Flash: readFlash(r), Status: status, Source: source, Statuses: db.BookingStatuses,
+		Counts: counts, Sources: sources, Rows: bookingRows(bs),
 	})
 }
 
@@ -116,6 +179,7 @@ type adminBookingData struct {
 	Statuses     []string
 	CanInvoice   bool
 	FollowupText string
+	Click        *db.AdClick // the ad click this booking came from, if any
 }
 
 func loadBooking(w http.ResponseWriter, r *http.Request) *db.Booking {
@@ -170,6 +234,7 @@ func buildBookingData(r *http.Request, b *db.Booking) adminBookingData {
 	kids, _ := db.ListChildBookings(b.ID)
 	d.Children = bookingRows(kids)
 	d.CanInvoice = b.CustomerID != 0 && b.Status != db.BookingSpam && b.Status != db.BookingCancelled
+	d.Click, _ = db.GetAdClickByBooking(b.ID)
 	return d
 }
 

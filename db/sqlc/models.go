@@ -4,6 +4,18 @@
 
 package sqlc
 
+type AdClick struct {
+	ID        int64  `json:"id"`
+	Token     string `json:"token"`
+	Source    string `json:"source"`
+	Gclid     string `json:"gclid"`
+	Keyword   string `json:"keyword"`
+	Campaign  string `json:"campaign"`
+	Landing   string `json:"landing"`
+	BookingID int64  `json:"booking_id"`
+	CreatedAt string `json:"created_at"`
+}
+
 type Booking struct {
 	ID               int64  `json:"id"`
 	Name             string `json:"name"`

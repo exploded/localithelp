@@ -16,6 +16,11 @@
                 {{if $b.Source}} · via {{srcLabel $b.Source}}{{end}}
                 {{if $d.Parent}} · follow-up to <a href="/admin/bookings/{{$d.Parent.ID}}">#{{$d.Parent.ID}}</a>{{end}}
             </p>
+            {{with $d.Click}}
+            <p class="admin-muted admin-adclick">
+                Ad click {{.CreatedAt.Format "2 Jan"}}{{if .Keyword}} · keyword “{{.Keyword}}”{{end}}{{if .Campaign}} · campaign {{.Campaign}}{{end}}{{if .Landing}} · landed on {{.Landing}}{{end}}
+            </p>
+            {{end}}
             {{template "admin-nav" .Path}}
         </div>
     </div>

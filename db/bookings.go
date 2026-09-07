@@ -162,6 +162,20 @@ func CountBookingsByStatus() (map[string]int, error) {
 	return m, nil
 }
 
+// CountBookingsBySource returns source → count, spam left out. Pre-migration
+// rows come back under "", which SourceLabel renders as "Unknown".
+func CountBookingsBySource() (map[string]int, error) {
+	rows, err := q.CountBookingsBySource(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]int, len(rows))
+	for _, r := range rows {
+		m[r.Source] = int(r.N)
+	}
+	return m, nil
+}
+
 func UpdateBookingStatus(id int64, status string) error {
 	return q.UpdateBookingStatus(context.Background(), sqlc.UpdateBookingStatusParams{Status: status, ID: id})
 }

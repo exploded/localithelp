@@ -433,6 +433,7 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Sorry — something went wrong saving your request. Please call or email instead.", http.StatusInternalServerError)
 		return
 	}
+	linkBookingClick(w, r, id)
 	if suspicious {
 		if err := db.UpdateBookingStatus(id, "spam"); err != nil {
 			log.Printf("booking: mark suspicious #%d: %v", id, err)

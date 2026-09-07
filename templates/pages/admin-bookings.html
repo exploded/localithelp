@@ -27,6 +27,15 @@
                 <a href="/admin/bookings/new" class="admin-filters-new">&#43; New booking</a>
             </div>
 
+            {{if $d.Sources}}
+            <div class="admin-filters">
+                <a href="/admin/bookings{{if $d.Status}}?status={{$d.Status}}{{end}}"{{if eq $d.Source ""}} class="active"{{end}}>All sources</a>
+                {{range $d.Sources}}
+                <a href="/admin/bookings?{{if $d.Status}}status={{$d.Status}}&amp;{{end}}source={{.Value}}"{{if eq $d.Source .Value}} class="active"{{end}}>{{.Label}} <span class="admin-filter-n">{{.N}}</span></a>
+                {{end}}
+            </div>
+            {{end}}
+
             {{if $d.Rows}}
             <div class="admin-quotes-table-wrap">
                 <table class="admin-quotes-table">
@@ -41,6 +50,7 @@
                             <th>Scheduled</th>
                             <th>Issue</th>
                             <th>Status</th>
+                            <th>From</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -55,6 +65,7 @@
                             <td>{{if .When}}{{.When}}{{else}}<span class="admin-muted">{{.PreferredTime}}</span>{{end}}</td>
                             <td class="td-wrap">{{.Preview}}</td>
                             <td>{{template "badge" .Status}}</td>
+                            <td class="admin-muted">{{srcLabel .Source}}</td>
                         </tr>
                         {{end}}
                     </tbody>

@@ -18,6 +18,50 @@ func (q *Queries) ClearBookingCalendarEventIDs(ctx context.Context) error {
 	return err
 }
 
+const countAdClicksSince = `-- name: CountAdClicksSince :one
+SELECT COUNT(*) AS n FROM ad_clicks WHERE created_at >= ?
+`
+
+func (q *Queries) CountAdClicksSince(ctx context.Context, createdAt string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAdClicksSince, createdAt)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
+}
+
+const countBookingsBySource = `-- name: CountBookingsBySource :many
+SELECT source, COUNT(*) AS n FROM bookings WHERE status <> 'spam' GROUP BY source
+`
+
+type CountBookingsBySourceRow struct {
+	Source string `json:"source"`
+	N      int64  `json:"n"`
+}
+
+// Spam never came from anywhere worth counting.
+func (q *Queries) CountBookingsBySource(ctx context.Context) ([]CountBookingsBySourceRow, error) {
+	rows, err := q.db.QueryContext(ctx, countBookingsBySource)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountBookingsBySourceRow
+	for rows.Next() {
+		var i CountBookingsBySourceRow
+		if err := rows.Scan(&i.Source, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countBookingsByStatus = `-- name: CountBookingsByStatus :many
 SELECT status, COUNT(*) AS n FROM bookings GROUP BY status
 `
@@ -151,6 +195,50 @@ type DeleteSchedulerRunParams struct {
 func (q *Queries) DeleteSchedulerRun(ctx context.Context, arg DeleteSchedulerRunParams) error {
 	_, err := q.db.ExecContext(ctx, deleteSchedulerRun, arg.Job, arg.RanOn)
 	return err
+}
+
+const getAdClickByBooking = `-- name: GetAdClickByBooking :one
+SELECT id, token, source, gclid, keyword, campaign, landing, booking_id, created_at
+FROM ad_clicks WHERE booking_id = ? ORDER BY id LIMIT 1
+`
+
+func (q *Queries) GetAdClickByBooking(ctx context.Context, bookingID int64) (AdClick, error) {
+	row := q.db.QueryRowContext(ctx, getAdClickByBooking, bookingID)
+	var i AdClick
+	err := row.Scan(
+		&i.ID,
+		&i.Token,
+		&i.Source,
+		&i.Gclid,
+		&i.Keyword,
+		&i.Campaign,
+		&i.Landing,
+		&i.BookingID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getAdClickByToken = `-- name: GetAdClickByToken :one
+SELECT id, token, source, gclid, keyword, campaign, landing, booking_id, created_at
+FROM ad_clicks WHERE token = ?
+`
+
+func (q *Queries) GetAdClickByToken(ctx context.Context, token string) (AdClick, error) {
+	row := q.db.QueryRowContext(ctx, getAdClickByToken, token)
+	var i AdClick
+	err := row.Scan(
+		&i.ID,
+		&i.Token,
+		&i.Source,
+		&i.Gclid,
+		&i.Keyword,
+		&i.Campaign,
+		&i.Landing,
+		&i.BookingID,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getBooking = `-- name: GetBooking :one
@@ -458,6 +546,34 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 	return i, err
 }
 
+const insertAdClick = `-- name: InsertAdClick :exec
+
+INSERT INTO ad_clicks (token, source, gclid, keyword, campaign, landing)
+VALUES (?, ?, ?, ?, ?, ?)
+`
+
+type InsertAdClickParams struct {
+	Token    string `json:"token"`
+	Source   string `json:"source"`
+	Gclid    string `json:"gclid"`
+	Keyword  string `json:"keyword"`
+	Campaign string `json:"campaign"`
+	Landing  string `json:"landing"`
+}
+
+// Ad clicks
+func (q *Queries) InsertAdClick(ctx context.Context, arg InsertAdClickParams) error {
+	_, err := q.db.ExecContext(ctx, insertAdClick,
+		arg.Token,
+		arg.Source,
+		arg.Gclid,
+		arg.Keyword,
+		arg.Campaign,
+		arg.Landing,
+	)
+	return err
+}
+
 const insertBooking = `-- name: InsertBooking :one
 
 INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, source, admin_notes, updated_at)
@@ -728,6 +844,24 @@ type InsertSchedulerRunParams struct {
 // Scheduler
 func (q *Queries) InsertSchedulerRun(ctx context.Context, arg InsertSchedulerRunParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, insertSchedulerRun, arg.Job, arg.RanOn)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const linkAdClick = `-- name: LinkAdClick :execrows
+UPDATE ad_clicks SET booking_id = ? WHERE token = ? AND booking_id = 0
+`
+
+type LinkAdClickParams struct {
+	BookingID int64  `json:"booking_id"`
+	Token     string `json:"token"`
+}
+
+// Claim-once: a click already spent on an earlier booking is never re-linked.
+func (q *Queries) LinkAdClick(ctx context.Context, arg LinkAdClickParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, linkAdClick, arg.BookingID, arg.Token)
 	if err != nil {
 		return 0, err
 	}
@@ -2000,14 +2134,74 @@ func (q *Queries) SetGoogleCalendarSkips(ctx context.Context, skipCalendars stri
 }
 
 const sumOutstandingCents = `-- name: SumOutstandingCents :one
-SELECT COALESCE(SUM(total_cents), 0) FROM invoices WHERE status = 'sent'
+SELECT CAST(COALESCE(SUM(total_cents), 0) AS INTEGER) AS cents
+FROM invoices WHERE status = 'sent'
 `
 
-func (q *Queries) SumOutstandingCents(ctx context.Context) (interface{}, error) {
+// The CAST is load-bearing: COALESCE(SUM(...)) on its own types as interface{}
+// and a bare SUM(...) as sql.NullFloat64. Neither is any use for cents.
+func (q *Queries) SumOutstandingCents(ctx context.Context) (int64, error) {
 	row := q.db.QueryRowContext(ctx, sumOutstandingCents)
-	var coalesce interface{}
-	err := row.Scan(&coalesce)
-	return coalesce, err
+	var cents int64
+	err := row.Scan(&cents)
+	return cents, err
+}
+
+const sumPaidBySource = `-- name: SumPaidBySource :many
+SELECT b.source,
+       COUNT(DISTINCT b.id) AS jobs,
+       CAST(COALESCE(SUM(i.total_cents), 0) AS INTEGER) AS cents
+FROM invoices i
+JOIN bookings b ON b.id = i.booking_id
+WHERE i.status = 'paid'
+GROUP BY b.source
+ORDER BY cents DESC
+`
+
+type SumPaidBySourceRow struct {
+	Source string `json:"source"`
+	Jobs   int64  `json:"jobs"`
+	Cents  int64  `json:"cents"`
+}
+
+// Paid revenue grouped by where the booking came from. Counting distinct
+// bookings, not invoices: a job split across a deposit and a final invoice is
+// still one job.
+func (q *Queries) SumPaidBySource(ctx context.Context) ([]SumPaidBySourceRow, error) {
+	rows, err := q.db.QueryContext(ctx, sumPaidBySource)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumPaidBySourceRow
+	for rows.Next() {
+		var i SumPaidBySourceRow
+		if err := rows.Scan(&i.Source, &i.Jobs, &i.Cents); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sumPaidCents = `-- name: SumPaidCents :one
+SELECT CAST(COALESCE(SUM(total_cents), 0) AS INTEGER) AS cents
+FROM invoices WHERE status = 'paid'
+`
+
+// Every paid dollar, including invoices raised without a booking. The
+// denominator for SumPaidBySource, which can only see invoices that have one.
+func (q *Queries) SumPaidCents(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, sumPaidCents)
+	var cents int64
+	err := row.Scan(&cents)
+	return cents, err
 }
 
 const touchCustomerContact = `-- name: TouchCustomerContact :exec

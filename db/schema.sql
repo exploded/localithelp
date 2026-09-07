@@ -82,6 +82,23 @@ CREATE TABLE IF NOT EXISTS bookings (
 CREATE INDEX IF NOT EXISTS idx_bookings_start_at ON bookings(start_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_customer ON bookings(customer_id);
 
+-- Ad clicks: one row per paid click that lands on the site, so a booking can be
+-- traced back to the keyword that bought it. Rows still holding booking_id = 0
+-- are clicks that never booked - that's the denominator, not junk to prune.
+CREATE TABLE IF NOT EXISTS ad_clicks (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    token      TEXT    NOT NULL UNIQUE,     -- value of the lih_click cookie
+    source     TEXT    NOT NULL DEFAULT '', -- same vocabulary as bookings.source
+    gclid      TEXT    NOT NULL DEFAULT '', -- Google's auto-tagging click id
+    keyword    TEXT    NOT NULL DEFAULT '', -- utm_term, i.e. the Ads {keyword} that matched
+    campaign   TEXT    NOT NULL DEFAULT '', -- utm_campaign, i.e. {campaignid}
+    landing    TEXT    NOT NULL DEFAULT '', -- path only, no query string
+    booking_id INTEGER NOT NULL DEFAULT 0,  -- set when the click turns into a booking
+    created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ad_clicks_booking ON ad_clicks(booking_id);
+
 -- Customers: the people we do work for (no login). Linked from bookings and invoices.
 CREATE TABLE IF NOT EXISTS customers (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,

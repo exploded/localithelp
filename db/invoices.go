@@ -245,17 +245,35 @@ func ListOverdueInvoices(before time.Time) ([]Invoice, error) {
 }
 
 func SumOutstandingCents() (int64, error) {
-	v, err := q.SumOutstandingCents(context.Background())
+	return q.SumOutstandingCents(context.Background())
+}
+
+// SumPaidCents totals every paid invoice, whether or not it hangs off a
+// booking.
+func SumPaidCents() (int64, error) {
+	return q.SumPaidCents(context.Background())
+}
+
+// SourceRevenue is what one source has actually earned.
+type SourceRevenue struct {
+	Source string
+	Jobs   int
+	Cents  int64
+}
+
+// SumPaidBySource returns paid revenue per booking source, biggest first.
+// Invoices raised without a booking can't be attributed and are missing here -
+// compare the total against SumPaidCents to see how much that is.
+func SumPaidBySource() ([]SourceRevenue, error) {
+	rows, err := q.SumPaidBySource(context.Background())
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	switch n := v.(type) {
-	case int64:
-		return n, nil
-	case float64:
-		return int64(n), nil
+	out := make([]SourceRevenue, len(rows))
+	for i, r := range rows {
+		out[i] = SourceRevenue{Source: r.Source, Jobs: int(r.Jobs), Cents: r.Cents}
 	}
-	return 0, nil
+	return out, nil
 }
 
 // MarkInvoiceSent flips draft → sent, stamping issued/due dates. Returns false
