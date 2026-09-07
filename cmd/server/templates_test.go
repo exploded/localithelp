@@ -84,7 +84,7 @@ func TestTemplatesRender(t *testing.T) {
 			Week:   bookingRows([]db.Booking{booked}), NewCount: 2, Outstanding: 12345,
 			Sources: []sourceRow{{Value: db.SourceGoogleAds, Label: "Google Ads", N: 2, Jobs: 1, Cents: 22000},
 				{Value: unknownSource, Label: "Unknown", N: 1}},
-			Unattributed: 5000},
+			Unattributed: 5000, AdDays: 30, AdClicks: 41, AdBookings: 2},
 		"admin-bookings": adminBookingsData{Flash: flash{OK: "saved"}, Status: "new", Source: db.SourceGoogleAds, Statuses: db.BookingStatuses,
 			Counts:  map[string]int{"new": 2},
 			Sources: []sourceCount{{Value: db.SourceGoogleAds, Label: "Google Ads", N: 2}, {Value: unknownSource, Label: "Unknown", N: 1}},

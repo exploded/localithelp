@@ -216,6 +216,12 @@ func loadTemplates(dir string) (map[string]*template.Template, error) {
 		"safeHTML":  func(s string) template.HTML { return template.HTML(s) },
 		"hasPrefix": strings.HasPrefix,
 		"add":       func(a, b int) int { return a + b },
+		"div": func(a, b int) int { // integer ratio, guarded: "one in 21"
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
 		"mul":       func(a, b int) int { return a * b },
 		"money":     fmtCents,
 		"srcLabel":  db.SourceLabel,
@@ -571,6 +577,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 		log.Printf("admin: week bookings: %v", err)
 	}
 	sources, unattributed := sourceRows()
+	clicks, adBookings := adPerformance()
 	render(w, r, "admin", adminDashData{
 		Quotes:       quotes,
 		NewCount:     counts[db.BookingNew],
@@ -582,6 +589,9 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 		CalendarOn:   calendarSyncConnected(),
 		Sources:      sources,
 		Unattributed: unattributed,
+		AdDays:       adWindowDays,
+		AdClicks:     clicks,
+		AdBookings:   adBookings,
 	})
 }
 
@@ -597,6 +607,30 @@ type adminDashData struct {
 	CalendarOn   bool // Google Calendar sync is connected
 	Sources      []sourceRow
 	Unattributed int64 // cents paid on invoices with no booking behind them
+	AdDays       int   // window the two ad numbers below cover
+	AdClicks     int   // paid clicks that landed in that window
+	AdBookings   int   // bookings they produced
+}
+
+// adWindowDays is the stretch the dashboard reads clicks over. A month is long
+// enough to mean something at a handful of jobs a week, and short enough that
+// last season's spending doesn't flatter this one's.
+const adWindowDays = 30
+
+// adPerformance counts paid clicks and the bookings they turned into, both over
+// the same window - the ratio is what the ad spend actually buys.
+func adPerformance() (clicks, bookings int) {
+	since := time.Now().UTC().AddDate(0, 0, -adWindowDays)
+	clicks, err := db.CountAdClicksSince(since)
+	if err != nil {
+		log.Printf("admin: count ad clicks: %v", err)
+		return 0, 0
+	}
+	bookings, err = db.CountBookingsBySourceSince(db.SourceGoogleAds, since)
+	if err != nil {
+		log.Printf("admin: count ad bookings: %v", err)
+	}
+	return clicks, bookings
 }
 
 // sourceRow is one line of "where the work comes from": every source that has

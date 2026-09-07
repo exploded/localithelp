@@ -176,6 +176,15 @@ func CountBookingsBySource() (map[string]int, error) {
 	return m, nil
 }
 
+// CountBookingsBySourceSince counts one source's bookings from t onwards, so
+// it can be read against a click count over the same window.
+func CountBookingsBySourceSince(source string, t time.Time) (int, error) {
+	n, err := q.CountBookingsBySourceSince(context.Background(), sqlc.CountBookingsBySourceSinceParams{
+		Source: source, CreatedAt: t.UTC().Format("2006-01-02 15:04:05"),
+	})
+	return int(n), err
+}
+
 func UpdateBookingStatus(id int64, status string) error {
 	return q.UpdateBookingStatus(context.Background(), sqlc.UpdateBookingStatusParams{Status: status, ID: id})
 }

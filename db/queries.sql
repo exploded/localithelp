@@ -137,6 +137,11 @@ SELECT status, COUNT(*) AS n FROM bookings GROUP BY status;
 -- Spam never came from anywhere worth counting.
 SELECT source, COUNT(*) AS n FROM bookings WHERE status <> 'spam' GROUP BY source;
 
+-- name: CountBookingsBySourceSince :one
+-- One source over a window, to sit beside a click count for the same window.
+SELECT COUNT(*) AS n FROM bookings
+WHERE source = ? AND status <> 'spam' AND created_at >= ?;
+
 -- name: UpdateBookingStatus :exec
 UPDATE bookings SET status = ?, updated_at = datetime('now') WHERE id = ?;
 

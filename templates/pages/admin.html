@@ -60,6 +60,9 @@
                     </tbody>
                 </table>
             </div>
+            {{if .PageData.AdClicks}}
+            <p class="admin-note admin-note--small">Google Ads, last {{.PageData.AdDays}} days: {{.PageData.AdClicks}} click{{if ne .PageData.AdClicks 1}}s{{end}} &rarr; {{.PageData.AdBookings}} booking{{if ne .PageData.AdBookings 1}}s{{end}}{{if .PageData.AdBookings}} (one in {{div .PageData.AdClicks .PageData.AdBookings}}){{end}}</p>
+            {{end}}
             {{end}}
 
             <h2 class="admin-heading">This week <a class="admin-heading-link" href="/admin/calendar">Calendar &#8594;</a></h2>

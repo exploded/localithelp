@@ -124,6 +124,15 @@ func TestSourceReporting(t *testing.T) {
 		t.Errorf("CountBookingsBySource = %v", counts)
 	}
 
+	// The same count over a window, to read against a click count.
+	since := time.Now().UTC().AddDate(0, 0, -1)
+	if n, err := CountBookingsBySourceSince(SourceGoogleAds, since); err != nil || n != 2 {
+		t.Errorf("CountBookingsBySourceSince = %d, %v; want 2, nil", n, err)
+	}
+	if n, err := CountBookingsBySourceSince(SourceGoogleAds, time.Now().UTC().AddDate(0, 0, 1)); err != nil || n != 0 {
+		t.Errorf("CountBookingsBySourceSince (future) = %d, %v; want 0, nil", n, err)
+	}
+
 	rows, err := SumPaidBySource()
 	if err != nil {
 		t.Fatalf("paid by source: %v", err)

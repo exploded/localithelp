@@ -62,6 +62,24 @@ func (q *Queries) CountBookingsBySource(ctx context.Context) ([]CountBookingsByS
 	return items, nil
 }
 
+const countBookingsBySourceSince = `-- name: CountBookingsBySourceSince :one
+SELECT COUNT(*) AS n FROM bookings
+WHERE source = ? AND status <> 'spam' AND created_at >= ?
+`
+
+type CountBookingsBySourceSinceParams struct {
+	Source    string `json:"source"`
+	CreatedAt string `json:"created_at"`
+}
+
+// One source over a window, to sit beside a click count for the same window.
+func (q *Queries) CountBookingsBySourceSince(ctx context.Context, arg CountBookingsBySourceSinceParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countBookingsBySourceSince, arg.Source, arg.CreatedAt)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
+}
+
 const countBookingsByStatus = `-- name: CountBookingsByStatus :many
 SELECT status, COUNT(*) AS n FROM bookings GROUP BY status
 `
