@@ -3,7 +3,8 @@
 #
 #   1. Attribution rows left behind by testing the Google Ads tracking setup -
 #      ad clicks with no gclid, which only a test fetch produces while
-#      auto-tagging is on. Real ad clicks always carry one.
+#      auto-tagging is on (real ad clicks always carry one), plus any gclid we
+#      made up ourselves while testing the deploy.
 #   2. Bookings #1 and #2, which were entered by hand as tests, along with
 #      anything hanging off them: invoices, invoice lines, and the test
 #      customer if nothing else of theirs remains.
@@ -22,6 +23,8 @@ APP=localithelp
 DB=/var/www/$APP/app.db
 BOOKINGS="1,2"                     # test bookings to remove
 QUOTES="1"                         # test software quotes to remove
+TEST_GCLIDS="'SHIP-CHECK'"         # gclids we invented while testing, never real clicks
+TEST_CLICKS="booking_id = 0 AND (gclid = '' OR gclid IN ($TEST_GCLIDS))"
 BACKUP_DIR=/var/www/$APP/backups
 APPLY=false
 [ "${1:-}" = "--apply" ] && APPLY=true
@@ -64,14 +67,14 @@ q "SELECT id, name, email, total_cost, status, user_id, created_at
    FROM quotes WHERE id IN ($QUOTES);"
 
 echo
-echo "=== Test ad clicks to delete (no gclid, never booked) ==="
-q "SELECT id, source, keyword, campaign, landing, created_at
-   FROM ad_clicks WHERE booking_id = 0 AND gclid = '';"
+echo "=== Test ad clicks to delete (never booked, no real gclid) ==="
+q "SELECT id, source, gclid, keyword, campaign, landing, created_at
+   FROM ad_clicks WHERE $TEST_CLICKS;"
 
 echo
 echo "=== Ad clicks that will survive (real ones) ==="
 q "SELECT COUNT(*) AS kept, MIN(created_at) AS oldest, MAX(created_at) AS newest
-   FROM ad_clicks WHERE NOT (booking_id = 0 AND gclid = '');"
+   FROM ad_clicks WHERE NOT ($TEST_CLICKS);"
 
 # A calendar event outlives its booking: Google keeps it, and deleting the row
 # here leaves nothing to cancel it with.
@@ -116,8 +119,8 @@ DELETE FROM customers WHERE id IN (SELECT customer_id FROM victims)
   AND id NOT IN (SELECT customer_id FROM bookings)
   AND id NOT IN (SELECT customer_id FROM invoices);
 
--- Test fetches of the tracking setup: no gclid, no booking.
-DELETE FROM ad_clicks WHERE booking_id = 0 AND gclid = '';
+-- Test fetches of the tracking setup, and our own invented gclids.
+DELETE FROM ad_clicks WHERE $TEST_CLICKS;
 
 -- Test software quotes. Any login account behind one is left alone: users are
 -- the Google sign-ins, and yours is in there too.
