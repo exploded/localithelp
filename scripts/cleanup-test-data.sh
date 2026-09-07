@@ -7,6 +7,8 @@
 #   2. Bookings #1 and #2, which were entered by hand as tests, along with
 #      anything hanging off them: invoices, invoice lines, and the test
 #      customer if nothing else of theirs remains.
+#   3. Software quote #1, another test. Quotes carry their own data and own
+#      nothing else, so the row is the whole of it.
 #
 # Dry run by default - it prints exactly what it would delete and stops. Pass
 # --apply to go ahead. Applying stops the service, backs the database up, and
@@ -19,6 +21,7 @@ set -euo pipefail
 APP=localithelp
 DB=/var/www/$APP/app.db
 BOOKINGS="1,2"                     # test bookings to remove
+QUOTES="1"                         # test software quotes to remove
 BACKUP_DIR=/var/www/$APP/backups
 APPLY=false
 [ "${1:-}" = "--apply" ] && APPLY=true
@@ -54,6 +57,11 @@ q "SELECT c.id, c.name, c.email,
           (SELECT COUNT(*) FROM invoices i WHERE i.customer_id = c.id) AS invoices
    FROM customers c
    WHERE c.id IN (SELECT customer_id FROM bookings WHERE id IN ($BOOKINGS) AND customer_id <> 0);"
+
+echo
+echo "=== Software quotes to delete ==="
+q "SELECT id, name, email, total_cost, status, user_id, created_at
+   FROM quotes WHERE id IN ($QUOTES);"
 
 echo
 echo "=== Test ad clicks to delete (no gclid, never booked) ==="
@@ -111,6 +119,10 @@ DELETE FROM customers WHERE id IN (SELECT customer_id FROM victims)
 -- Test fetches of the tracking setup: no gclid, no booking.
 DELETE FROM ad_clicks WHERE booking_id = 0 AND gclid = '';
 
+-- Test software quotes. Any login account behind one is left alone: users are
+-- the Google sign-ins, and yours is in there too.
+DELETE FROM quotes WHERE id IN ($QUOTES);
+
 COMMIT;
 VACUUM;
 SQL
@@ -125,6 +137,7 @@ echo "=== What's left ==="
 q "SELECT (SELECT COUNT(*) FROM bookings)  AS bookings,
           (SELECT COUNT(*) FROM invoices)  AS invoices,
           (SELECT COUNT(*) FROM customers) AS customers,
+          (SELECT COUNT(*) FROM quotes)    AS quotes,
           (SELECT COUNT(*) FROM ad_clicks) AS ad_clicks;"
 
 echo
