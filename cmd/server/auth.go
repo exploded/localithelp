@@ -18,6 +18,9 @@ import (
 // as the "csrf" form field or the X-CSRF-Token header.
 func requireAdmin(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Admin responses are private, and caching the sign-in bounce below is
+		// what leaves Safari looping through a login it has already completed.
+		w.Header().Set("Cache-Control", "private, no-store")
 		sess := getSession(r)
 		if sess == nil {
 			if r.Method == http.MethodGet || r.Method == http.MethodHead {

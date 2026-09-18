@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -406,20 +407,95 @@ func handleTerms(w http.ResponseWriter, r *http.Request) {
 
 // ── Google OAuth ──
 
-// oauthRedirects stores the post-login redirect URL for each OAuth state token.
-var oauthRedirects sync.Map // state -> redirect URL string
+// Cookies that carry an in-flight login across the round trip to Google: where
+// to land afterwards, and a marker so a broken sign-in is retried only once.
+const (
+	loginRedirectCookie = "login_redirect"
+	loginRetryCookie    = "login_retry"
+)
+
+// isLocalPath reports whether a post-login redirect is a same-site relative
+// path, so it can never become an open redirect.
+func isLocalPath(p string) bool {
+	return strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//")
+}
+
+// setLoginCookie writes a short-lived cookie for the login in progress; an
+// empty value clears it. SameSite=Lax is deliberate — the cookie has to survive
+// the top-level GET that Google sends back to the callback.
+func setLoginCookie(w http.ResponseWriter, name, value string) {
+	c := &http.Cookie{
+		Name:     name,
+		Value:    url.QueryEscape(value),
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   600,
+	}
+	if value == "" {
+		c.MaxAge = -1
+	}
+	http.SetCookie(w, c)
+}
+
+// loginCookie reads a login cookie written by setLoginCookie.
+func loginCookie(r *http.Request, name string) (string, bool) {
+	c, err := r.Cookie(name)
+	if err != nil {
+		return "", false
+	}
+	v, err := url.QueryUnescape(c.Value)
+	if err != nil {
+		return "", false
+	}
+	return v, true
+}
+
+// restartLogin recovers a login whose state token we no longer hold. That is
+// almost always innocent: the server restarted mid-login, the tab sat idle past
+// the ten-minute window, or — the reason this shows up on iOS Safari and not
+// Chrome — the browser cached the redirect to Google and replayed a long-dead
+// state. One silent retry clears all three. Only if that also fails do we show
+// an error, and even then with a link out, never a bare 400 dead end.
+func restartLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	dest := "/"
+	if p, ok := loginCookie(r, loginRedirectCookie); ok && isLocalPath(p) {
+		dest = p
+	}
+	if _, retried := loginCookie(r, loginRetryCookie); retried {
+		setLoginCookie(w, loginRetryCookie, "")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">`+
+			`<p style="font:16px/1.6 system-ui,sans-serif;margin:2rem">Sign-in didn't complete. `+
+			`<a href="%s">Try again</a>.</p>`, template.HTMLEscapeString(dest))
+		return
+	}
+	setLoginCookie(w, loginRetryCookie, "1")
+	// The nonce is the point of the retry: a browser holding a cached redirect
+	// for this URL would otherwise replay the very state that just failed.
+	// handleGoogleLogin ignores it.
+	http.Redirect(w, r, "/auth/google?redirect="+url.QueryEscape(dest)+"&n="+generateSessionToken()[:8], http.StatusSeeOther)
+}
 
 func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	// Without this Safari caches the redirect below and replays the same
+	// authorise URL — and the same spent state token — on every later visit.
+	w.Header().Set("Cache-Control", "no-store")
 	if googleOAuth == nil {
 		http.Error(w, "Google login is not configured", http.StatusServiceUnavailable)
 		return
 	}
 	state := generateSessionToken()
 	oauthStates.Store(state, time.Now().Add(10*time.Minute))
-	// Only allow same-site relative redirects (no open redirect).
-	if redir := r.URL.Query().Get("redirect"); strings.HasPrefix(redir, "/") && !strings.HasPrefix(redir, "//") {
-		oauthRedirects.Store(state, redir)
+	// Remember the destination in a cookie rather than against the state token,
+	// so restartLogin can still find it after the state is gone.
+	redir := r.URL.Query().Get("redirect")
+	if !isLocalPath(redir) {
+		redir = "" // also clears anything left from an earlier attempt
 	}
+	setLoginCookie(w, loginRedirectCookie, redir)
 	opts := []oauth2.AuthCodeOption{oauth2.AccessTypeOffline}
 	if r.URL.Query().Get("prompt") == "select_account" {
 		opts = append(opts, oauth2.SetAuthURLParam("prompt", "select_account"))
@@ -429,20 +505,18 @@ func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	if googleOAuth == nil {
 		http.Error(w, "Google login is not configured", http.StatusServiceUnavailable)
 		return
 	}
 
-	// Verify CSRF state
+	// Verify CSRF state. Unknown or stale states restart the login instead of
+	// failing, because they are far more often a cached redirect than an attack.
 	state := r.URL.Query().Get("state")
 	val, ok := oauthStates.LoadAndDelete(state)
-	if !ok {
-		http.Error(w, "invalid state parameter", http.StatusBadRequest)
-		return
-	}
-	if time.Now().After(val.(time.Time)) {
-		http.Error(w, "state expired", http.StatusBadRequest)
+	if !ok || time.Now().After(val.(time.Time)) {
+		restartLogin(w, r)
 		return
 	}
 
@@ -504,15 +578,18 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("user logged in: %s (%s)", user.Name, user.Email)
 
-	// Redirect to the original page if set, otherwise home
+	// Back to the page that sent them here, otherwise home.
 	redirectTo := "/"
-	if val, ok := oauthRedirects.LoadAndDelete(state); ok {
-		redirectTo = val.(string)
+	if p, ok := loginCookie(r, loginRedirectCookie); ok && isLocalPath(p) {
+		redirectTo = p
 	}
+	setLoginCookie(w, loginRedirectCookie, "")
+	setLoginCookie(w, loginRetryCookie, "")
 	http.Redirect(w, r, redirectTo, http.StatusSeeOther)
 }
 
 func handleUserLogout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	cookie, err := r.Cookie("user_session")
 	if err == nil {
 		userSessions.Delete(cookie.Value)

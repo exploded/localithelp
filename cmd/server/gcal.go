@@ -288,6 +288,7 @@ func (c *gcalClient) FreeBusy(ctx context.Context, calendarIDs []string, from, t
 var gcalClientFor = func(g *db.GoogleCalendar) (calendarAPI, error) { return newCalendarClient(g) }
 
 func handleGCalConnect(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	if gcalOAuth == nil {
 		redirectMsg(w, r, "/admin/calendar/settings", "err", "Google OAuth is not configured on this server.")
 		return
@@ -306,17 +307,17 @@ func handleGCalConnect(w http.ResponseWriter, r *http.Request) {
 
 func handleGCalCallback(w http.ResponseWriter, r *http.Request) {
 	const back = "/admin/calendar/settings"
+	w.Header().Set("Cache-Control", "no-store")
 	if gcalOAuth == nil {
 		http.Error(w, "Google OAuth is not configured", http.StatusServiceUnavailable)
 		return
 	}
+	// An unknown or expired state means the attempt went stale (restart, idle
+	// tab, cached redirect), so send them back to the settings page to retry
+	// rather than stranding them on a bare error.
 	val, ok := oauthStates.LoadAndDelete(r.URL.Query().Get("state"))
-	if !ok {
-		http.Error(w, "invalid state parameter", http.StatusBadRequest)
-		return
-	}
-	if time.Now().After(val.(time.Time)) {
-		http.Error(w, "state expired", http.StatusBadRequest)
+	if !ok || time.Now().After(val.(time.Time)) {
+		redirectMsg(w, r, back, "err", "That connection attempt expired. Press Connect again.")
 		return
 	}
 	if errParam := r.URL.Query().Get("error"); errParam != "" {
