@@ -30,7 +30,7 @@ const mailBillingTmplSrc = `
 </table>
 {{if .Followup}}<p>This is a follow-up visit{{if .Issue}}: {{.Issue}}{{end}}.</p>{{else if .Issue}}<p style="margin:0 0 6px;color:#666">What you asked about:</p>
 <blockquote style="margin:0 0 20px;padding:12px 16px;border-left:3px solid #d9d5cc;background:#faf9f6;white-space:pre-wrap">{{.Issue}}</blockquote>{{end}}
-<p style="color:#666">Before I arrive: leave the computer plugged in and switched on if you can, and have any passwords you might need handy (I'll never ask you to read them out over the phone). A calendar invite is attached.</p>
+<p style="color:#666">A calendar invite is attached.</p>
 <p>— James</p>
 {{end}}
 

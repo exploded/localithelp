@@ -243,7 +243,6 @@ const mailSchedulerTmplSrc = `
 {{if .ServiceTitle}}{{template "row" (kv "Service" .ServiceTitle)}}{{end}}
 {{if .Where}}{{template "row" (kv "Where" .Where)}}{{end}}
 </table>
-<p style="color:#666">Before I arrive: leave the computer plugged in and switched on if you can, and have any passwords you might need handy (I'll never ask you to read them out over the phone).</p>
 <p>If the time no longer suits, reply to this email{{if site.Phone}} or call {{site.Phone}}{{end}} and we'll sort out another one.</p>
 <p>— James</p>
 {{end}}
