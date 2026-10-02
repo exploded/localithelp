@@ -132,7 +132,6 @@
     {{$d := .PageData}}{{$b := $d.B}}{{$csrf := .CSRF}}
     <div class="admin-card" id="issue-card">
         <h2 class="admin-card-title">The problem</h2>
-        {{if $b.PreferredTime}}<p class="admin-muted">Preferred: {{$b.PreferredTime}}</p>{{end}}
         <form method="POST" action="/admin/bookings/{{$b.ID}}/issue"
               hx-post="/admin/bookings/{{$b.ID}}/issue" hx-target="#issue-card" hx-swap="outerHTML" hx-disable="find button">
             {{template "csrf" $csrf}}
@@ -164,6 +163,7 @@
     {{$d := .PageData}}{{$b := $d.B}}{{$csrf := .CSRF}}
     <div class="admin-card" id="schedule-card">
         <h2 class="admin-card-title">{{if $b.StartAt.IsZero}}Schedule the visit{{else}}Scheduled: {{$d.Row.When}} ({{$b.DurationMin}} min){{end}}</h2>
+        {{if $b.PreferredTime}}<p class="admin-request"><span class="admin-request-label">Customer asked for</span>{{$b.PreferredTime}}</p>{{end}}
         <form method="POST" action="/admin/bookings/{{$b.ID}}/schedule" class="admin-form-inline"
               hx-post="/admin/bookings/{{$b.ID}}/schedule" hx-target="#schedule-card" hx-swap="outerHTML" hx-disable="find button">
             {{template "csrf" $csrf}}

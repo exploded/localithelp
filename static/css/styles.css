@@ -2175,6 +2175,8 @@ a.service-card {
 .admin-card p { font-size: 0.9rem; margin: 0 0 0.5rem; }
 .admin-card-title { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.85rem; }
 .admin-quote { margin: 0; padding: 0.75rem 1rem; border-left: 3px solid var(--border); background: var(--bg-elevated); white-space: pre-wrap; font-size: 0.9rem; border-radius: 0 4px 4px 0; }
+.admin-request { margin: 0 0 1rem; padding: 0.6rem 0.9rem; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 0 4px 4px 0; font-size: 1rem; font-weight: 600; white-space: pre-wrap; }
+.admin-request-label { display: block; font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-dim); margin-bottom: 0.15rem; }
 .admin-list { list-style: none; padding: 0; margin: 0 0 0.75rem; font-size: 0.9rem; }
 .admin-list li { padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
 .admin-list li:last-child { border-bottom: 0; }
