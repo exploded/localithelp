@@ -3,38 +3,14 @@
 Site for **Local IT Help** (James McHugh, ABN 14 723 053 435) — local computer
 help around Donvale VIC (email, printers, Wi-Fi, scams, repairs, setups…) with
 software development as a featured service. Go + `html/template` + SQLite (sqlc).
-Canonical domain: https://localithelp.com.au (rebranded from mchugh.com.au —
-see "Domain cutover" below).
+Canonical domain: https://localithelp.com.au. The old `mchugh.com.au` domain
+301s here (Caddy), so old links keep working.
 
 Repo: `exploded/localithelp`, Go module `localithelp`. Not to be confused with
 **https://mchugh.au** — that is a separate static landing page (repo
 `exploded/mchugh-au`, served from `/var/www/mchugh.au`, source in
 `C:\Projects\php\mchugh.au`). This app lives at `/var/www/localithelp` as
 systemd unit `localithelp`.
-
-## Domain cutover (rebrand → localithelp.com.au) — done
-
-localithelp.com.au has been canonical since 2026-08-20: `PROD` ⇒
-`BASE_URL=https://localithelp.com.au`, and `canonicalHost` 301s every other host
-there. Kept for reference — the one-off steps that were run:
-
-1. Register `localithelp.com.au`, add the zone to Cloudflare (or use registrar DNS):
-   `A`/`AAAA` records for `@` and `www` → the Linode server's IPv4/IPv6,
-   DNS-only (grey cloud).
-2. Caddy: add a `localithelp.com.au` block (apex → reverse proxy to this app's
-   port 8181, `www.` → 301 to apex), and change the old `mchugh.com.au` /
-   `www.mchugh.com.au` blocks to 301 to `https://localithelp.com.au{uri}` so old
-   links and Google juice carry over. `sudo systemctl reload caddy`.
-3. SES: verify the `localithelp.com.au` domain identity + `james@localithelp.com.au`
-   sender (re-run `scripts/ses-setup.sh` pointed at the new domain, or do it in
-   the console), create the mailbox/forward for `james@localithelp.com.au`, then
-   set `CONTACT_EMAIL=james@localithelp.com.au` in the server `.env`.
-4. Google Cloud Console: add `https://localithelp.com.au/auth/google/callback`
-   to the OAuth client's authorised redirect URIs.
-5. Turnstile: add `localithelp.com.au` to the widget's allowed hostnames.
-6. Search Console: add the new property, submit
-   `https://localithelp.com.au/sitemap.xml`, and use Change of Address from the
-   mchugh.com.au property.
 
 ## Structure
 
@@ -230,8 +206,8 @@ One-time, from your machine with an admin AWS profile: `AWS_PROFILE=tooltrack-ad
 CF_TOKEN=<cloudflare token> scripts/ses-setup.sh`. It creates the send-only IAM
 user + key, the `localithelp.com.au` SES domain identity, adds the DKIM CNAMEs to
 Cloudflare (or prints them if `CF_TOKEN` is unset), and prints the `.env` lines
-to add on the server. The policy also keeps the old `mchugh.com.au` identities so
-the pre-rebrand sender still works.
+to add on the server. The send policy also allows the old `mchugh.com.au`
+identities.
 
 ### Database backups
 
@@ -319,11 +295,15 @@ this repo: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`.
    sudoers, prints the Caddy block). It refuses to touch `/var/www/mchugh.au`.
 3. **Server `.env`** — `sudo nano /var/www/localithelp/.env`: `PHONE=…`, `ADMIN_EMAIL`,
    Google/Turnstile/Anthropic keys, SES creds, pricing if different.
-4. **Caddy** — add the printed blocks to `/etc/caddy/Caddyfile` (`www.` → 301 to apex, apex →
-   reverse proxy; uses the box's shared `access_log` / `go_proxy` snippets; leave the existing
-   `mchugh.au` block alone), `sudo systemctl reload caddy`.
-5. **Google Cloud Console** — add `https://localithelp.com.au/auth/google/callback` to the
+4. **Caddy** — add the printed blocks to `/etc/caddy/Caddyfile` (apex → reverse proxy;
+   `www.localithelp.com.au`, `mchugh.com.au` and `www.mchugh.com.au` → 301 to
+   `https://localithelp.com.au{uri}`; uses the box's shared `access_log` / `go_proxy`
+   snippets; leave the existing `mchugh.au` block alone), `sudo systemctl reload caddy`.
+5. **SES** — run `scripts/ses-setup.sh` (see "Email (Amazon SES) setup") and create
+   the Fastmail mailbox/alias for `CONTACT_EMAIL`.
+6. **Google Cloud Console** — add `https://localithelp.com.au/auth/google/callback` to the
    OAuth client's authorised redirect URIs.
-6. Push / `gh workflow run Deploy`, watch it go green, then check
+7. **Turnstile** — add `localithelp.com.au` to the widget's allowed hostnames.
+8. Push / `gh workflow run Deploy`, watch it go green, then check
    `https://localithelp.com.au/`, `/services/email-outlook`, `/book`, and that
    `https://mchugh.au` still serves the landing page.
