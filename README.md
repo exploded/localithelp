@@ -19,8 +19,8 @@ localithelp.com.au has been canonical since 2026-08-20: `PROD` ⇒
 there. Kept for reference — the one-off steps that were run:
 
 1. Register `localithelp.com.au`, add the zone to Cloudflare (or use registrar DNS):
-   `A @` / `A www` → `172.105.178.43`, `AAAA @` / `AAAA www` →
-   `2400:8907::f03c:92ff:fe4b:43ea`, DNS-only (grey cloud).
+   `A`/`AAAA` records for `@` and `www` → the Linode server's IPv4/IPv6,
+   DNS-only (grey cloud).
 2. Caddy: add a `localithelp.com.au` block (apex → reverse proxy to this app's
    port 8181, `www.` → 301 to apex), and change the old `mchugh.com.au` /
    `www.mchugh.com.au` blocks to 301 to `https://localithelp.com.au{uri}` so old
@@ -252,7 +252,7 @@ Restore (on the server, from a machine with an admin profile to fetch the file):
 aws s3 ls s3://localithelp-backups/
 aws s3 cp s3://localithelp-backups/localithelp-2026-08-24.db.gz .
 gunzip localithelp-2026-08-24.db.gz
-scp -P 2222 localithelp-2026-08-24.db deploy@172.105.178.43:/tmp/
+scp -P 2222 localithelp-2026-08-24.db deploy@localithelp.com.au:/tmp/
 # on the server
 sudo systemctl stop localithelp
 sudo cp /var/www/localithelp/app.db /var/www/localithelp/app.db.bak   # keep the broken one
@@ -311,8 +311,8 @@ this repo: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`.
 
 ### First-time provisioning (one-off, in order)
 
-1. **Cloudflare** — zone `localithelp.com.au`: `A @` and `A www` → `172.105.178.43`,
-   `AAAA @` and `AAAA www` → `2400:8907::f03c:92ff:fe4b:43ea`, all DNS-only (grey cloud).
+1. **Cloudflare** — zone `localithelp.com.au`: `A` and `AAAA` records for `@` and
+   `www` → the Linode server's IPv4/IPv6, all DNS-only (grey cloud).
 2. **Server** —
    `curl -fsSL https://raw.githubusercontent.com/exploded/localithelp/main/scripts/server-setup.sh | sudo bash`
    (creates `/var/www/localithelp`, `.env` template, systemd unit on port 8181,
