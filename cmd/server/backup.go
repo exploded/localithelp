@@ -42,7 +42,7 @@ func initBackup() {
 	if u.Enabled() {
 		log.Printf("backup: nightly DB backup to s3://%s (region %s)", u.Bucket(), region)
 	} else {
-		log.Printf("backup: not configured (set BACKUP_S3_BUCKET + BACKUP_AWS_ACCESS_KEY_ID/SECRET) — no DB backups")
+		logWarnf("backup: not configured (set BACKUP_S3_BUCKET + BACKUP_AWS_ACCESS_KEY_ID/SECRET) — no DB backups")
 	}
 }
 
@@ -64,7 +64,7 @@ func backupDatabase(now time.Time) bool {
 	}
 	first, err := db.ClaimSchedulerRun("backup", now)
 	if err != nil {
-		log.Printf("scheduler: claim backup: %v", err)
+		logErrorf("scheduler: claim backup: %v", err)
 		return false
 	}
 	if !first {
@@ -73,9 +73,9 @@ func backupDatabase(now time.Time) bool {
 	key := backupKey(now)
 	size, err := runBackup(key)
 	if err != nil {
-		log.Printf("scheduler: backup: %v", err)
+		logErrorf("scheduler: backup: %v", err)
 		if rerr := db.ReleaseSchedulerRun("backup", now); rerr != nil {
-			log.Printf("scheduler: release backup claim: %v", rerr)
+			logErrorf("scheduler: release backup claim: %v", rerr)
 		}
 		notifyBackupFailed(key, err)
 		return false
@@ -120,10 +120,10 @@ func notifyBackupFailed(key string, cause error) {
 		backups.Bucket(), key, cause)
 	html, err := renderMail("backup-failed", map[string]any{"Bucket": backups.Bucket(), "Key": key, "Error": cause.Error()})
 	if err != nil {
-		log.Printf("email: render backup-failed: %v", err)
+		logErrorf("email: render backup-failed: %v", err)
 		return
 	}
 	if err := sendNow(notifyEmail, "DB backup failed", html, text, ""); err != nil {
-		log.Printf("email: backup-failed: %v", err)
+		logErrorf("email: backup-failed: %v", err)
 	}
 }

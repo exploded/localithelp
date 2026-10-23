@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -18,7 +17,7 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	if err := db.Ping(ctx); err != nil {
-		log.Printf("health: db ping failed: %v", err)
+		logErrorf("health: db ping failed: %v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("db unavailable\n"))
 		return

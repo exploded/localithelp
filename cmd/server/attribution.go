@@ -43,7 +43,7 @@ func trackSource(next http.Handler) http.Handler {
 				// hanging off it.
 				if c := detectAdClick(r); c != nil {
 					if tok, err := recordAdClick(readCookie(r, clickCookie), *c); err != nil {
-						log.Printf("attribution: record ad click: %v", err)
+						logErrorf("attribution: record ad click: %v", err)
 					} else {
 						setAttrCookie(w, clickCookie, tok, srcCookieAge)
 					}
@@ -223,7 +223,7 @@ func linkBookingClick(w http.ResponseWriter, r *http.Request, bookingID int64) {
 	}
 	setAttrCookie(w, clickCookie, "", -1)
 	if ok, err := db.LinkAdClick(token, bookingID); err != nil {
-		log.Printf("attribution: link ad click to booking #%d: %v", bookingID, err)
+		logErrorf("attribution: link ad click to booking #%d: %v", bookingID, err)
 	} else if !ok {
 		log.Printf("attribution: ad click for booking #%d was unknown or already claimed", bookingID)
 	}

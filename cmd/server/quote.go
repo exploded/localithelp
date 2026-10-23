@@ -43,13 +43,13 @@ type quotePageData struct {
 func handleQuote(w http.ResponseWriter, r *http.Request) {
 	groups, err := db.ListOptionGroups()
 	if err != nil {
-		log.Printf("load options: %v", err)
+		logErrorf("load options: %v", err)
 		http.Error(w, "failed to load options", http.StatusInternalServerError)
 		return
 	}
 	baseCost, err := db.GetBaseCost()
 	if err != nil {
-		log.Printf("load base cost: %v", err)
+		logErrorf("load base cost: %v", err)
 	}
 	render(w, r, "quote", quotePageData{
 		TurnstileSiteKey: turnstileSiteKey,
@@ -94,7 +94,7 @@ func handleQuoteSubmit(w http.ResponseWriter, r *http.Request) {
 	if !isOwnerEmail(email) {
 		dup, err := db.HasVerifiedQuote(email)
 		if err != nil {
-			log.Printf("quote: check email %s: %v", email, err)
+			logErrorf("quote: check email %s: %v", email, err)
 			jsonError(w, "Something went wrong, please try again", http.StatusInternalServerError)
 			return
 		}
@@ -105,7 +105,7 @@ func handleQuoteSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	// A fresh submission supersedes any earlier unconfirmed attempt.
 	if err := db.DeletePendingQuotes(email); err != nil {
-		log.Printf("quote: delete pending for %s: %v", email, err)
+		logErrorf("quote: delete pending for %s: %v", email, err)
 	}
 
 	totalCost, _ := formData["total_cost"].(float64)
@@ -127,7 +127,7 @@ func handleQuoteSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := db.InsertQuote(quote)
 	if err != nil {
-		log.Printf("quote: insert: %v", err)
+		logErrorf("quote: insert: %v", err)
 		jsonError(w, "Something went wrong, please try again", http.StatusInternalServerError)
 		return
 	}
@@ -170,7 +170,7 @@ func handleQuoteVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		log.Printf("quote verify: %v", err)
+		logErrorf("quote verify: %v", err)
 		fail("Something went wrong loading your quote. Please try again shortly.")
 		return
 	}
@@ -190,7 +190,7 @@ func handleQuoteVerify(w http.ResponseWriter, r *http.Request) {
 	estimate := generateEstimate(quote)
 	first, err := db.MarkQuoteVerified(quote.ID, estimate)
 	if err != nil {
-		log.Printf("quote #%d: mark verified: %v", quote.ID, err)
+		logErrorf("quote #%d: mark verified: %v", quote.ID, err)
 		fail("Something went wrong saving your quote. Please try again shortly.")
 		return
 	}
@@ -223,7 +223,7 @@ func generateEstimate(quote *db.Quote) string {
 	}
 	estimate, err := callClaude(apiKey, buildEstimatePrompt(formData))
 	if err != nil {
-		log.Printf("quote #%d: claude: %v", quote.ID, err)
+		logErrorf("quote #%d: claude: %v", quote.ID, err)
 		return fallback
 	}
 	return estimate
@@ -250,7 +250,7 @@ func buildEstimatePrompt(data map[string]any) string {
 	// Load feature labels dynamically from database
 	groups, err := db.ListOptionGroups()
 	if err != nil {
-		log.Printf("buildEstimatePrompt: failed to load groups: %v", err)
+		logErrorf("buildEstimatePrompt: failed to load groups: %v", err)
 	}
 
 	b.WriteString("Selected features:\n")

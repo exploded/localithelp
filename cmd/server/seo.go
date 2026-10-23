@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html"
 	"html/template"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -100,7 +99,7 @@ func handleSitemap(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := xml.MarshalIndent(set, "", "  ")
 	if err != nil {
-		log.Printf("sitemap: %v", err)
+		logErrorf("sitemap: %v", err)
 		http.Error(w, "sitemap error", http.StatusInternalServerError)
 		return
 	}
@@ -174,7 +173,7 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 	if err := tmpl.ExecuteTemplate(w, "base", pd); err != nil {
-		log.Printf("render 404: %v", err)
+		logErrorf("render 404: %v", err)
 	}
 }
 

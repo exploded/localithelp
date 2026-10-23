@@ -400,7 +400,7 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	customerID, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.AddrSuburb)
 	if err != nil {
-		log.Printf("booking: customer upsert failed: %v", err)
+		logErrorf("booking: customer upsert failed: %v", err)
 		// Not fatal: the booking is still recorded; the boot-time backfill will link it later.
 	}
 	if customerID != 0 {
@@ -409,7 +409,7 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 		if c, err := db.GetCustomer(customerID); err == nil && c.Address == "" {
 			c.Address, c.Suburb = fullAddress, f.AddrSuburb
 			if err := db.UpdateCustomer(c); err != nil {
-				log.Printf("booking: fill customer address: %v", err)
+				logErrorf("booking: fill customer address: %v", err)
 			}
 		}
 	}
@@ -429,14 +429,14 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := db.InsertBooking(b)
 	if err != nil {
-		log.Printf("booking: insert failed: %v", err)
+		logErrorf("booking: insert failed: %v", err)
 		http.Error(w, "Sorry — something went wrong saving your request. Please call or email instead.", http.StatusInternalServerError)
 		return
 	}
 	linkBookingClick(w, r, id)
 	if suspicious {
 		if err := db.UpdateBookingStatus(id, "spam"); err != nil {
-			log.Printf("booking: mark suspicious #%d: %v", id, err)
+			logErrorf("booking: mark suspicious #%d: %v", id, err)
 		}
 	}
 	log.Printf("booking #%d from %s (%s / %s) service=%s suspicious=%v", id, f.Name, f.Phone, f.Email, f.Service, suspicious)

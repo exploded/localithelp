@@ -151,7 +151,7 @@ func syncBookingSoon(id int64) {
 		}
 		b, err := db.GetBooking(id)
 		if err != nil {
-			log.Printf("gcal: load booking #%d: %v", id, err)
+			logErrorf("gcal: load booking #%d: %v", id, err)
 			return
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), gcalTimeout)
@@ -161,7 +161,7 @@ func syncBookingSoon(id int64) {
 			return
 		}
 		if err := db.MarkGoogleCalendarSynced(); err != nil {
-			log.Printf("gcal: stamp sync: %v", err)
+			logErrorf("gcal: stamp sync: %v", err)
 		}
 	}()
 }
@@ -171,7 +171,7 @@ func syncBookingSoon(id int64) {
 func calendarTarget() (*db.GoogleCalendar, calendarAPI, bool) {
 	g, err := db.GetGoogleCalendar()
 	if err != nil {
-		log.Printf("gcal: load connection: %v", err)
+		logErrorf("gcal: load connection: %v", err)
 		return nil, nil, false
 	}
 	if !g.Connected() {
@@ -190,7 +190,7 @@ func calendarTarget() (*db.GoogleCalendar, calendarAPI, bool) {
 func calendarSyncConnected() bool {
 	g, err := db.GetGoogleCalendar()
 	if err != nil {
-		log.Printf("gcal: load connection: %v", err)
+		logErrorf("gcal: load connection: %v", err)
 		return false
 	}
 	return g.Connected()
@@ -207,7 +207,7 @@ func syncCalendar(now time.Time) int {
 	}
 	bs, err := db.ListBookingsForCalendarSync(now.Add(-syncPast), now.Add(syncFuture), syncLimit)
 	if err != nil {
-		log.Printf("gcal: list dirty bookings: %v", err)
+		logErrorf("gcal: list dirty bookings: %v", err)
 		return 0
 	}
 	if len(bs) == 0 {
@@ -216,7 +216,7 @@ func syncCalendar(now time.Time) int {
 	n, failed := pushBookings(api, g.CalendarID, bs)
 	if failed == 0 {
 		if err := db.MarkGoogleCalendarSynced(); err != nil {
-			log.Printf("gcal: stamp sync: %v", err)
+			logErrorf("gcal: stamp sync: %v", err)
 		}
 	}
 	return n
@@ -232,13 +232,13 @@ func resyncAllBookings() int {
 	now := time.Now().In(db.Melbourne)
 	bs, err := db.ListBookingsForCalendarBackfill(now.Add(-syncPast), now.Add(syncFuture))
 	if err != nil {
-		log.Printf("gcal: list bookings for resync: %v", err)
+		logErrorf("gcal: list bookings for resync: %v", err)
 		return 0
 	}
 	n, failed := pushBookings(api, g.CalendarID, bs)
 	if failed == 0 {
 		if err := db.MarkGoogleCalendarSynced(); err != nil {
-			log.Printf("gcal: stamp sync: %v", err)
+			logErrorf("gcal: stamp sync: %v", err)
 		}
 	}
 	log.Printf("gcal: resync pushed %d booking(s), %d failed", n, failed)

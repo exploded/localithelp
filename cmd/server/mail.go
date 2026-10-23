@@ -35,7 +35,7 @@ func initMail() {
 	if mail.Enabled() {
 		log.Printf("email: SES enabled, from=%q notify=%q region=%s", from, notifyEmail, region)
 	} else {
-		log.Printf("email: not configured (set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY) — notifications disabled")
+		logWarnf("email: not configured (set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY) — notifications disabled")
 	}
 }
 
@@ -47,7 +47,7 @@ func send(to, subject, html, text, replyTo string) {
 	}
 	go func() {
 		if err := mail.Send(to, subject, html, text, replyTo); err != nil {
-			log.Printf("email: %v", err)
+			logErrorf("email: %v", err)
 		}
 	}()
 }
@@ -188,7 +188,7 @@ func notifyBooking(id int64, b *db.Booking, suspicious bool) {
 	}
 	html, err := renderMail("booking-admin", data)
 	if err != nil {
-		log.Printf("email: render booking-admin: %v", err)
+		logErrorf("email: render booking-admin: %v", err)
 		return
 	}
 	text := fmt.Sprintf("New booking request #%d\n\nName: %s\nPhone: %s\nEmail: %s\nAddress: %s\nService: %s\nPreferred time: %s\n\n%s\n\n%s/admin\n",
@@ -201,7 +201,7 @@ func notifyBooking(id int64, b *db.Booking, suspicious bool) {
 	}
 	html, err = renderMail("booking-customer", data)
 	if err != nil {
-		log.Printf("email: render booking-customer: %v", err)
+		logErrorf("email: render booking-customer: %v", err)
 		return
 	}
 	text = fmt.Sprintf("Thanks %s — I've got your request and will be in touch shortly (usually within a couple of hours during the day).\n\nWhat you sent:\n%s\n\n— James\n%s\n",
@@ -217,7 +217,7 @@ func sendQuoteVerification(q *db.Quote, link string) {
 	}
 	html, err := renderMail("quote-verify", map[string]any{"Q": q, "Link": link})
 	if err != nil {
-		log.Printf("email: render quote-verify: %v", err)
+		logErrorf("email: render quote-verify: %v", err)
 		return
 	}
 	text := fmt.Sprintf("Hi %s — confirm your email to get your instant quote:\n\n%s\n\nThe link is valid for 48 hours. If you didn't request a quote from %s you can ignore this email.\n\n— James\n",
@@ -235,7 +235,7 @@ func notifyQuoteVerified(q *db.Quote, link string) {
 
 	html, err := renderMail("quote-ready-admin", data)
 	if err != nil {
-		log.Printf("email: render quote-ready-admin: %v", err)
+		logErrorf("email: render quote-ready-admin: %v", err)
 	} else {
 		text := fmt.Sprintf("Quote #%d verified — %s <%s> (%s) — configured total $%.0f\n\n%s\n\n%s\n%s/admin\n",
 			q.ID, q.Name, q.Email, q.Mobile, q.TotalCost, q.Description, link, site.BaseURL)
@@ -244,7 +244,7 @@ func notifyQuoteVerified(q *db.Quote, link string) {
 
 	html, err = renderMail("quote-ready-customer", data)
 	if err != nil {
-		log.Printf("email: render quote-ready-customer: %v", err)
+		logErrorf("email: render quote-ready-customer: %v", err)
 		return
 	}
 	text := fmt.Sprintf("Thanks for confirming your email, %s. Your instant quote is ready — view it here:\n\n%s\n\nI'll review your requirements personally and follow up with a detailed proposal within 2 business days.\n\n— James\n",

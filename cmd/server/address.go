@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -60,7 +59,7 @@ func serveAddressSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := mappifySuggestions(q)
 	if err != nil {
-		log.Printf("mappify: %v", err)
+		logWarnf("mappify: %v", err)
 		io.WriteString(w, "[]")
 		return
 	}

@@ -83,18 +83,18 @@ func sendDayBeforeReminders(now time.Time) int {
 	from := midnight(now).AddDate(0, 0, 1)
 	bs, err := db.ListBookingsForReminder(from, from.AddDate(0, 0, 1))
 	if err != nil {
-		log.Printf("scheduler: reminders: %v", err)
+		logErrorf("scheduler: reminders: %v", err)
 		return 0
 	}
 	n := 0
 	for i := range bs {
 		b := &bs[i]
 		if err := sendBookingReminder(b); err != nil {
-			log.Printf("scheduler: reminder for booking #%d: %v", b.ID, err)
+			logErrorf("scheduler: reminder for booking #%d: %v", b.ID, err)
 			continue
 		}
 		if err := db.MarkBookingReminderSent(b.ID); err != nil {
-			log.Printf("scheduler: stamp reminder #%d: %v", b.ID, err)
+			logErrorf("scheduler: stamp reminder #%d: %v", b.ID, err)
 			continue
 		}
 		n++
@@ -107,18 +107,18 @@ func sendDayBeforeReminders(now time.Time) int {
 func sendAdminAlerts(now time.Time) int {
 	bs, err := db.ListBookingsForAdminAlert(now, now.Add(time.Hour))
 	if err != nil {
-		log.Printf("scheduler: alerts: %v", err)
+		logErrorf("scheduler: alerts: %v", err)
 		return 0
 	}
 	n := 0
 	for i := range bs {
 		b := &bs[i]
 		if err := sendBookingSoon(b, now); err != nil {
-			log.Printf("scheduler: heads-up for booking #%d: %v", b.ID, err)
+			logErrorf("scheduler: heads-up for booking #%d: %v", b.ID, err)
 			continue
 		}
 		if err := db.MarkBookingAdminAlertSent(b.ID); err != nil {
-			log.Printf("scheduler: stamp heads-up #%d: %v", b.ID, err)
+			logErrorf("scheduler: stamp heads-up #%d: %v", b.ID, err)
 			continue
 		}
 		n++
@@ -141,19 +141,19 @@ func sendMorningDigest(now time.Time) bool {
 	}
 	d, err := buildDigest(now)
 	if err != nil {
-		log.Printf("scheduler: digest: %v", err)
+		logErrorf("scheduler: digest: %v", err)
 		return false
 	}
 	first, err := db.ClaimSchedulerRun("digest", now)
 	if err != nil {
-		log.Printf("scheduler: claim digest: %v", err)
+		logErrorf("scheduler: claim digest: %v", err)
 		return false
 	}
 	if !first || d.Empty() {
 		return false
 	}
 	if err := sendDigest(d); err != nil {
-		log.Printf("scheduler: digest send: %v", err)
+		logErrorf("scheduler: digest send: %v", err)
 		return false
 	}
 	return true

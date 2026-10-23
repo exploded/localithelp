@@ -31,9 +31,9 @@ func initTurnstile() {
 	case turnstileSiteKey != "" && turnstileSecret != "":
 		log.Println("turnstile: enabled")
 	case turnstileSiteKey == "" && turnstileSecret == "":
-		log.Println("turnstile: not configured (set TURNSTILE_SITE_KEY/TURNSTILE_SECRET_KEY) — quote form is unprotected")
+		logWarnf("turnstile: not configured (set TURNSTILE_SITE_KEY/TURNSTILE_SECRET_KEY) — quote form is unprotected")
 	default:
-		log.Println("turnstile: WARNING only one of TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY is set — check .env")
+		logWarnf("turnstile: WARNING only one of TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY is set — check .env")
 	}
 }
 
@@ -55,7 +55,7 @@ func verifyTurnstile(token, remoteIP string) bool {
 	}
 	resp, err := turnstileClient.PostForm("https://challenges.cloudflare.com/turnstile/v0/siteverify", form)
 	if err != nil {
-		log.Printf("turnstile: siteverify: %v", err)
+		logErrorf("turnstile: siteverify: %v", err)
 		return false
 	}
 	defer resp.Body.Close()
@@ -64,7 +64,7 @@ func verifyTurnstile(token, remoteIP string) bool {
 		ErrorCodes []string `json:"error-codes"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		log.Printf("turnstile: decode: %v", err)
+		logErrorf("turnstile: decode: %v", err)
 		return false
 	}
 	if !out.Success {
