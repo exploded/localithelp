@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -256,6 +257,6 @@ func sendReceiptEmail(v *invoiceView, pdf []byte, askReview bool) error {
 // logMailErr is a tiny helper for handlers that surface mail failures.
 func logMailErr(what string, err error) {
 	if err != nil {
-		logErrorf("email: %s: %v", what, err)
+		slog.Error("email", "op", what, "err", err)
 	}
 }

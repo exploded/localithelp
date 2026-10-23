@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
@@ -39,7 +40,7 @@ func handleAdminCalendarSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	conn, err := db.GetGoogleCalendar()
 	if err != nil {
-		logErrorf("gcal settings: %v", err)
+		slog.Error("gcal settings", "err", err)
 		http.Error(w, "failed to load calendar settings", http.StatusInternalServerError)
 		return
 	}
@@ -108,7 +109,7 @@ func handleAdminCalendarBusy(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := db.SetGoogleCalendarSkips(skips); err != nil {
-		logErrorf("gcal skips: %v", err)
+		slog.Error("gcal skips", "err", err)
 		calSettingsMsg(w, r, http.StatusInternalServerError, "err", "Could not save the busy-time calendars.")
 		return
 	}

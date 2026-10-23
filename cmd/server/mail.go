@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"os"
 
 	"localithelp/db"
@@ -33,9 +33,9 @@ func initMail() {
 	notifyEmail = site.Email
 	mail = mailer.New(region, os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), from)
 	if mail.Enabled() {
-		log.Printf("email: SES enabled, from=%q notify=%q region=%s", from, notifyEmail, region)
+		slog.Info("email: SES enabled", "from", from, "notify", notifyEmail, "region", region)
 	} else {
-		logWarnf("email: not configured (set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY) — notifications disabled")
+		slog.Warn("email: not configured (set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY) — notifications disabled")
 	}
 }
 
@@ -47,7 +47,7 @@ func send(to, subject, html, text, replyTo string) {
 	}
 	go func() {
 		if err := mail.Send(to, subject, html, text, replyTo); err != nil {
-			logErrorf("email: %v", err)
+			slog.Error("email", "err", err)
 		}
 	}()
 }
@@ -61,7 +61,7 @@ func sendNow(to, subject, html, text, replyTo string, atts ...mailer.Attachment)
 		return fmt.Errorf("no recipient address")
 	}
 	if !mail.Enabled() {
-		log.Printf("email: (disabled) would send %q to %s with %d attachment(s)", subject, to, len(atts))
+		slog.Info("email: (disabled) would send", "subject", subject, "to", to, "attachments", len(atts))
 		return nil
 	}
 	return mail.SendWithAttachments(to, subject, html, text, replyTo, atts...)
@@ -188,7 +188,7 @@ func notifyBooking(id int64, b *db.Booking, suspicious bool) {
 	}
 	html, err := renderMail("booking-admin", data)
 	if err != nil {
-		logErrorf("email: render booking-admin: %v", err)
+		slog.Error("email: render booking-admin", "err", err)
 		return
 	}
 	text := fmt.Sprintf("New booking request #%d\n\nName: %s\nPhone: %s\nEmail: %s\nAddress: %s\nService: %s\nPreferred time: %s\n\n%s\n\n%s/admin\n",
@@ -201,7 +201,7 @@ func notifyBooking(id int64, b *db.Booking, suspicious bool) {
 	}
 	html, err = renderMail("booking-customer", data)
 	if err != nil {
-		logErrorf("email: render booking-customer: %v", err)
+		slog.Error("email: render booking-customer", "err", err)
 		return
 	}
 	text = fmt.Sprintf("Thanks %s — I've got your request and will be in touch shortly (usually within a couple of hours during the day).\n\nWhat you sent:\n%s\n\n— James\n%s\n",
@@ -217,7 +217,7 @@ func sendQuoteVerification(q *db.Quote, link string) {
 	}
 	html, err := renderMail("quote-verify", map[string]any{"Q": q, "Link": link})
 	if err != nil {
-		logErrorf("email: render quote-verify: %v", err)
+		slog.Error("email: render quote-verify", "err", err)
 		return
 	}
 	text := fmt.Sprintf("Hi %s — confirm your email to get your instant quote:\n\n%s\n\nThe link is valid for 48 hours. If you didn't request a quote from %s you can ignore this email.\n\n— James\n",
@@ -235,7 +235,7 @@ func notifyQuoteVerified(q *db.Quote, link string) {
 
 	html, err := renderMail("quote-ready-admin", data)
 	if err != nil {
-		logErrorf("email: render quote-ready-admin: %v", err)
+		slog.Error("email: render quote-ready-admin", "err", err)
 	} else {
 		text := fmt.Sprintf("Quote #%d verified — %s <%s> (%s) — configured total $%.0f\n\n%s\n\n%s\n%s/admin\n",
 			q.ID, q.Name, q.Email, q.Mobile, q.TotalCost, q.Description, link, site.BaseURL)
@@ -244,7 +244,7 @@ func notifyQuoteVerified(q *db.Quote, link string) {
 
 	html, err = renderMail("quote-ready-customer", data)
 	if err != nil {
-		logErrorf("email: render quote-ready-customer: %v", err)
+		slog.Error("email: render quote-ready-customer", "err", err)
 		return
 	}
 	text := fmt.Sprintf("Thanks for confirming your email, %s. Your instant quote is ready — view it here:\n\n%s\n\nI'll review your requirements personally and follow up with a detailed proposal within 2 business days.\n\n— James\n",

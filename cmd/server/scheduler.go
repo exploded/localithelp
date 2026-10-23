@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -33,10 +33,10 @@ func schedulerEnabled() bool {
 
 func startScheduler() {
 	if !schedulerEnabled() {
-		log.Println("scheduler: disabled (set PROD or SCHEDULER=1 to enable)")
+		slog.Info("scheduler: disabled (set PROD or SCHEDULER=1 to enable)")
 		return
 	}
-	log.Printf("scheduler: enabled, every %s", schedulerInterval)
+	slog.Info("scheduler: enabled", "interval", schedulerInterval)
 	go func() {
 		runScheduledJobs(time.Now())
 		for range time.Tick(schedulerInterval) {
@@ -65,10 +65,10 @@ func runScheduledJobs(now time.Time) schedulerSummary {
 	s.Backup = backupDatabase(now)
 	s.Calendar = syncCalendar(now)
 	if s.Reminders+s.Alerts > 0 || s.Digest {
-		log.Printf("scheduler: sent %d reminder(s), %d heads-up(s), digest=%v", s.Reminders, s.Alerts, s.Digest)
+		slog.Info("scheduler: sent", "reminders", s.Reminders, "heads_ups", s.Alerts, "digest", s.Digest)
 	}
 	if s.Calendar > 0 {
-		log.Printf("scheduler: synced %d booking(s) to Google Calendar", s.Calendar)
+		slog.Info("scheduler: synced to Google Calendar", "bookings", s.Calendar)
 	}
 	return s
 }
@@ -83,18 +83,18 @@ func sendDayBeforeReminders(now time.Time) int {
 	from := midnight(now).AddDate(0, 0, 1)
 	bs, err := db.ListBookingsForReminder(from, from.AddDate(0, 0, 1))
 	if err != nil {
-		logErrorf("scheduler: reminders: %v", err)
+		slog.Error("scheduler: reminders", "err", err)
 		return 0
 	}
 	n := 0
 	for i := range bs {
 		b := &bs[i]
 		if err := sendBookingReminder(b); err != nil {
-			logErrorf("scheduler: reminder for booking #%d: %v", b.ID, err)
+			slog.Error("scheduler: reminder for booking", "booking", b.ID, "err", err)
 			continue
 		}
 		if err := db.MarkBookingReminderSent(b.ID); err != nil {
-			logErrorf("scheduler: stamp reminder #%d: %v", b.ID, err)
+			slog.Error("scheduler: stamp reminder", "booking", b.ID, "err", err)
 			continue
 		}
 		n++
@@ -107,18 +107,18 @@ func sendDayBeforeReminders(now time.Time) int {
 func sendAdminAlerts(now time.Time) int {
 	bs, err := db.ListBookingsForAdminAlert(now, now.Add(time.Hour))
 	if err != nil {
-		logErrorf("scheduler: alerts: %v", err)
+		slog.Error("scheduler: alerts", "err", err)
 		return 0
 	}
 	n := 0
 	for i := range bs {
 		b := &bs[i]
 		if err := sendBookingSoon(b, now); err != nil {
-			logErrorf("scheduler: heads-up for booking #%d: %v", b.ID, err)
+			slog.Error("scheduler: heads-up for booking", "booking", b.ID, "err", err)
 			continue
 		}
 		if err := db.MarkBookingAdminAlertSent(b.ID); err != nil {
-			logErrorf("scheduler: stamp heads-up #%d: %v", b.ID, err)
+			slog.Error("scheduler: stamp heads-up", "booking", b.ID, "err", err)
 			continue
 		}
 		n++
@@ -141,19 +141,19 @@ func sendMorningDigest(now time.Time) bool {
 	}
 	d, err := buildDigest(now)
 	if err != nil {
-		logErrorf("scheduler: digest: %v", err)
+		slog.Error("scheduler: digest", "err", err)
 		return false
 	}
 	first, err := db.ClaimSchedulerRun("digest", now)
 	if err != nil {
-		logErrorf("scheduler: claim digest: %v", err)
+		slog.Error("scheduler: claim digest", "err", err)
 		return false
 	}
 	if !first || d.Empty() {
 		return false
 	}
 	if err := sendDigest(d); err != nil {
-		logErrorf("scheduler: digest send: %v", err)
+		slog.Error("scheduler: digest send", "err", err)
 		return false
 	}
 	return true

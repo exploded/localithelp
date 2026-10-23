@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	netmail "net/mail"
 	"os"
@@ -43,13 +43,13 @@ type quotePageData struct {
 func handleQuote(w http.ResponseWriter, r *http.Request) {
 	groups, err := db.ListOptionGroups()
 	if err != nil {
-		logErrorf("load options: %v", err)
+		slog.Error("load options", "err", err)
 		http.Error(w, "failed to load options", http.StatusInternalServerError)
 		return
 	}
 	baseCost, err := db.GetBaseCost()
 	if err != nil {
-		logErrorf("load base cost: %v", err)
+		slog.Error("load base cost", "err", err)
 	}
 	render(w, r, "quote", quotePageData{
 		TurnstileSiteKey: turnstileSiteKey,
@@ -94,7 +94,7 @@ func handleQuoteSubmit(w http.ResponseWriter, r *http.Request) {
 	if !isOwnerEmail(email) {
 		dup, err := db.HasVerifiedQuote(email)
 		if err != nil {
-			logErrorf("quote: check email %s: %v", email, err)
+			slog.Error("quote: check email", "email", email, "err", err)
 			jsonError(w, "Something went wrong, please try again", http.StatusInternalServerError)
 			return
 		}
@@ -105,7 +105,7 @@ func handleQuoteSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	// A fresh submission supersedes any earlier unconfirmed attempt.
 	if err := db.DeletePendingQuotes(email); err != nil {
-		logErrorf("quote: delete pending for %s: %v", email, err)
+		slog.Error("quote: delete pending", "email", email, "err", err)
 	}
 
 	totalCost, _ := formData["total_cost"].(float64)
@@ -127,7 +127,7 @@ func handleQuoteSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := db.InsertQuote(quote)
 	if err != nil {
-		logErrorf("quote: insert: %v", err)
+		slog.Error("quote: insert", "err", err)
 		jsonError(w, "Something went wrong, please try again", http.StatusInternalServerError)
 		return
 	}
@@ -138,9 +138,9 @@ func handleQuoteSubmit(w http.ResponseWriter, r *http.Request) {
 		sendQuoteVerification(quote, link)
 	} else {
 		// Local dev without SES: surface the link in the log so the flow can be exercised.
-		log.Printf("quote #%d: email disabled — verification link: %s", id, link)
+		slog.Info("quote: email disabled — verification link", "quote", id, "link", link)
 	}
-	log.Printf("quote #%d pending for %s (%s)", id, email, clientIP(r))
+	slog.Info("quote pending", "quote", id, "email", email, "ip", clientIP(r))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "sent", "email": email})
@@ -170,7 +170,7 @@ func handleQuoteVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		logErrorf("quote verify: %v", err)
+		slog.Error("quote verify", "err", err)
 		fail("Something went wrong loading your quote. Please try again shortly.")
 		return
 	}
@@ -190,14 +190,14 @@ func handleQuoteVerify(w http.ResponseWriter, r *http.Request) {
 	estimate := generateEstimate(quote)
 	first, err := db.MarkQuoteVerified(quote.ID, estimate)
 	if err != nil {
-		logErrorf("quote #%d: mark verified: %v", quote.ID, err)
+		slog.Error("quote: mark verified", "quote", quote.ID, "err", err)
 		fail("Something went wrong saving your quote. Please try again shortly.")
 		return
 	}
 	if first {
 		quote.Status = "verified"
 		quote.AIEstimate = estimate
-		log.Printf("quote #%d verified for %s", quote.ID, quote.Email)
+		slog.Info("quote verified", "quote", quote.ID, "email", quote.Email)
 		notifyQuoteVerified(quote, site.BaseURL+"/quote/verify?t="+quote.VerifyToken)
 	}
 	render(w, r, "quote-result", map[string]any{
@@ -223,7 +223,7 @@ func generateEstimate(quote *db.Quote) string {
 	}
 	estimate, err := callClaude(apiKey, buildEstimatePrompt(formData))
 	if err != nil {
-		logErrorf("quote #%d: claude: %v", quote.ID, err)
+		slog.Error("quote: claude", "quote", quote.ID, "err", err)
 		return fallback
 	}
 	return estimate
@@ -250,7 +250,7 @@ func buildEstimatePrompt(data map[string]any) string {
 	// Load feature labels dynamically from database
 	groups, err := db.ListOptionGroups()
 	if err != nil {
-		logErrorf("buildEstimatePrompt: failed to load groups: %v", err)
+		slog.Error("buildEstimatePrompt: failed to load groups", "err", err)
 	}
 
 	b.WriteString("Selected features:\n")

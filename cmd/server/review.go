@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -61,7 +62,7 @@ func handleAdminReviewCard(w http.ResponseWriter, r *http.Request) {
 	}
 	qr, err := reviewQRDataURI(512)
 	if err != nil {
-		logErrorf("review qr: %v", err)
+		slog.Error("review qr", "err", err)
 		http.Error(w, "failed to render the QR code", http.StatusInternalServerError)
 		return
 	}

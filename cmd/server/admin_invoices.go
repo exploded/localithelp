@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -53,7 +54,7 @@ func loadInvoice(w http.ResponseWriter, r *http.Request) *db.Invoice {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.NotFound(w, r)
 		} else {
-			logErrorf("admin invoice: %v", err)
+			slog.Error("admin invoice", "err", err)
 			http.Error(w, "failed to load invoice", http.StatusInternalServerError)
 		}
 		return nil
@@ -101,7 +102,7 @@ func handleAdminInvoices(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	invs, err := db.ListInvoices(status)
 	if err != nil {
-		logErrorf("admin invoices: %v", err)
+		slog.Error("admin invoices", "err", err)
 		http.Error(w, "failed to load invoices", http.StatusInternalServerError)
 		return
 	}
@@ -152,7 +153,7 @@ func handleAdminInvoiceNew(w http.ResponseWriter, r *http.Request) {
 	items := seedInvoiceItems(b, r.FormValue("kind"))
 	id, err := db.CreateInvoice(bookingID, customerID, db.Today().AddDate(0, 0, 7), "", generateSessionToken(), items)
 	if err != nil {
-		logErrorf("create invoice: %v", err)
+		slog.Error("create invoice", "err", err)
 		redirectMsg(w, r, back, "err", "Could not create the invoice.")
 		return
 	}
@@ -240,7 +241,7 @@ func handleAdminInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 	v, err := loadInvoiceView(inv)
 	if err != nil {
-		logErrorf("invoice view: %v", err)
+		slog.Error("invoice view", "err", err)
 		http.Error(w, "failed to load invoice", http.StatusInternalServerError)
 		return
 	}
@@ -361,7 +362,7 @@ func handleAdminInvoiceItems(w http.ResponseWriter, r *http.Request) {
 		notes = notes[:2000]
 	}
 	if err := db.SaveInvoiceDraft(inv.ID, due, notes, link, items); err != nil {
-		logErrorf("save invoice #%d: %v", inv.ID, err)
+		slog.Error("save invoice", "invoice", inv.ID, "err", err)
 		redirectMsg(w, r, back, "err", "Could not save the invoice.")
 		return
 	}
@@ -415,7 +416,7 @@ func handleAdminInvoiceSend(w http.ResponseWriter, r *http.Request) {
 		}
 		ok, err := db.MarkInvoiceSent(inv.ID, db.Today(), due)
 		if err != nil {
-			logErrorf("mark sent #%d: %v", inv.ID, err)
+			slog.Error("mark sent", "invoice", inv.ID, "err", err)
 			redirectMsg(w, r, back, "err", "Could not update the invoice.")
 			return
 		}
@@ -425,7 +426,7 @@ func handleAdminInvoiceSend(w http.ResponseWriter, r *http.Request) {
 		}
 		if inv.BookingID != 0 {
 			if err := db.UpdateBookingStatus(inv.BookingID, db.BookingInvoiced); err != nil {
-				logErrorf("booking #%d → invoiced: %v", inv.BookingID, err)
+				slog.Error("booking → invoiced", "booking", inv.BookingID, "err", err)
 			}
 			syncBookingSoon(inv.BookingID)
 		}
@@ -443,7 +444,7 @@ func handleAdminInvoiceSend(w http.ResponseWriter, r *http.Request) {
 	}
 	pdf, err := invoicePDF(v)
 	if err != nil {
-		logErrorf("invoice pdf #%d: %v", inv.ID, err)
+		slog.Error("invoice pdf", "invoice", inv.ID, "err", err)
 		redirectMsg(w, r, back, "err", "Marked as sent, but the PDF failed to render: "+err.Error())
 		return
 	}
@@ -470,7 +471,7 @@ func resendReceipt(w http.ResponseWriter, r *http.Request, inv *db.Invoice, back
 	}
 	pdf, err := invoicePDF(v)
 	if err != nil {
-		logErrorf("receipt pdf #%d: %v", inv.ID, err)
+		slog.Error("receipt pdf", "invoice", inv.ID, "err", err)
 		redirectMsg(w, r, back, "err", "The PDF failed to render: "+err.Error())
 		return
 	}
@@ -509,7 +510,7 @@ func handleAdminInvoicePaid(w http.ResponseWriter, r *http.Request) {
 	}
 	ok, err := db.MarkInvoicePaid(inv.ID, paidAt, method, ref)
 	if err != nil {
-		logErrorf("mark paid #%d: %v", inv.ID, err)
+		slog.Error("mark paid", "invoice", inv.ID, "err", err)
 		redirectMsg(w, r, back, "err", "Could not update the invoice.")
 		return
 	}
@@ -519,7 +520,7 @@ func handleAdminInvoicePaid(w http.ResponseWriter, r *http.Request) {
 	}
 	if inv.BookingID != 0 {
 		if err := db.UpdateBookingStatus(inv.BookingID, db.BookingPaid); err != nil {
-			logErrorf("booking #%d → paid: %v", inv.BookingID, err)
+			slog.Error("booking → paid", "booking", inv.BookingID, "err", err)
 		}
 		syncBookingSoon(inv.BookingID)
 	}
@@ -558,7 +559,7 @@ func wantsReviewAsk(r *http.Request) bool {
 // asked. A failure here must not turn a successful send into an error.
 func recordReviewAsk(id int64) {
 	if err := db.MarkInvoiceReviewAsked(id, db.Today()); err != nil {
-		logErrorf("mark review asked #%d: %v", id, err)
+		slog.Error("mark review asked", "invoice", id, "err", err)
 	}
 }
 
@@ -584,7 +585,7 @@ func handleAdminInvoiceVoid(w http.ResponseWriter, r *http.Request) {
 func servePDF(w http.ResponseWriter, inv *db.Invoice, v *invoiceView) {
 	pdf, err := invoicePDF(v)
 	if err != nil {
-		logErrorf("pdf %s: %v", inv.Ref(), err)
+		slog.Error("pdf", "invoice_ref", inv.Ref(), "err", err)
 		http.Error(w, "failed to render PDF", http.StatusInternalServerError)
 		return
 	}
@@ -693,7 +694,7 @@ func handleAdminCustomers(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	rows, err := db.ListCustomers(q)
 	if err != nil {
-		logErrorf("admin customers: %v", err)
+		slog.Error("admin customers", "err", err)
 		http.Error(w, "failed to load customers", http.StatusInternalServerError)
 		return
 	}
@@ -754,7 +755,7 @@ func handleAdminCustomerCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	existing, err := db.FindCustomer(f.Email, f.Phone)
 	if err != nil {
-		logErrorf("find customer: %v", err)
+		slog.Error("find customer", "err", err)
 		redirectMsg(w, r, "/admin/customers", "err", "Could not add the customer.")
 		return
 	}
@@ -769,7 +770,7 @@ func handleAdminCustomerCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.Suburb)
 	if err != nil {
-		logErrorf("create customer: %v", err)
+		slog.Error("create customer", "err", err)
 		redirectMsg(w, r, "/admin/customers", "err", "Could not add the customer.")
 		return
 	}
@@ -779,7 +780,7 @@ func handleAdminCustomerCreate(w http.ResponseWriter, r *http.Request) {
 		if c, err := db.GetCustomer(id); err == nil {
 			c.Address, c.Notes = f.Address, f.Notes
 			if err := db.UpdateCustomer(c); err != nil {
-				logErrorf("customer #%d address/notes: %v", id, err)
+				slog.Error("customer address/notes", "customer", id, "err", err)
 			}
 		}
 	}
@@ -829,7 +830,7 @@ func handleAdminCustomerBooking(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := db.CreateForCustomer(c, slug, issue)
 	if err != nil {
-		logErrorf("new booking for customer #%d: %v", c.ID, err)
+		slog.Error("new booking for customer", "customer", c.ID, "err", err)
 		redirectMsg(w, r, back, "err", "Could not create the booking.")
 		return
 	}
@@ -857,7 +858,7 @@ func handleAdminCustomerSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := db.UpdateCustomer(c); err != nil {
-		logErrorf("update customer #%d: %v", c.ID, err)
+		slog.Error("update customer", "customer", c.ID, "err", err)
 		redirectMsg(w, r, back, "err", "Could not save — is that email already used by another customer?")
 		return
 	}

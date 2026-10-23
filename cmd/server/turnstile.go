@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,11 +29,11 @@ func initTurnstile() {
 	turnstileSecret = strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY"))
 	switch {
 	case turnstileSiteKey != "" && turnstileSecret != "":
-		log.Println("turnstile: enabled")
+		slog.Info("turnstile: enabled")
 	case turnstileSiteKey == "" && turnstileSecret == "":
-		logWarnf("turnstile: not configured (set TURNSTILE_SITE_KEY/TURNSTILE_SECRET_KEY) — quote form is unprotected")
+		slog.Warn("turnstile: not configured (set TURNSTILE_SITE_KEY/TURNSTILE_SECRET_KEY) — quote form is unprotected")
 	default:
-		logWarnf("turnstile: WARNING only one of TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY is set — check .env")
+		slog.Warn("turnstile: WARNING only one of TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY is set — check .env")
 	}
 }
 
@@ -55,7 +55,7 @@ func verifyTurnstile(token, remoteIP string) bool {
 	}
 	resp, err := turnstileClient.PostForm("https://challenges.cloudflare.com/turnstile/v0/siteverify", form)
 	if err != nil {
-		logErrorf("turnstile: siteverify: %v", err)
+		slog.Error("turnstile: siteverify", "err", err)
 		return false
 	}
 	defer resp.Body.Close()
@@ -64,11 +64,11 @@ func verifyTurnstile(token, remoteIP string) bool {
 		ErrorCodes []string `json:"error-codes"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		logErrorf("turnstile: decode: %v", err)
+		slog.Error("turnstile: decode", "err", err)
 		return false
 	}
 	if !out.Success {
-		log.Printf("turnstile: rejected (%s): %v", remoteIP, out.ErrorCodes)
+		slog.Info("turnstile: rejected", "ip", remoteIP, "error_codes", out.ErrorCodes)
 	}
 	return out.Success
 }

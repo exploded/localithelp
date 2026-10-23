@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -40,9 +40,9 @@ func initBackup() {
 	u := backup.New(region, os.Getenv("BACKUP_S3_BUCKET"), os.Getenv("BACKUP_AWS_ACCESS_KEY_ID"), os.Getenv("BACKUP_AWS_SECRET_ACCESS_KEY"))
 	backups = u
 	if u.Enabled() {
-		log.Printf("backup: nightly DB backup to s3://%s (region %s)", u.Bucket(), region)
+		slog.Info("backup: nightly DB backup", "bucket", u.Bucket(), "region", region)
 	} else {
-		logWarnf("backup: not configured (set BACKUP_S3_BUCKET + BACKUP_AWS_ACCESS_KEY_ID/SECRET) — no DB backups")
+		slog.Warn("backup: not configured (set BACKUP_S3_BUCKET + BACKUP_AWS_ACCESS_KEY_ID/SECRET) — no DB backups")
 	}
 }
 
@@ -64,7 +64,7 @@ func backupDatabase(now time.Time) bool {
 	}
 	first, err := db.ClaimSchedulerRun("backup", now)
 	if err != nil {
-		logErrorf("scheduler: claim backup: %v", err)
+		slog.Error("scheduler: claim backup", "err", err)
 		return false
 	}
 	if !first {
@@ -73,14 +73,14 @@ func backupDatabase(now time.Time) bool {
 	key := backupKey(now)
 	size, err := runBackup(key)
 	if err != nil {
-		logErrorf("scheduler: backup: %v", err)
+		slog.Error("scheduler: backup", "err", err)
 		if rerr := db.ReleaseSchedulerRun("backup", now); rerr != nil {
-			logErrorf("scheduler: release backup claim: %v", rerr)
+			slog.Error("scheduler: release backup claim", "err", rerr)
 		}
 		notifyBackupFailed(key, err)
 		return false
 	}
-	log.Printf("scheduler: backup uploaded s3://%s/%s (%d bytes)", backups.Bucket(), key, size)
+	slog.Info("scheduler: backup uploaded", "bucket", backups.Bucket(), "key", key, "bytes", size)
 	return true
 }
 
@@ -120,10 +120,10 @@ func notifyBackupFailed(key string, cause error) {
 		backups.Bucket(), key, cause)
 	html, err := renderMail("backup-failed", map[string]any{"Bucket": backups.Bucket(), "Key": key, "Error": cause.Error()})
 	if err != nil {
-		logErrorf("email: render backup-failed: %v", err)
+		slog.Error("email: render backup-failed", "err", err)
 		return
 	}
 	if err := sendNow(notifyEmail, "DB backup failed", html, text, ""); err != nil {
-		logErrorf("email: backup-failed: %v", err)
+		slog.Error("email: backup-failed", "err", err)
 	}
 }

@@ -2,7 +2,7 @@ package main
 
 import (
 	"hash/fnv"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -340,7 +340,7 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 
 	// Honeypot: real users never see this field. Pretend success, save nothing.
 	if trim("website") != "" {
-		log.Printf("booking: honeypot hit from %s", ip)
+		slog.Info("booking: honeypot hit", "ip", ip)
 		http.Redirect(w, r, "/book/thanks", http.StatusSeeOther)
 		return
 	}
@@ -400,7 +400,7 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	customerID, err := db.FindOrCreateCustomer(f.Name, f.Email, f.Phone, f.AddrSuburb)
 	if err != nil {
-		logErrorf("booking: customer upsert failed: %v", err)
+		slog.Error("booking: customer upsert failed", "err", err)
 		// Not fatal: the booking is still recorded; the boot-time backfill will link it later.
 	}
 	if customerID != 0 {
@@ -409,7 +409,7 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 		if c, err := db.GetCustomer(customerID); err == nil && c.Address == "" {
 			c.Address, c.Suburb = fullAddress, f.AddrSuburb
 			if err := db.UpdateCustomer(c); err != nil {
-				logErrorf("booking: fill customer address: %v", err)
+				slog.Error("booking: fill customer address", "err", err)
 			}
 		}
 	}
@@ -429,17 +429,17 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := db.InsertBooking(b)
 	if err != nil {
-		logErrorf("booking: insert failed: %v", err)
+		slog.Error("booking: insert failed", "err", err)
 		http.Error(w, "Sorry — something went wrong saving your request. Please call or email instead.", http.StatusInternalServerError)
 		return
 	}
 	linkBookingClick(w, r, id)
 	if suspicious {
 		if err := db.UpdateBookingStatus(id, "spam"); err != nil {
-			logErrorf("booking: mark suspicious #%d: %v", id, err)
+			slog.Error("booking: mark suspicious", "booking", id, "err", err)
 		}
 	}
-	log.Printf("booking #%d from %s (%s / %s) service=%s suspicious=%v", id, f.Name, f.Phone, f.Email, f.Service, suspicious)
+	slog.Info("booking received", "booking", id, "name", f.Name, "phone", f.Phone, "email", f.Email, "service", f.Service, "suspicious", suspicious)
 	notifyBooking(id, b, suspicious)
 	http.Redirect(w, r, "/book/thanks", http.StatusSeeOther)
 }

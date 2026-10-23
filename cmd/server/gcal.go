@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -444,9 +445,9 @@ func logGCal(what string, err error) {
 		return
 	}
 	msg := what + ": " + err.Error()
-	logErrorf("gcal: %s", msg)
+	slog.Error("gcal", "op", what, "err", err)
 	if e := db.SetGoogleCalendarError(msg); e != nil {
-		logErrorf("gcal: record error: %v", e)
+		slog.Error("gcal: record error", "err", e)
 	}
 }
 

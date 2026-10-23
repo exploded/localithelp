@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -149,6 +150,6 @@ func handleAPIPricing(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=3600")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		logErrorf("api/pricing: %v", err)
+		slog.Error("api/pricing", "err", err)
 	}
 }
