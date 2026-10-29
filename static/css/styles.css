@@ -519,6 +519,19 @@ section { padding: 6rem 2rem; }
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(15,23,42,0.08);
 }
+/* Screenshot bleeds to the card edges, so negative margins match the card padding. */
+.project-thumb {
+    display: block;
+    width: calc(100% + 4rem);
+    height: auto;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    object-position: top;
+    margin: -1.75rem -2rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    border-radius: 7px 7px 0 0;
+    background: var(--bg-elevated);
+}
 .project-card-header {
     display: flex;
     justify-content: space-between;

@@ -2,9 +2,9 @@
 
 {{define "meta"}}
     <title>Portfolio — Web Apps &amp; Software Projects | Local IT Help</title>
-    <meta name="description" content="Selected web applications and digital projects by Local IT Help.">
+    <meta name="description" content="Business websites, booking systems, Shopify stores and web apps built by Local IT Help, Donvale VIC — live projects you can click on.">
     <meta property="og:title" content="Portfolio — selected software projects">
-    <meta property="og:description" content="Web applications, Shopify builds and custom tools by Local IT Help, Donvale VIC.">
+    <meta property="og:description" content="Business websites, booking systems, Shopify stores and web apps by Local IT Help, Donvale VIC.">
 {{end}}
 
 {{define "content"}}
@@ -21,17 +21,74 @@
     <section class="portfolio-section">
         <div class="container">
             <div class="portfolio-grid">
+                <a href="https://upthespout.com.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/upthespout.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
+                    <div class="project-card-header">
+                        <h3>Up The Spout</h3>
+                        <span class="arrow">&#8599;</span>
+                    </div>
+                    <div class="domain">upthespout.com.au</div>
+                    <p class="desc">Website and booking system for a gutter-cleaning business in Melbourne's east. Customers see a fixed price and book online; the owner runs bookings, invoices, photo reports and review requests from one admin page.</p>
+                    <span class="project-tag">Business site</span> <span class="project-tag">Booking system</span>
+                </a>
+
                 <a href="https://combatmirror.com" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/combatmirror.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="project-card-header">
                         <h3>Combat Mirror</h3>
                         <span class="arrow">&#8599;</span>
                     </div>
                     <div class="domain">combatmirror.com</div>
-                    <p class="desc">Shopify store build — theme customisation, products, payments and shipping set up ready to sell.</p>
-                    <span class="project-tag">Shopify</span> <span class="project-tag project-tag--soon">Live soon</span>
+                    <p class="desc">Shopify store for a strike-responsive training mirror — theme customisation, products, Afterpay, payments and shipping, plus volume and commercial order flows.</p>
+                    <span class="project-tag">Shopify</span>
+                </a>
+
+                <a href="https://a-part.com.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/apart.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
+                    <div class="project-card-header">
+                        <h3>A-Part Real Estate</h3>
+                        <span class="arrow">&#8599;</span>
+                    </div>
+                    <div class="domain">a-part.com.au</div>
+                    <p class="desc">Sell your home without an agent. A private-sale platform that lists on realestate.com.au and domain.com.au, with pricing, a savings calculator and guided listing tools.</p>
+                    <span class="project-tag">Web App</span>
+                </a>
+
+                <a href="https://catoggio.net" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/catoggio.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
+                    <div class="project-card-header">
+                        <h3>Catoggio Homes</h3>
+                        <span class="arrow">&#8599;</span>
+                    </div>
+                    <div class="domain">catoggio.net</div>
+                    <p class="desc">Website for a Melbourne master builder — new homes, renovations and extensions, with a project gallery and quote enquiries.</p>
+                    <span class="project-tag">Business site</span>
+                </a>
+
+                <a href="https://spending.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/spending.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
+                    <div class="project-card-header">
+                        <h3>Federal Spending Explorer</h3>
+                        <span class="arrow">&#8599;</span>
+                    </div>
+                    <div class="domain">spending.mchugh.au</div>
+                    <p class="desc">Drill down through Commonwealth spending from the whole-of-government total to departments, programs and contracts. Built from public Budget data.</p>
+                    <span class="project-tag">Data</span>
+                </a>
+
+                <a href="https://speakeasy.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/speakeasy.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
+                    <div class="project-card-header">
+                        <h3>SpeakEasy Language Tutor</h3>
+                        <span class="arrow">&#8599;</span>
+                    </div>
+                    <div class="domain">speakeasy.mchugh.au</div>
+                    <p class="desc">Language-learning site with interactive lessons, quizzes and audio pronunciation — Croatian, Indonesian and Serbian so far.</p>
+                    <span class="project-tag">Web App</span>
                 </a>
 
                 <a href="https://train.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/train.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="project-card-header">
                         <h3>Train — Barbell Tracker</h3>
                         <span class="arrow">&#8599;</span>
@@ -42,6 +99,7 @@
                 </a>
 
                 <a href="https://wtw.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/wtw.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="project-card-header">
                         <h3>What to Watch</h3>
                         <span class="arrow">&#8599;</span>
@@ -51,84 +109,59 @@
                     <span class="project-tag">Web App</span>
                 </a>
 
-                <a href="https://clearsky.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
-                    <div class="project-card-header">
-                        <h3>clearsky</h3>
-                        <span class="arrow">&#8599;</span>
-                    </div>
-                    <div class="domain">clearsky.mchugh.au</div>
-                    <p class="desc">Nightly astrophotography go/no-go for Donvale — pulls several weather models, scores cloud, moon and darkness, and reports the usable window.</p>
-                    <span class="project-tag">Utility</span>
-                </a>
-
-                <a href="https://speakeasy.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
-                    <div class="project-card-header">
-                        <h3>SpeakEasy Language Tutor</h3>
-                        <span class="arrow">&#8599;</span>
-                    </div>
-                    <div class="domain">speakeasy.mchugh.au</div>
-                    <p class="desc">AI-powered language learning platform with conversational practice and real-time feedback.</p>
-                    <span class="project-tag">Web App</span>
-                </a>
-
-
-                <div class="project-card reveal">
-                    <div class="project-card-header">
-                        <h3>Statement of Advice Generator</h3>
-                    </div>
-                    <div class="domain">Private client tool</div>
-                    <p class="desc">Automated financial document generation tool for streamlined compliance and advisory workflows.</p>
-                    <span class="project-tag">Web App</span>
-                </div>
-
                 <a href="https://game.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/game.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="project-card-header">
                         <h3>Fantasy Stock Market Game</h3>
                         <span class="arrow">&#8599;</span>
                     </div>
                     <div class="domain">game.mchugh.au</div>
-                    <p class="desc">Competitive stock trading simulation with real market data and portfolio management.</p>
+                    <p class="desc">Start with a pretend $1 million and trade real ASX and S&amp;P shares at market prices, then compete with other players on returns.</p>
                     <span class="project-tag">Web App</span>
                 </a>
 
-                <a href="https://a-part.com.au" class="project-card reveal" target="_blank" rel="noopener">
+                <a href="https://clearsky.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/clearsky.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="project-card-header">
-                        <h3>A-Part Real Estate</h3>
+                        <h3>clearsky</h3>
                         <span class="arrow">&#8599;</span>
                     </div>
-                    <div class="domain">a-part.com.au</div>
-                    <p class="desc">Real estate platform with property listings, search, and management tools.</p>
-                    <span class="project-tag">Web App</span>
+                    <div class="domain">clearsky.mchugh.au</div>
+                    <p class="desc">Nightly astrophotography go/no-go for Donvale — pulls several weather models, scores cloud, moon and darkness, and emails an alert on good nights.</p>
+                    <span class="project-tag">Utility</span>
                 </a>
 
                 <a href="https://moon.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/moon.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="project-card-header">
                         <h3>Moon Rise &amp; Set</h3>
                         <span class="arrow">&#8599;</span>
                     </div>
                     <div class="domain">moon.mchugh.au</div>
-                    <p class="desc">Lunar tracking application with precise rise and set times for any location.</p>
+                    <p class="desc">Drop a pin on the map to get moonrise and moonset times for anywhere, today or in a calendar view.</p>
                     <span class="project-tag">Utility</span>
                 </a>
 
+                <a href="https://spiro.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/spiro.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
+                    <div class="project-card-header">
+                        <h3>Spirograph</h3>
+                        <span class="arrow">&#8599;</span>
+                    </div>
+                    <div class="domain">spiro.mchugh.au</div>
+                    <p class="desc">Browser drawing toy: set up two to five spinning arms, or classic Spirograph gears, and watch the pattern trace itself out. Pan, zoom and save as an image.</p>
+                    <span class="project-tag">Interactive</span>
+                </a>
+
                 <a href="https://deepspaceplace.com" class="project-card reveal" target="_blank" rel="noopener">
+                    <img class="project-thumb" src="{{asset "img/portfolio/deepspaceplace.jpg"}}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="project-card-header">
                         <h3>Deep Space Place</h3>
                         <span class="arrow">&#8599;</span>
                     </div>
                     <div class="domain">deepspaceplace.com</div>
-                    <p class="desc">Space exploration and astronomy content platform.</p>
-                    <span class="project-tag">Web App</span>
-                </a>
-
-                <a href="https://alien.mchugh.au" class="project-card reveal" target="_blank" rel="noopener">
-                    <div class="project-card-header">
-                        <h3>Alien</h3>
-                        <span class="arrow">&#8599;</span>
-                    </div>
-                    <div class="domain">alien.mchugh.au</div>
-                    <p class="desc">Interactive web experience exploring the unknown.</p>
-                    <span class="project-tag">Interactive</span>
+                    <p class="desc">My astrophotography site: galaxies, nebulae and star clusters shot from Melbourne since 2009, with an interactive sky map and observing tools.</p>
+                    <span class="project-tag">Website</span>
                 </a>
             </div>
 
