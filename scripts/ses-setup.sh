@@ -166,9 +166,10 @@ else
   echo "SES configuration set $CONFIG_SET exists"
 fi
 DEST="{\"Enabled\":true,\"MatchingEventTypes\":[\"BOUNCE\",\"COMPLAINT\"],\"SnsDestination\":{\"TopicArn\":\"$TOPIC_ARN\"}}"
-NDEST=$(aws sesv2 get-configuration-set-event-destinations --region "$REGION" --configuration-set-name "$CONFIG_SET" \
-  --query "length(EventDestinations[?Name=='$DEST_NAME'])" --output text)
-if [ "$NDEST" = "0" ]; then
+# EventDestinations is null (not []) on a new set, so compare names rather than count.
+HAVE_DEST=$(aws sesv2 get-configuration-set-event-destinations --region "$REGION" --configuration-set-name "$CONFIG_SET" \
+  --query "EventDestinations[?Name=='$DEST_NAME'].Name | [0]" --output text)
+if [ "$HAVE_DEST" != "$DEST_NAME" ]; then
   aws sesv2 create-configuration-set-event-destination --region "$REGION" --configuration-set-name "$CONFIG_SET" \
     --event-destination-name "$DEST_NAME" --event-destination "$DEST"
   echo "created event destination $DEST_NAME (bounces + complaints → $TOPIC_NAME)"
