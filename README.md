@@ -202,7 +202,7 @@ leaving the events in Google), and access can also be revoked at
 
 ### Email (Amazon SES) setup
 
-One-time, from your machine with an admin AWS profile: `AWS_PROFILE=tooltrack-admin
+One-time, from your machine with an admin AWS profile: `AWS_PROFILE=aws-admin
 CF_TOKEN=<cloudflare token> scripts/ses-setup.sh`. It creates the send-only IAM
 user + key, the `localithelp.com.au` SES domain identity, adds the DKIM CNAMEs to
 Cloudflare (or prints them if `CF_TOKEN` is unset), and prints the `.env` lines
@@ -217,7 +217,7 @@ gzips it and puts it at `s3://localithelp-backups/localithelp-YYYY-MM-DD.db.gz`.
 Objects expire after 90 days. If the upload fails the claim is released, the
 next 15-minute tick retries, and you get a "DB backup failed" email each time.
 
-Setup, once, from your machine: `AWS_PROFILE=tooltrack-admin scripts/s3-backup-setup.sh`.
+Setup, once, from your machine: `AWS_PROFILE=aws-admin scripts/s3-backup-setup.sh`.
 It creates the private bucket (SSE-S3, lifecycle rule) and the `localithelp-backup`
 IAM user whose only permission is `s3:PutObject` on that bucket, then prints the
 `BACKUP_*` lines for the server `.env`. Leave them empty to disable backups.

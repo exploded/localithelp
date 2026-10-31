@@ -13,7 +13,7 @@
 #
 # Requirements: aws CLI v2 with an admin profile.
 # Usage:
-#   AWS_PROFILE=tooltrack-admin scripts/s3-backup-setup.sh
+#   AWS_PROFILE=aws-admin scripts/s3-backup-setup.sh
 set -euo pipefail
 
 REGION=${AWS_REGION:-ap-southeast-2}

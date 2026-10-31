@@ -16,7 +16,7 @@
 #
 # Requirements: aws CLI v2 with an admin profile, curl, jq.
 # Usage:
-#   AWS_PROFILE=tooltrack-admin CF_TOKEN=... scripts/ses-setup.sh
+#   AWS_PROFILE=aws-admin CF_TOKEN=... scripts/ses-setup.sh
 set -euo pipefail
 
 REGION=${AWS_REGION:-ap-southeast-2}
