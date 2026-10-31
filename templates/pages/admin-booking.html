@@ -35,8 +35,8 @@
                         <h2 class="admin-card-title">Customer</h2>
                         {{if $d.Cust}}
                         <p><a href="/admin/customers/{{$d.Cust.ID}}"><strong>{{$d.Cust.Name}}</strong></a></p>
-                        <p>{{if $d.Cust.Phone}}<a href="tel:{{$d.Cust.Phone}}">{{$d.Cust.Phone}}</a><br>{{end}}{{if $d.Cust.Email}}<a href="mailto:{{$d.Cust.Email}}">{{$d.Cust.Email}}</a><br>{{end}}{{if $d.Cust.Address}}{{$d.Cust.Address}}<br>{{end}}{{$d.Cust.Suburb}}</p>
-                        {{if ne $b.Name $d.Cust.Name}}<p class="admin-muted">Enquiry name: {{$b.Name}}{{if $b.Phone}} · {{$b.Phone}}{{end}}{{if $b.Email}} · {{$b.Email}}{{end}}</p>{{end}}
+                        <p>{{if $d.Cust.Phone}}<a href="tel:{{$d.Cust.Phone}}">{{$d.Cust.Phone}}</a><br>{{end}}{{if $d.Cust.Email}}<a href="mailto:{{$d.Cust.Email}}">{{$d.Cust.Email}}</a>{{template "email-flag" $d.Cust.Email}}<br>{{end}}{{if $d.Cust.Address}}{{$d.Cust.Address}}<br>{{end}}{{$d.Cust.Suburb}}</p>
+                        {{if ne $b.Name $d.Cust.Name}}<p class="admin-muted">Enquiry name: {{$b.Name}}{{if $b.Phone}} · {{$b.Phone}}{{end}}{{if $b.Email}} · {{$b.Email}}{{template "email-flag" $b.Email}}{{end}}</p>{{end}}
                         {{else}}
                         <p class="admin-muted">Not linked to a customer record.</p>
                         {{end}}

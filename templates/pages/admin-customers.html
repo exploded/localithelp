@@ -54,7 +54,7 @@
                 <tr>
                     <td><a href="/admin/customers/{{.ID}}">{{if .Name}}{{.Name}}{{else}}(no name){{end}}</a></td>
                     <td>{{if .Phone}}<a href="tel:{{.Phone}}">{{.Phone}}</a>{{end}}</td>
-                    <td>{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
+                    <td>{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{template "email-flag" .Email}}{{end}}</td>
                     <td>{{.Suburb}}</td>
                     <td>{{.CreatedAt.Format "Jan 2006"}}</td>
                 </tr>

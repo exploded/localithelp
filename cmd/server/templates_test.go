@@ -23,6 +23,10 @@ func TestTemplatesRender(t *testing.T) {
 		Email: "test@example.test", OnsiteFee: 80, BlockRate: 30, SeniorsPct: 20, Suburbs: suburbs,
 		ReviewURL: "https://g.page/r/TEST/review",
 	}
+	// Ann's address bounced, so the email-flag partial renders its badge.
+	emailBlocks = map[string]db.EmailEvent{"ann@x": {Email: "ann@x", Kind: db.EmailBounce, BounceType: "Permanent",
+		SubType: "NoEmail", Diagnostic: "smtp; 550 5.1.1 user unknown", CreatedAt: time.Now()}}
+	t.Cleanup(func() { emailBlocks = map[string]db.EmailEvent{} })
 
 	svc := featuredService()
 	if svc == nil {

@@ -12,7 +12,7 @@
             <div class="section-label"><a href="/admin/invoices">Invoices</a> / {{$d.Ref}}</div>
             <h1 class="section-title">{{$d.Ref}} {{template "badge" $inv.Status}} <span class="admin-total">{{$d.Total}}</span></h1>
             <p class="page-header-intro">
-                {{if $v.Cust}}<a href="/admin/customers/{{$v.Cust.ID}}">{{$v.Cust.Name}}</a>{{if $v.Cust.Email}} · {{$v.Cust.Email}}{{end}}{{end}}
+                {{if $v.Cust}}<a href="/admin/customers/{{$v.Cust.ID}}">{{$v.Cust.Name}}</a>{{if $v.Cust.Email}} · {{$v.Cust.Email}}{{template "email-flag" $v.Cust.Email}}{{end}}{{end}}
                 {{if $v.Booking}} · booking <a href="/admin/bookings/{{$v.Booking.ID}}">#{{$v.Booking.ID}}</a>{{if $d.When}} ({{$d.When}}){{end}}{{end}}
             </p>
             {{template "admin-nav" .Path}}

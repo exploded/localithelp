@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -89,7 +90,12 @@ func sendDayBeforeReminders(now time.Time) int {
 	n := 0
 	for i := range bs {
 		b := &bs[i]
-		if err := sendBookingReminder(b); err != nil {
+		err := sendBookingReminder(b)
+		if errors.Is(err, errEmailBlocked) {
+			// Retrying every tick can't succeed, and the admin heard about the
+			// bounce when it happened, so stamp it as handled.
+			slog.Warn("scheduler: reminder skipped", "booking", b.ID, "err", err)
+		} else if err != nil {
 			slog.Error("scheduler: reminder for booking", "booking", b.ID, "err", err)
 			continue
 		}
@@ -97,7 +103,9 @@ func sendDayBeforeReminders(now time.Time) int {
 			slog.Error("scheduler: stamp reminder", "booking", b.ID, "err", err)
 			continue
 		}
-		n++
+		if err == nil {
+			n++
+		}
 	}
 	return n
 }

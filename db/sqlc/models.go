@@ -56,6 +56,19 @@ type Customer struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
+type EmailEvent struct {
+	ID         int64  `json:"id"`
+	Email      string `json:"email"`
+	Kind       string `json:"kind"`
+	BounceType string `json:"bounce_type"`
+	SubType    string `json:"sub_type"`
+	Diagnostic string `json:"diagnostic"`
+	Subject    string `json:"subject"`
+	MessageID  string `json:"message_id"`
+	FeedbackID string `json:"feedback_id"`
+	CreatedAt  string `json:"created_at"`
+}
+
 type GoogleCalendar struct {
 	ID            int64  `json:"id"`
 	AccountEmail  string `json:"account_email"`

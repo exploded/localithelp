@@ -71,6 +71,9 @@ TURNSTILE_SECRET_KEY=
 AWS_REGION=ap-southeast-2
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
+# Bounce + complaint tracking (ses-setup.sh prints these too). Empty = not tracked.
+SES_CONFIGURATION_SET=
+SES_EVENTS_TOPIC_ARN=
 
 # Background scheduler (reminders, digest, nightly backup). Runs when PROD is set; 0 disables.
 SCHEDULER=

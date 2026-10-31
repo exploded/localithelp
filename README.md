@@ -58,6 +58,8 @@ go run ./cmd/server          # http://localhost:8080
 | `ANTHROPIC_API_KEY` | – | AI estimate in quote flow (generated only after the email is verified) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | – | Amazon SES credentials (IAM user `localithelp-mailer`); unset = email disabled |
 | `AWS_REGION` | `ap-southeast-2` | SES region |
+| `SES_CONFIGURATION_SET` | – | SES configuration set every send goes through (`localithelp`); it reports bounces and complaints. Unset = no tracking |
+| `SES_EVENTS_TOPIC_ARN` | – | the only SNS topic `/webhooks/ses` accepts messages from; unset = webhook answers 404 |
 | `GA4_ID` | – | GA4 measurement ID (`G-…`); unset = no analytics script at all |
 | `GOOGLE_ADS_ID` | – | Google Ads conversion ID (`AW-…`) |
 | `GOOGLE_ADS_BOOKING_LABEL` | – | Ads conversion label fired on `/book/thanks` |
@@ -89,6 +91,28 @@ estimate is generated, emailed to them, and `CONTACT_EMAIL` is notified. One ver
 quote per email address; a resubmission replaces an unconfirmed one. Without SES
 the verification link is printed to the log (handy locally). Sends run in the
 background and failures are only logged — the request is already saved. See `cmd/server/mail.go` and `mailer/`.
+
+### Bounces and complaints
+
+SES reports bounces and spam complaints through the `localithelp` configuration
+set to the SNS topic `localithelp-ses-events`, which POSTs them to
+`/webhooks/ses`. The handler accepts only messages from `SES_EVENTS_TOPIC_ARN`
+with a valid SNS signature, and stores one `email_events` row per recipient.
+A **permanent bounce or a complaint blocks the address**:
+
+- `CONTACT_EMAIL` gets an alert naming the message that bounced and, if a
+  customer has the address, a link to them so you can phone for a working one.
+- The address shows a red badge wherever admin lists it (customers, bookings,
+  invoices, quotes).
+- Sends to it are refused: background sends are logged and dropped, and admin
+  actions (invoice, receipt, booking confirmation) show the error. Tomorrow's
+  reminder is skipped rather than retried.
+
+Transient bounces (full mailbox, out-of-office) are stored but block nothing.
+Status is per address, so correcting a customer's email clears it. To unblock
+the same address, delete its rows from `email_events` and remove it from the
+SES account suppression list, which drops mail to it anyway. See
+`cmd/server/ses_events.go`.
 
 ## Bookings → invoices (admin workflow)
 
@@ -208,6 +232,13 @@ user + key, the `localithelp.com.au` SES domain identity, adds the DKIM CNAMEs t
 Cloudflare (or prints them if `CF_TOKEN` is unset), and prints the `.env` lines
 to add on the server. The send policy also allows the old `mchugh.com.au`
 identities.
+
+The same script sets up bounce tracking: the configuration set, the SNS topic
+and the HTTPS subscription to `/webhooks/ses`. The site refuses the subscription
+until `SES_EVENTS_TOPIC_ARN` is in its `.env`, so run the script, add the two
+`SES_*` lines, restart, and run it again. The site confirms the subscription
+itself. To test the whole path, send a booking confirmation to
+`bounce@simulator.amazonses.com`.
 
 ### Database backups
 

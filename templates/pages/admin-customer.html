@@ -27,7 +27,7 @@
                             <div class="admin-field"><label for="name">Name</label><input class="admin-input" id="name" name="name" value="{{$c.Name}}" maxlength="120"></div>
                             <div class="admin-form-inline">
                                 <div class="admin-field"><label for="phone">Phone</label><input class="admin-input" id="phone" name="phone" value="{{$c.Phone}}" maxlength="40"></div>
-                                <div class="admin-field admin-field--wide"><label for="email">Email</label><input class="admin-input" id="email" name="email" type="email" value="{{$c.Email}}" maxlength="120"></div>
+                                <div class="admin-field admin-field--wide"><label for="email">Email{{template "email-flag" $c.Email}}</label><input class="admin-input" id="email" name="email" type="email" value="{{$c.Email}}" maxlength="120">{{with emailBlock $c.Email}}<p class="admin-muted">{{.Summary}}. Not emailed any more; change the address to fix.</p>{{end}}</div>
                             </div>
                             <div class="admin-field addr-wrap">
                                 <label for="address">Address (shown on invoices) <span class="addr-verified">&#10003; verified</span></label>

@@ -59,7 +59,7 @@
                             <td><a href="/admin/bookings/{{.ID}}">#{{.ID}}</a></td>
                             <td>{{.CreatedAt.Format "02 Jan"}}</td>
                             <td><a href="/admin/bookings/{{.ID}}">{{.Name}}</a>{{if .ParentBookingID}} <span class="admin-muted">(follow-up)</span>{{end}}</td>
-                            <td>{{if .Phone}}<a href="tel:{{.Phone}}">{{.Phone}}</a>{{end}}{{if and .Phone .Email}}<br>{{end}}{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
+                            <td>{{if .Phone}}<a href="tel:{{.Phone}}">{{.Phone}}</a>{{end}}{{if and .Phone .Email}}<br>{{end}}{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{template "email-flag" .Email}}{{end}}</td>
                             <td>{{.Suburb}}</td>
                             <td>{{.ServiceTitle}}</td>
                             <td>{{if .When}}{{.When}}{{else}}<span class="admin-muted">{{.PreferredTime}}</span>{{end}}</td>

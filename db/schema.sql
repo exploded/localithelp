@@ -172,3 +172,23 @@ CREATE TABLE IF NOT EXISTS google_calendar (
     last_sync_at   TEXT NOT NULL DEFAULT '',   -- UTC; last successful push or busy query
     last_error     TEXT NOT NULL DEFAULT ''
 );
+
+-- Email events: bounces and complaints SES reports through SNS (POST
+-- /webhooks/ses). One row per recipient per SES feedback report, so an SNS
+-- retry of the same report is ignored. A permanent bounce or a complaint blocks
+-- further sends to that address; transient bounces are kept for the record.
+CREATE TABLE IF NOT EXISTS email_events (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    email       TEXT    NOT NULL,              -- recipient, lower-cased
+    kind        TEXT    NOT NULL,              -- bounce | complaint
+    bounce_type TEXT    NOT NULL DEFAULT '',   -- Permanent | Transient | Undetermined ('' for complaints)
+    sub_type    TEXT    NOT NULL DEFAULT '',   -- SES bounceSubType, or the complaint feedback type
+    diagnostic  TEXT    NOT NULL DEFAULT '',   -- remote server's SMTP response
+    subject     TEXT    NOT NULL DEFAULT '',   -- subject of the message that bounced
+    message_id  TEXT    NOT NULL DEFAULT '',   -- SES message id of that message
+    feedback_id TEXT    NOT NULL DEFAULT '',
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (feedback_id, email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_events_email ON email_events(email);

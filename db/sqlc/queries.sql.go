@@ -670,6 +670,41 @@ func (q *Queries) InsertCustomer(ctx context.Context, arg InsertCustomerParams) 
 	return id, err
 }
 
+const insertEmailEvent = `-- name: InsertEmailEvent :execrows
+
+INSERT OR IGNORE INTO email_events (email, kind, bounce_type, sub_type, diagnostic, subject, message_id, feedback_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertEmailEventParams struct {
+	Email      string `json:"email"`
+	Kind       string `json:"kind"`
+	BounceType string `json:"bounce_type"`
+	SubType    string `json:"sub_type"`
+	Diagnostic string `json:"diagnostic"`
+	Subject    string `json:"subject"`
+	MessageID  string `json:"message_id"`
+	FeedbackID string `json:"feedback_id"`
+}
+
+// Email events (SES bounces and complaints)
+func (q *Queries) InsertEmailEvent(ctx context.Context, arg InsertEmailEventParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertEmailEvent,
+		arg.Email,
+		arg.Kind,
+		arg.BounceType,
+		arg.SubType,
+		arg.Diagnostic,
+		arg.Subject,
+		arg.MessageID,
+		arg.FeedbackID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const insertFollowupBooking = `-- name: InsertFollowupBooking :one
 INSERT INTO bookings (name, phone, email, suburb, address, service_slug, mode, issue, preferred_time, ip, customer_id, parent_booking_id, source, status, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, ?, ?, 'new', datetime('now'))
@@ -884,6 +919,45 @@ func (q *Queries) LinkAdClick(ctx context.Context, arg LinkAdClickParams) (int64
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const listBlockingEmailEvents = `-- name: ListBlockingEmailEvents :many
+SELECT id, email, kind, bounce_type, sub_type, diagnostic, subject, message_id, feedback_id, created_at
+FROM email_events WHERE kind = 'complaint' OR bounce_type = 'Permanent' ORDER BY id
+`
+
+func (q *Queries) ListBlockingEmailEvents(ctx context.Context) ([]EmailEvent, error) {
+	rows, err := q.db.QueryContext(ctx, listBlockingEmailEvents)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EmailEvent
+	for rows.Next() {
+		var i EmailEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Kind,
+			&i.BounceType,
+			&i.SubType,
+			&i.Diagnostic,
+			&i.Subject,
+			&i.MessageID,
+			&i.FeedbackID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listBookings = `-- name: ListBookings :many

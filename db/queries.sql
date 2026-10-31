@@ -432,3 +432,13 @@ FROM ad_clicks WHERE booking_id = ? ORDER BY id LIMIT 1;
 
 -- name: CountAdClicksSince :one
 SELECT COUNT(*) AS n FROM ad_clicks WHERE created_at >= ?;
+
+-- Email events (SES bounces and complaints)
+
+-- name: InsertEmailEvent :execrows
+INSERT OR IGNORE INTO email_events (email, kind, bounce_type, sub_type, diagnostic, subject, message_id, feedback_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: ListBlockingEmailEvents :many
+SELECT id, email, kind, bounce_type, sub_type, diagnostic, subject, message_id, feedback_id, created_at
+FROM email_events WHERE kind = 'complaint' OR bounce_type = 'Permanent' ORDER BY id;

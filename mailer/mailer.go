@@ -14,14 +14,17 @@ import (
 
 // Mailer sends HTML email from a fixed sender address.
 type Mailer struct {
-	client *sesv2.Client
-	from   string
+	client    *sesv2.Client
+	from      string
+	configSet string // SES configuration set; "" = none
 }
 
 // New creates a Mailer using static AWS credentials. It returns nil when the
 // credentials are empty so callers can treat "email not configured" as a
-// graceful no-op (a nil *Mailer's methods are safe to call).
-func New(region, accessKey, secretKey, from string) *Mailer {
+// graceful no-op (a nil *Mailer's methods are safe to call). configSet names
+// the SES configuration set every send goes through, which is what publishes
+// bounces and complaints; empty sends without one.
+func New(region, accessKey, secretKey, from, configSet string) *Mailer {
 	if accessKey == "" || secretKey == "" || from == "" {
 		return nil
 	}
@@ -29,7 +32,7 @@ func New(region, accessKey, secretKey, from string) *Mailer {
 		Region:      region,
 		Credentials: credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
 	}
-	return &Mailer{client: sesv2.NewFromConfig(cfg), from: from}
+	return &Mailer{client: sesv2.NewFromConfig(cfg), from: from, configSet: configSet}
 }
 
 // Enabled reports whether the mailer is configured.
@@ -86,6 +89,9 @@ func (m *Mailer) SendWithAttachments(to, subject, htmlBody, textBody, replyTo st
 	}
 	if replyTo != "" {
 		in.ReplyToAddresses = []string{replyTo}
+	}
+	if m.configSet != "" {
+		in.ConfigurationSetName = aws.String(m.configSet)
 	}
 	// Bounded so a stuck SES call can never hang a request goroutine.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

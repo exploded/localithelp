@@ -112,7 +112,7 @@
                             <td>{{.ID}}</td>
                             <td>{{.CreatedAt.Format "02 Jan 2006"}}</td>
                             <td>{{.Name}}</td>
-                            <td>{{.Email}}</td>
+                            <td>{{.Email}}{{template "email-flag" .Email}}</td>
                             <td>${{printf "%.0f" .TotalCost}}</td>
                             <td>{{template "badge" .Status}}</td>
                         </tr>

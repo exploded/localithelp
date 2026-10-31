@@ -193,3 +193,7 @@ gtag('event', '{{.Event}}');
 
 {{/* badge: takes a status string */}}
 {{define "badge"}}<span class="status-badge status-badge--{{.}}">{{.}}</span>{{end}}
+
+{{/* email-flag: takes an address; renders a badge when SES reported it bounced
+     or marked as spam (the site no longer emails it), nothing otherwise */}}
+{{define "email-flag"}}{{with emailBlock .}} <span class="status-badge status-badge--bounced" title="{{.Summary}}">{{.Label}}</span>{{end}}{{end}}

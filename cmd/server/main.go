@@ -69,6 +69,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
+	initSESEvents()
 
 	var err error
 	pages, err = loadTemplates(filepath.Join(dir, "templates"))
@@ -153,6 +154,9 @@ func newMux(dir string) *http.ServeMux {
 	mux.HandleFunc("GET /auth/google/callback", handleGoogleCallback)
 	mux.HandleFunc("POST /auth/logout", handleUserLogout)
 
+	// SES bounces and complaints, delivered by SNS (no login; the SNS signature is checked).
+	mux.HandleFunc("POST /webhooks/ses", handleSESWebhook)
+
 	// Public tokenised invoice/receipt views (no login; the token is the secret).
 	mux.HandleFunc("GET /invoice/{token}", handleInvoicePublic)
 	mux.HandleFunc("GET /invoice/{token}/pdf", handleInvoicePublicPDF)
@@ -231,14 +235,15 @@ func loadTemplates(dir string) (map[string]*template.Template, error) {
 			}
 			return a / b
 		},
-		"mul":       func(a, b int) int { return a * b },
-		"money":     fmtCents,
-		"srcLabel":  db.SourceLabel,
-		"dict":      dict,
-		"seq":       seq,
-		"crumbs":    crumbs,
-		"stripTags": stripTags,
-		"asset":     asset,
+		"mul":        func(a, b int) int { return a * b },
+		"money":      fmtCents,
+		"srcLabel":   db.SourceLabel,
+		"emailBlock": emailBlock,
+		"dict":       dict,
+		"seq":        seq,
+		"crumbs":     crumbs,
+		"stripTags":  stripTags,
+		"asset":      asset,
 	}
 	base := template.New("").Funcs(funcMap)
 	base = template.Must(base.ParseGlob(filepath.Join(dir, "layouts", "*.html")))

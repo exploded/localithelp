@@ -16,6 +16,8 @@ import (
 // Configured by AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION; the
 // sender and notification address are CONTACT_EMAIL. When the keys are absent the mailer is nil and every notify*
 // call is a silent no-op, so local dev works without any AWS setup.
+// SES_CONFIGURATION_SET routes sends through the set that reports bounces and
+// complaints (see ses_events.go); addresses those blocked are never sent to.
 
 var (
 	mail        *mailer.Mailer
@@ -31,9 +33,10 @@ func initMail() {
 	// address must be a verified SES identity.
 	from := "Local IT Help <" + site.Email + ">"
 	notifyEmail = site.Email
-	mail = mailer.New(region, os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), from)
+	configSet := os.Getenv("SES_CONFIGURATION_SET")
+	mail = mailer.New(region, os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), from, configSet)
 	if mail.Enabled() {
-		slog.Info("email: SES enabled", "from", from, "notify", notifyEmail, "region", region)
+		slog.Info("email: SES enabled", "from", from, "notify", notifyEmail, "region", region, "config_set", configSet)
 	} else {
 		slog.Warn("email: not configured (set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY) — notifications disabled")
 	}
@@ -43,6 +46,10 @@ func initMail() {
 // not depend on delivery; the request has already been persisted.
 func send(to, subject, html, text, replyTo string) {
 	if !mail.Enabled() || to == "" {
+		return
+	}
+	if e := emailBlock(to); e != nil {
+		slog.Warn("email: not sent, address blocked", "to", to, "subject", subject, "reason", e.Summary())
 		return
 	}
 	go func() {
@@ -55,10 +62,14 @@ func send(to, subject, html, text, replyTo string) {
 // sendNow delivers synchronously (with optional attachments) and returns the
 // error, for admin actions where the outcome must be shown and a state change
 // should only happen on success. When SES is not configured it logs and
-// returns nil so local flows still complete.
+// returns nil so local flows still complete. A blocked address (see
+// emailBlock) returns an error wrapping errEmailBlocked.
 func sendNow(to, subject, html, text, replyTo string, atts ...mailer.Attachment) error {
 	if to == "" {
 		return fmt.Errorf("no recipient address")
+	}
+	if e := emailBlock(to); e != nil {
+		return fmt.Errorf("%w: %s (%s)", errEmailBlocked, to, e.Summary())
 	}
 	if !mail.Enabled() {
 		slog.Info("email: (disabled) would send", "subject", subject, "to", to, "attachments", len(atts))
@@ -151,7 +162,7 @@ var mailTmpl = template.Must(template.Must(template.New("mail").Funcs(template.F
 	"money":    fmtCents,
 	"btn":      func(href, label string) map[string]string { return map[string]string{"Href": href, "Label": label} },
 	"srcLabel": db.SourceLabel,
-}).Parse(mailTmplSrc)).Parse(mailBillingTmplSrc + mailSchedulerTmplSrc))
+}).Parse(mailTmplSrc)).Parse(mailBillingTmplSrc + mailSchedulerTmplSrc + mailSESTmplSrc))
 
 // renderMail executes a named body template inside the "wrap" chrome.
 func renderMail(name string, data any) (string, error) {

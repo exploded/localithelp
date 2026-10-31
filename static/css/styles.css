@@ -2269,7 +2269,7 @@ select.admin-input { min-height: 2.15rem; }
 /* status badges for the booking/invoice lifecycle */
 .status-badge--booked, .status-badge--sent { background: #dbeafe; color: #1e40af; border: 1px solid rgba(30, 64, 175, 0.3); }
 .status-badge--done, .status-badge--invoiced { background: #fef9c3; color: #854d0e; border: 1px solid rgba(133, 77, 14, 0.3); }
-.status-badge--cancelled, .status-badge--void { background: #fee2e2; color: #991b1b; border: 1px solid rgba(153, 27, 27, 0.3); }
+.status-badge--cancelled, .status-badge--void, .status-badge--bounced { background: #fee2e2; color: #991b1b; border: 1px solid rgba(153, 27, 27, 0.3); }
 .status-badge--contacted { background: rgba(15,23,42,0.05); color: var(--text-secondary); border: 1px solid var(--border); }
 
 /* calendar */
