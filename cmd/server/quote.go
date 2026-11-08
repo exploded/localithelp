@@ -266,11 +266,11 @@ func buildEstimatePrompt(data map[string]any) string {
 }
 
 func callClaude(apiKey, prompt string) (string, error) {
-	// Sonnet 5 thinks by default and max_tokens covers thinking + answer, so
+	// Sonnet 5.5 thinks by default and max_tokens covers thinking + answer, so
 	// give it headroom; the estimate itself is ~200 words. Low effort keeps
 	// this quick task cheap.
 	reqBody := map[string]any{
-		"model":         "claude-sonnet-5",
+		"model":         "claude-sonnet-5-5",
 		"max_tokens":    4096,
 		"output_config": map[string]any{"effort": "low"},
 		"messages": []map[string]string{
