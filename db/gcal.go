@@ -21,11 +21,23 @@ type GoogleCalendar struct {
 	ConnectedAt   time.Time // UTC
 	LastSyncAt    time.Time // UTC; zero until the first successful call
 	LastError     string
+
+	// Google Contacts sync rides on the same connection.
+	ContactsScope   bool   // the contacts scope was granted at the last connect
+	ContactsEnabled bool   // push every customer from the scheduler
+	ContactsGroup   string // 'contactGroups/…' for the LOCAL IT HELP label; '' until first use
 }
 
 // Connected reports whether a usable connection is stored.
 func (g *GoogleCalendar) Connected() bool {
 	return g != nil && g.RefreshToken != "" && g.CalendarID != ""
+}
+
+// ContactsReady reports whether customers can be pushed to Google Contacts at
+// all (one at a time from the customer page). Bulk sync also needs
+// ContactsEnabled.
+func (g *GoogleCalendar) ContactsReady() bool {
+	return g.Connected() && g.ContactsScope
 }
 
 // Skipped reports whether busy times from calendarID should be ignored.
@@ -56,16 +68,37 @@ func GetGoogleCalendar() (*GoogleCalendar, error) {
 		CalendarID: r.CalendarID, CalendarName: r.CalendarName,
 		SkipCalendars: splitLines(r.SkipCalendars),
 		ConnectedAt:   parseUTC(r.ConnectedAt), LastSyncAt: parseUTC(r.LastSyncAt),
-		LastError: r.LastError,
+		LastError:     r.LastError,
+		ContactsScope: r.ContactsScope != 0, ContactsEnabled: r.ContactsEnabled != 0,
+		ContactsGroup: r.ContactsGroup,
 	}, nil
 }
 
 // SaveGoogleCalendar stores (or replaces) the connection and clears any error.
-func SaveGoogleCalendar(accountEmail, refreshToken, calendarID, calendarName string) error {
+// contactsScope records whether Google granted the contacts scope this time; a
+// reconnect keeps the contact-sync switch and label as they were.
+func SaveGoogleCalendar(accountEmail, refreshToken, calendarID, calendarName string, contactsScope bool) error {
 	return q.SaveGoogleCalendar(context.Background(), sqlc.SaveGoogleCalendarParams{
 		AccountEmail: accountEmail, RefreshToken: refreshToken,
-		CalendarID: calendarID, CalendarName: calendarName,
+		CalendarID: calendarID, CalendarName: calendarName, ContactsScope: boolInt(contactsScope),
 	})
+}
+
+// SetContactsEnabled turns the scheduled push of every customer on or off.
+func SetContactsEnabled(on bool) error {
+	return q.SetContactsEnabled(context.Background(), boolInt(on))
+}
+
+// SetContactsGroup remembers the LOCAL IT HELP contact group's resource name.
+func SetContactsGroup(resource string) error {
+	return q.SetContactsGroup(context.Background(), resource)
+}
+
+func boolInt(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // SetGoogleCalendarSkips replaces the list of calendars excluded from busy times.

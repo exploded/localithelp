@@ -170,7 +170,21 @@ CREATE TABLE IF NOT EXISTS google_calendar (
     skip_calendars TEXT NOT NULL DEFAULT '',   -- newline-separated calendar ids excluded from busy times
     connected_at   TEXT NOT NULL DEFAULT '',   -- UTC
     last_sync_at   TEXT NOT NULL DEFAULT '',   -- UTC; last successful push or busy query
-    last_error     TEXT NOT NULL DEFAULT ''
+    last_error     TEXT NOT NULL DEFAULT '',
+    -- Google Contacts sync shares this connection (same refresh token).
+    contacts_scope   INTEGER NOT NULL DEFAULT 0,  -- 1 once the contacts scope is granted
+    contacts_enabled INTEGER NOT NULL DEFAULT 0,  -- 1 = push every customer (the scheduler job)
+    contacts_group   TEXT    NOT NULL DEFAULT ''  -- 'contactGroups/...' for the LOCAL IT HELP label
+);
+
+-- Google Contacts sync: one row per customer the sync has looked at. Kept apart
+-- from customers so the customer queries keep their shape.
+CREATE TABLE IF NOT EXISTS customer_gcontacts (
+    customer_id INTEGER PRIMARY KEY,
+    resource    TEXT    NOT NULL DEFAULT '',  -- 'people/c...'; '' when not linked
+    synced_at   TEXT    NOT NULL DEFAULT '',  -- UTC; compared with customers.updated_at
+    error       TEXT    NOT NULL DEFAULT '',
+    gone        INTEGER NOT NULL DEFAULT 0    -- 1 = deleted in Google; never recreated automatically
 );
 
 -- Email events: bounces and complaints SES reports through SNS (POST

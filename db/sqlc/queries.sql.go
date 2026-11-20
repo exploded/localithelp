@@ -141,6 +141,43 @@ func (q *Queries) CountBookingsWithCalendarEvent(ctx context.Context) (int64, er
 	return n, err
 }
 
+const countCustomersForContactSync = `-- name: CountCustomersForContactSync :one
+SELECT COUNT(*) AS n
+FROM customers c
+LEFT JOIN customer_gcontacts g ON g.customer_id = c.id
+WHERE (c.phone_norm <> '' OR c.email <> '')
+  AND (g.customer_id IS NULL OR (g.gone = 0 AND (g.synced_at = '' OR c.updated_at > g.synced_at)))
+`
+
+func (q *Queries) CountCustomersForContactSync(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCustomersForContactSync)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
+}
+
+const countGContactErrors = `-- name: CountGContactErrors :one
+SELECT COUNT(*) AS n FROM customer_gcontacts WHERE error <> ''
+`
+
+func (q *Queries) CountGContactErrors(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countGContactErrors)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
+}
+
+const countLinkedGContacts = `-- name: CountLinkedGContacts :one
+SELECT COUNT(*) AS n FROM customer_gcontacts WHERE resource <> ''
+`
+
+func (q *Queries) CountLinkedGContacts(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countLinkedGContacts)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
+}
+
 const countOptionGroups = `-- name: CountOptionGroups :one
 SELECT COUNT(*) FROM quote_option_groups
 `
@@ -384,20 +421,41 @@ func (q *Queries) GetCustomerByPhoneNorm(ctx context.Context, phoneNorm string) 
 	return i, err
 }
 
+const getCustomerGContact = `-- name: GetCustomerGContact :one
+SELECT customer_id, resource, synced_at, error, gone FROM customer_gcontacts WHERE customer_id = ?
+`
+
+func (q *Queries) GetCustomerGContact(ctx context.Context, customerID int64) (CustomerGcontact, error) {
+	row := q.db.QueryRowContext(ctx, getCustomerGContact, customerID)
+	var i CustomerGcontact
+	err := row.Scan(
+		&i.CustomerID,
+		&i.Resource,
+		&i.SyncedAt,
+		&i.Error,
+		&i.Gone,
+	)
+	return i, err
+}
+
 const getGoogleCalendar = `-- name: GetGoogleCalendar :one
-SELECT account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error
+SELECT account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error,
+       contacts_scope, contacts_enabled, contacts_group
 FROM google_calendar WHERE id = 1
 `
 
 type GetGoogleCalendarRow struct {
-	AccountEmail  string `json:"account_email"`
-	RefreshToken  string `json:"refresh_token"`
-	CalendarID    string `json:"calendar_id"`
-	CalendarName  string `json:"calendar_name"`
-	SkipCalendars string `json:"skip_calendars"`
-	ConnectedAt   string `json:"connected_at"`
-	LastSyncAt    string `json:"last_sync_at"`
-	LastError     string `json:"last_error"`
+	AccountEmail    string `json:"account_email"`
+	RefreshToken    string `json:"refresh_token"`
+	CalendarID      string `json:"calendar_id"`
+	CalendarName    string `json:"calendar_name"`
+	SkipCalendars   string `json:"skip_calendars"`
+	ConnectedAt     string `json:"connected_at"`
+	LastSyncAt      string `json:"last_sync_at"`
+	LastError       string `json:"last_error"`
+	ContactsScope   int64  `json:"contacts_scope"`
+	ContactsEnabled int64  `json:"contacts_enabled"`
+	ContactsGroup   string `json:"contacts_group"`
 }
 
 func (q *Queries) GetGoogleCalendar(ctx context.Context) (GetGoogleCalendarRow, error) {
@@ -412,6 +470,9 @@ func (q *Queries) GetGoogleCalendar(ctx context.Context) (GetGoogleCalendarRow, 
 		&i.ConnectedAt,
 		&i.LastSyncAt,
 		&i.LastError,
+		&i.ContactsScope,
+		&i.ContactsEnabled,
+		&i.ContactsGroup,
 	)
 	return i, err
 }
@@ -1547,6 +1608,39 @@ func (q *Queries) ListChildBookings(ctx context.Context, parentBookingID int64) 
 	return items, nil
 }
 
+const listCustomerGContacts = `-- name: ListCustomerGContacts :many
+SELECT customer_id, resource, synced_at, error, gone FROM customer_gcontacts ORDER BY customer_id
+`
+
+func (q *Queries) ListCustomerGContacts(ctx context.Context) ([]CustomerGcontact, error) {
+	rows, err := q.db.QueryContext(ctx, listCustomerGContacts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CustomerGcontact
+	for rows.Next() {
+		var i CustomerGcontact
+		if err := rows.Scan(
+			&i.CustomerID,
+			&i.Resource,
+			&i.SyncedAt,
+			&i.Error,
+			&i.Gone,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCustomers = `-- name: ListCustomers :many
 SELECT id, name, email, phone, phone_norm, address, suburb, notes, created_at, updated_at
 FROM customers ORDER BY name COLLATE NOCASE, id
@@ -1572,6 +1666,71 @@ func (q *Queries) ListCustomers(ctx context.Context) ([]Customer, error) {
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCustomersForContactSync = `-- name: ListCustomersForContactSync :many
+
+SELECT c.id, c.name, c.email, c.phone, c.phone_norm, c.address, c.suburb, c.notes, c.created_at, c.updated_at,
+       CAST(COALESCE(g.resource, '') AS TEXT) AS gcontact_resource
+FROM customers c
+LEFT JOIN customer_gcontacts g ON g.customer_id = c.id
+WHERE (c.phone_norm <> '' OR c.email <> '')
+  AND (g.customer_id IS NULL OR (g.gone = 0 AND (g.synced_at = '' OR c.updated_at > g.synced_at)))
+ORDER BY c.id
+LIMIT ?
+`
+
+type ListCustomersForContactSyncRow struct {
+	ID               int64  `json:"id"`
+	Name             string `json:"name"`
+	Email            string `json:"email"`
+	Phone            string `json:"phone"`
+	PhoneNorm        string `json:"phone_norm"`
+	Address          string `json:"address"`
+	Suburb           string `json:"suburb"`
+	Notes            string `json:"notes"`
+	CreatedAt        string `json:"created_at"`
+	UpdatedAt        string `json:"updated_at"`
+	GcontactResource string `json:"gcontact_resource"`
+}
+
+// Customer to Google Contacts
+// Customers whose record changed since their last push, plus any never looked
+// at. A contact deleted in Google (gone = 1) stays out until the admin asks.
+// Customers with neither a phone nor an email have nothing to sync.
+func (q *Queries) ListCustomersForContactSync(ctx context.Context, limit int64) ([]ListCustomersForContactSyncRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCustomersForContactSync, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCustomersForContactSyncRow
+	for rows.Next() {
+		var i ListCustomersForContactSyncRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.Phone,
+			&i.PhoneNorm,
+			&i.Address,
+			&i.Suburb,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GcontactResource,
 		); err != nil {
 			return nil, err
 		}
@@ -2136,30 +2295,35 @@ func (q *Queries) MarkQuoteVerified(ctx context.Context, arg MarkQuoteVerifiedPa
 }
 
 const saveGoogleCalendar = `-- name: SaveGoogleCalendar :exec
-INSERT INTO google_calendar (id, account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error)
-VALUES (1, ?, ?, ?, ?, '', datetime('now'), '', '')
+INSERT INTO google_calendar (id, account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error, contacts_scope)
+VALUES (1, ?, ?, ?, ?, '', datetime('now'), '', '', ?)
 ON CONFLICT(id) DO UPDATE SET
-    account_email = excluded.account_email,
-    refresh_token = excluded.refresh_token,
-    calendar_id   = excluded.calendar_id,
-    calendar_name = excluded.calendar_name,
-    connected_at  = datetime('now'),
-    last_error    = ''
+    account_email  = excluded.account_email,
+    refresh_token  = excluded.refresh_token,
+    calendar_id    = excluded.calendar_id,
+    calendar_name  = excluded.calendar_name,
+    connected_at   = datetime('now'),
+    last_error     = '',
+    contacts_scope = excluded.contacts_scope
 `
 
 type SaveGoogleCalendarParams struct {
-	AccountEmail string `json:"account_email"`
-	RefreshToken string `json:"refresh_token"`
-	CalendarID   string `json:"calendar_id"`
-	CalendarName string `json:"calendar_name"`
+	AccountEmail  string `json:"account_email"`
+	RefreshToken  string `json:"refresh_token"`
+	CalendarID    string `json:"calendar_id"`
+	CalendarName  string `json:"calendar_name"`
+	ContactsScope int64  `json:"contacts_scope"`
 }
 
+// A reconnect keeps the contact-sync switch and label, but records afresh
+// whether the contacts scope was granted this time.
 func (q *Queries) SaveGoogleCalendar(ctx context.Context, arg SaveGoogleCalendarParams) error {
 	_, err := q.db.ExecContext(ctx, saveGoogleCalendar,
 		arg.AccountEmail,
 		arg.RefreshToken,
 		arg.CalendarID,
 		arg.CalendarName,
+		arg.ContactsScope,
 	)
 	return err
 }
@@ -2244,6 +2408,85 @@ type SetBookingCustomerParams struct {
 
 func (q *Queries) SetBookingCustomer(ctx context.Context, arg SetBookingCustomerParams) error {
 	_, err := q.db.ExecContext(ctx, setBookingCustomer, arg.CustomerID, arg.ID)
+	return err
+}
+
+const setContactsEnabled = `-- name: SetContactsEnabled :exec
+UPDATE google_calendar SET contacts_enabled = ? WHERE id = 1
+`
+
+func (q *Queries) SetContactsEnabled(ctx context.Context, contactsEnabled int64) error {
+	_, err := q.db.ExecContext(ctx, setContactsEnabled, contactsEnabled)
+	return err
+}
+
+const setContactsGroup = `-- name: SetContactsGroup :exec
+UPDATE google_calendar SET contacts_group = ? WHERE id = 1
+`
+
+func (q *Queries) SetContactsGroup(ctx context.Context, contactsGroup string) error {
+	_, err := q.db.ExecContext(ctx, setContactsGroup, contactsGroup)
+	return err
+}
+
+const setCustomerGContact = `-- name: SetCustomerGContact :exec
+INSERT INTO customer_gcontacts (customer_id, resource, synced_at, error, gone)
+VALUES (?, ?, datetime('now'), ?, 0)
+ON CONFLICT(customer_id) DO UPDATE SET
+    resource  = excluded.resource,
+    synced_at = excluded.synced_at,
+    error     = excluded.error,
+    gone      = 0
+`
+
+type SetCustomerGContactParams struct {
+	CustomerID int64  `json:"customer_id"`
+	Resource   string `json:"resource"`
+	Error      string `json:"error"`
+}
+
+// Records the outcome of a push: the linked contact (or ” when none) and any
+// problem that needs the admin. Stamping synced_at stops the row looking dirty
+// until the customer is edited again.
+func (q *Queries) SetCustomerGContact(ctx context.Context, arg SetCustomerGContactParams) error {
+	_, err := q.db.ExecContext(ctx, setCustomerGContact, arg.CustomerID, arg.Resource, arg.Error)
+	return err
+}
+
+const setCustomerGContactError = `-- name: SetCustomerGContactError :exec
+INSERT INTO customer_gcontacts (customer_id, error) VALUES (?, ?)
+ON CONFLICT(customer_id) DO UPDATE SET error = excluded.error
+`
+
+type SetCustomerGContactErrorParams struct {
+	CustomerID int64  `json:"customer_id"`
+	Error      string `json:"error"`
+}
+
+// A failure worth retrying (Google unreachable, quota): keep the link and
+// leave synced_at alone so the next tick tries again.
+func (q *Queries) SetCustomerGContactError(ctx context.Context, arg SetCustomerGContactErrorParams) error {
+	_, err := q.db.ExecContext(ctx, setCustomerGContactError, arg.CustomerID, arg.Error)
+	return err
+}
+
+const setCustomerGContactGone = `-- name: SetCustomerGContactGone :exec
+INSERT INTO customer_gcontacts (customer_id, resource, synced_at, error, gone)
+VALUES (?, '', datetime('now'), ?, 1)
+ON CONFLICT(customer_id) DO UPDATE SET
+    resource  = '',
+    synced_at = excluded.synced_at,
+    error     = excluded.error,
+    gone      = 1
+`
+
+type SetCustomerGContactGoneParams struct {
+	CustomerID int64  `json:"customer_id"`
+	Error      string `json:"error"`
+}
+
+func (q *Queries) SetCustomerGContactGone(ctx context.Context, arg SetCustomerGContactGoneParams) error {
+	_, err := q.db.ExecContext(ctx, setCustomerGContactGone, arg.CustomerID, arg.Error)
 	return err
 }
 

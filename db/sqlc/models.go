@@ -56,6 +56,14 @@ type Customer struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
+type CustomerGcontact struct {
+	CustomerID int64  `json:"customer_id"`
+	Resource   string `json:"resource"`
+	SyncedAt   string `json:"synced_at"`
+	Error      string `json:"error"`
+	Gone       int64  `json:"gone"`
+}
+
 type EmailEvent struct {
 	ID         int64  `json:"id"`
 	Email      string `json:"email"`
@@ -70,15 +78,18 @@ type EmailEvent struct {
 }
 
 type GoogleCalendar struct {
-	ID            int64  `json:"id"`
-	AccountEmail  string `json:"account_email"`
-	RefreshToken  string `json:"refresh_token"`
-	CalendarID    string `json:"calendar_id"`
-	CalendarName  string `json:"calendar_name"`
-	SkipCalendars string `json:"skip_calendars"`
-	ConnectedAt   string `json:"connected_at"`
-	LastSyncAt    string `json:"last_sync_at"`
-	LastError     string `json:"last_error"`
+	ID              int64  `json:"id"`
+	AccountEmail    string `json:"account_email"`
+	RefreshToken    string `json:"refresh_token"`
+	CalendarID      string `json:"calendar_id"`
+	CalendarName    string `json:"calendar_name"`
+	SkipCalendars   string `json:"skip_calendars"`
+	ConnectedAt     string `json:"connected_at"`
+	LastSyncAt      string `json:"last_sync_at"`
+	LastError       string `json:"last_error"`
+	ContactsScope   int64  `json:"contacts_scope"`
+	ContactsEnabled int64  `json:"contacts_enabled"`
+	ContactsGroup   string `json:"contacts_group"`
 }
 
 type Invoice struct {

@@ -788,6 +788,7 @@ func handleAdminCustomerCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	syncContactSoon(id)
 	redirectMsg(w, r, "/admin/customers/"+strconv.FormatInt(id, 10), "ok", "Customer added — raise an invoice or a booking below.")
 }
 
@@ -802,6 +803,10 @@ type adminCustomerData struct {
 	// DefaultFor preselects the newest one not yet invoiced (0 = no booking).
 	InvoiceFor []bookingRow
 	DefaultFor int64
+	// Google Contacts sync status for this customer.
+	ContactsReady   bool
+	ContactsEnabled bool
+	GContact        *db.CustomerGContact
 }
 
 func handleAdminCustomer(w http.ResponseWriter, r *http.Request) {
@@ -814,6 +819,10 @@ func handleAdminCustomer(w http.ResponseWriter, r *http.Request) {
 	invs, _ := db.ListInvoicesByCustomer(c.ID)
 	d := adminCustomerData{Flash: readFlash(r), C: c, Bookings: bookingRows(bs), Invoices: invoiceRows(invs),
 		Services: services, SoftwareHourly: softwareHourly}
+	if g, err := db.GetGoogleCalendar(); err == nil && g.ContactsReady() {
+		d.ContactsReady, d.ContactsEnabled = true, g.ContactsEnabled
+		d.GContact, _ = db.GetCustomerGContact(c.ID)
+	}
 	invoiced := map[int64]bool{}
 	for _, inv := range invs {
 		if inv.BookingID != 0 && inv.Status != db.InvoiceVoid {
@@ -886,6 +895,7 @@ func handleAdminCustomerSave(w http.ResponseWriter, r *http.Request) {
 		redirectMsg(w, r, back, "err", "Could not save — is that email already used by another customer?")
 		return
 	}
+	syncContactSoon(c.ID)
 	// Carry corrected contact details onto the bookings, which is where
 	// confirmations, reminders and the calendar event read them from.
 	before, _ := db.ListBookingsByCustomer(c.ID)

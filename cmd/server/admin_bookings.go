@@ -623,6 +623,7 @@ func handleAdminBookingCreate(w http.ResponseWriter, r *http.Request) {
 		// Not fatal — the booking is still recorded; the boot-time backfill links it later.
 		slog.Error("phone booking: customer upsert", "err", err)
 	}
+	defer syncContactSoon(customerID) // after the address fill below
 	if customerID != 0 && fullAddress != "" {
 		// Fill in a blank customer address; corrections go through the booking
 		// page's address editor, which is allowed to overwrite.

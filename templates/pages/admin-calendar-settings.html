@@ -66,6 +66,49 @@
             </div>
 
             <div class="admin-card">
+                <h2 class="admin-card-title">Google Contacts</h2>
+                {{if not $d.Conn.ContactsScope}}
+                <p class="admin-note">
+                    Contact sync adds every customer to your Google contacts, labelled
+                    <strong>LOCAL IT HELP</strong>, so they show by name when they ring. It needs contacts
+                    access, which this connection doesn't have yet. Connect again and leave the contacts
+                    box ticked; the calendar keeps working meanwhile.
+                </p>
+                <form method="post" action="/admin/calendar/connect">
+                    <input type="hidden" name="csrf" value="{{.CSRF}}">
+                    <button class="btn btn--primary btn--sm" type="submit">Reconnect with contacts access</button>
+                </form>
+                {{else}}
+                <dl class="admin-dl">
+                    <dt>Sync</dt><dd>{{if $d.Conn.ContactsEnabled}}<strong>On</strong>{{else}}Off: only the Sync to Google now button on a customer page pushes{{end}}</dd>
+                    <dt>Customers linked to a contact</dt><dd>{{$d.ContactsLinked}}</dd>
+                    <dt>Waiting to sync</dt><dd>{{$d.ContactsPending}}</dd>
+                    <dt>Need a look</dt><dd>{{if $d.ContactsErrors}}<span class="admin-error-text">{{$d.ContactsErrors}}</span> (shown on each customer page){{else}}0{{end}}</dd>
+                </dl>
+                <p class="admin-note">
+                    Customers are matched to your existing contacts by phone number (any format), then by email,
+                    so nobody is added twice. The sync only goes one way: changes made on the phone stay on the
+                    phone, and no contact is ever deleted. Which SIM the iPhone uses for a contact is kept on the
+                    phone, so test one customer before switching sync on.
+                </p>
+                <div class="admin-actions">
+                    <a class="btn btn--ghost btn--sm" href="/admin/contacts/preview">Preview</a>
+                    <form method="post" action="/admin/contacts/enabled"
+                          {{if not $d.Conn.ContactsEnabled}}onsubmit="return confirm('Push every customer to Google Contacts now? Check the preview first.')"{{end}}>
+                        <input type="hidden" name="csrf" value="{{.CSRF}}">
+                        {{if $d.Conn.ContactsEnabled}}
+                        <input type="hidden" name="enabled" value="off">
+                        <button class="btn btn--ghost btn--sm" type="submit">Turn contact sync off</button>
+                        {{else}}
+                        <input type="hidden" name="enabled" value="on">
+                        <button class="btn btn--primary btn--sm" type="submit">Turn contact sync on</button>
+                        {{end}}
+                    </form>
+                </div>
+                {{end}}
+            </div>
+
+            <div class="admin-card">
                 <h2 class="admin-card-title">Busy times on the calendar view</h2>
                 <p class="admin-note">
                     Tick the calendars whose events should block out time on <a href="/admin/calendar">/admin/calendar</a>.

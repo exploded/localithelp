@@ -1,0 +1,68 @@
+{{template "base" .}}
+
+{{define "meta"}}
+    <title>Admin — Contact sync preview</title>
+    <meta name="robots" content="noindex">
+{{end}}
+
+{{define "content"}}
+    {{$d := .PageData}}
+    <div class="page-header">
+        <div class="container">
+            <div class="section-label">Administration</div>
+            <h1 class="section-title">Contact sync preview</h1>
+            {{template "admin-nav" .Path}}
+        </div>
+    </div>
+
+    <section class="admin-section">
+        <div class="container">
+            <div id="admin-flash">{{template "flash" $d.Flash}}</div>
+
+            <div class="cal-toolbar">
+                <a class="btn btn--ghost btn--sm" href="/admin/calendar/settings">&#8592; Back to sync settings</a>
+            </div>
+
+            {{if $d.Err}}
+            <div class="admin-status admin-status--error">Couldn't read your Google contacts: {{$d.Err}}</div>
+            {{else}}
+            <p class="admin-note">
+                Nothing has been changed. This is what {{if $d.Enabled}}the sync is doing{{else}}turning contact sync on would do{{end}}
+                with each customer. Matching is by phone number in any format, then by email.
+                <strong>Link to existing</strong> renames the Google contact to the customer's name where the two differ,
+                and adds the customer's phone or email if the contact lacks them, without removing anything.
+            </p>
+            <p class="admin-note">
+                {{index $d.Counts "create"}} new &middot; {{index $d.Counts "link"}} to link &middot;
+                {{index $d.Counts "update"}} already linked &middot; {{index $d.Counts "ambiguous"}} unclear &middot;
+                {{index $d.Counts "skip"}} skipped{{with index $d.Counts "gone"}} &middot; {{.}} left alone{{end}}
+            </p>
+
+            {{if $d.Rows}}
+            <div class="admin-quotes-table-wrap">
+                <table class="admin-quotes-table">
+                    <thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>Action</th><th>Google contact</th></tr></thead>
+                    <tbody>
+                    {{range $d.Rows}}
+                        <tr>
+                            <td><a href="/admin/customers/{{.ID}}">{{if .Name}}{{.Name}}{{else}}(no name){{end}}</a></td>
+                            <td>{{.Phone}}</td>
+                            <td>{{.Email}}</td>
+                            <td><span class="status-badge status-badge--{{if eq .Kind "create"}}booked{{else if eq .Kind "link"}}paid{{else if eq .Kind "ambiguous"}}cancelled{{else if eq .Kind "gone"}}pending{{else}}contacted{{end}}">{{.Action}}</span></td>
+                            <td>
+                                {{if .ContactID}}<a href="https://contacts.google.com/person/{{.ContactID}}" target="_blank" rel="noopener">{{if .GoogleName}}{{.GoogleName}}{{else}}(no name){{end}}</a>{{end}}
+                                {{if .NameChange}}<div class="admin-muted">will become “{{.Name}}”</div>{{end}}
+                                {{if .Note}}<div class="admin-muted">{{.Note}}</div>{{end}}
+                            </td>
+                        </tr>
+                    {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="admin-empty">No customers yet.</p>
+            {{end}}
+            {{end}}
+        </div>
+    </section>
+{{end}}

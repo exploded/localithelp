@@ -33,6 +33,11 @@ import (
 // own calendars.
 const calendarScope = "https://www.googleapis.com/auth/calendar"
 
+// contactsScope lets the app create and edit the admin's Google contacts, so
+// customers show by name when they ring (see gcontacts.go). It is requested
+// alongside the calendar scope, on the same connection.
+const contactsScope = "https://www.googleapis.com/auth/contacts"
+
 // calendarName is the secondary calendar the app creates and writes to.
 const calendarName = "Local IT Help"
 
@@ -57,7 +62,7 @@ func initGCalOAuth() {
 		ClientID:     cid,
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		RedirectURL:  site.BaseURL + "/auth/google/calendar/callback",
-		Scopes:       []string{calendarScope},
+		Scopes:       []string{calendarScope, contactsScope},
 		Endpoint:     google.Endpoint,
 	}
 }
@@ -124,9 +129,9 @@ type calendarAPI interface {
 	FreeBusy(ctx context.Context, calendarIDs []string, from, to time.Time) ([]busyInterval, error)
 }
 
-// errNotFound is returned when Google reports 404/410 for an event. Deleting an
-// event that is already gone counts as success.
-var errNotFound = fmt.Errorf("calendar: event not found")
+// errNotFound is returned when Google reports 404/410 for an event or a
+// contact. Deleting an event that is already gone counts as success.
+var errNotFound = fmt.Errorf("google: not found")
 
 // ── HTTP implementation ──
 
@@ -147,9 +152,16 @@ func newCalendarClient(g *db.GoogleCalendar) (calendarAPI, error) {
 	return &gcalClient{hc: oauth2.NewClient(context.Background(), src)}, nil
 }
 
-// do performs one API call. body is JSON-encoded when non-nil; out is decoded
-// when non-nil.
+// do performs one Calendar API call. body is JSON-encoded when non-nil; out is
+// decoded when non-nil.
 func (c *gcalClient) do(ctx context.Context, method, path string, body, out any) error {
+	return googleJSON(ctx, c.hc, "calendar", method, calendarBase+path, body, out)
+}
+
+// googleJSON performs one call to a Google REST API. 404 and 410 come back as
+// errNotFound; any other non-2xx status becomes an error carrying Google's own
+// message, prefixed with api.
+func googleJSON(ctx context.Context, hc *http.Client, api, method, fullURL string, body, out any) error {
 	var rdr io.Reader
 	if body != nil {
 		buf, err := json.Marshal(body)
@@ -158,14 +170,14 @@ func (c *gcalClient) do(ctx context.Context, method, path string, body, out any)
 		}
 		rdr = bytes.NewReader(buf)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, calendarBase+path, rdr)
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, rdr)
 	if err != nil {
 		return err
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	resp, err := c.hc.Do(req)
+	resp, err := hc.Do(req)
 	if err != nil {
 		return err
 	}
@@ -175,7 +187,11 @@ func (c *gcalClient) do(ctx context.Context, method, path string, body, out any)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
-		return fmt.Errorf("calendar: %s %s: %s: %s", method, path, resp.Status, googleErrMessage(msg))
+		path := strings.TrimPrefix(strings.TrimPrefix(fullURL, calendarBase), peopleBase)
+		if i := strings.IndexByte(path, '?'); i >= 0 {
+			path = path[:i]
+		}
+		return fmt.Errorf("%s: %s %s: %s: %s", api, method, path, resp.Status, googleErrMessage(msg))
 	}
 	if out == nil {
 		return nil
@@ -183,8 +199,6 @@ func (c *gcalClient) do(ctx context.Context, method, path string, body, out any)
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-// googleErrMessage pulls the human-readable message out of a Google error body,
-// falling back to the raw text.
 func googleErrMessage(body []byte) string {
 	var e struct {
 		Error struct {
@@ -366,7 +380,10 @@ func handleGCalCallback(w http.ResponseWriter, r *http.Request) {
 		redirectMsg(w, r, back, "err", "Connected, but could not set up the "+calendarName+" calendar: "+err.Error())
 		return
 	}
-	if err := db.SaveGoogleCalendar(email, tok.RefreshToken, calID, calendarName); err != nil {
+	// Google's consent screen lets each scope be unticked, so record whether
+	// contacts actually came through rather than assuming it did.
+	contacts := scopeGranted(tok, contactsScope)
+	if err := db.SaveGoogleCalendar(email, tok.RefreshToken, calID, calendarName, contacts); err != nil {
 		logGCal("save connection", err)
 		redirectMsg(w, r, back, "err", "Could not save the connection.")
 		return
@@ -374,7 +391,23 @@ func handleGCalCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Push existing visits straight away so the calendar is useful immediately.
 	go resyncAllBookings()
-	redirectMsg(w, r, back, "ok", "Connected as "+email+". Existing visits are syncing now.")
+	msg := "Connected as " + email + ". Existing visits are syncing now."
+	if !contacts {
+		msg += " Contacts access wasn't granted, so contact sync stays off — connect again and tick it to use it."
+	}
+	redirectMsg(w, r, back, "ok", msg)
+}
+
+// scopeGranted reports whether the token response lists scope among the scopes
+// Google actually granted (the space-separated "scope" field).
+func scopeGranted(tok *oauth2.Token, scope string) bool {
+	granted, _ := tok.Extra("scope").(string)
+	for _, s := range strings.Fields(granted) {
+		if s == scope {
+			return true
+		}
+	}
+	return false
 }
 
 // findOrCreateBookingCalendar returns the id of the app's calendar, creating it

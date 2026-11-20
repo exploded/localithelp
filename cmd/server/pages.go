@@ -403,6 +403,7 @@ func handleBookSubmit(w http.ResponseWriter, r *http.Request) {
 		slog.Error("booking: customer upsert failed", "err", err)
 		// Not fatal: the booking is still recorded; the boot-time backfill will link it later.
 	}
+	defer syncContactSoon(customerID) // after the address fill below
 	if customerID != 0 {
 		// Fill in a blank customer address, but never overwrite one from a
 		// public form — the admin address editor is the authority there.

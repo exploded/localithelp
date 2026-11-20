@@ -109,10 +109,21 @@ func TestTemplatesRender(t *testing.T) {
 				Busy:   []calBusy{{Top: 0, Height: 28, Label: "7:00 am - 7:30 am"}}}}},
 		"admin-calendar-settings": calSettingsData{Flash: flash{OK: "x"}, Configured: true, AdminEmail: "me@example.test", SyncedBookings: 3,
 			Conn: &db.GoogleCalendar{AccountEmail: "me@example.test", RefreshToken: "r", CalendarID: "cal1", CalendarName: "Local IT Help",
-				ConnectedAt: time.Now(), LastSyncAt: time.Now(), LastError: "boom"},
+				ConnectedAt: time.Now(), LastSyncAt: time.Now(), LastError: "boom", ContactsScope: true},
+			ContactsLinked: 4, ContactsPending: 2, ContactsErrors: 1,
 			Calendars: []calSettingsCal{{ID: "cal1", Name: "Local IT Help", IsApp: true}, {ID: "p", Name: "Personal", Primary: true}, {ID: "s", Name: "Sport", Skipped: true}}},
 		"admin-calendar-settings-off": calSettingsData{Configured: true, AdminEmail: "me@example.test"},
-		"admin-invoices":              adminInvoicesData{Status: "sent", Statuses: []string{"draft", "sent"}, Rows: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, TotalOut: 500},
+		"admin-calendar-settings-noscope": calSettingsData{Configured: true, AdminEmail: "me@example.test",
+			Conn: &db.GoogleCalendar{AccountEmail: "me@example.test", RefreshToken: "r", CalendarID: "cal1", CalendarName: "Local IT Help"}},
+		"admin-contacts-preview": contactPreviewData{Counts: map[string]int{planCreate: 1, planLink: 1, planAmbiguous: 1, "gone": 1},
+			Rows: []contactPreviewRow{
+				{ID: 1, Name: "Ann", Phone: "0400 000 000", Kind: planCreate, Action: "New contact"},
+				{ID: 2, Name: "Ron Smith", Phone: "0412 345 678", Kind: planLink, Action: "Link to existing", GoogleName: "Ron", NameChange: true, ContactID: "c123"},
+				{ID: 3, Name: "Bo", Kind: planAmbiguous, Action: "Unclear", Note: "2 Google contacts have the number"},
+				{ID: 4, Name: "Cy", Kind: "gone", Action: "Left alone", Note: "deleted"},
+			}},
+		"admin-contacts-preview-err": contactPreviewData{Err: "contacts: 403"},
+		"admin-invoices":             adminInvoicesData{Status: "sent", Statuses: []string{"draft", "sent"}, Rows: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, TotalOut: 500},
 		"admin-invoice": func() adminInvoiceData {
 			v := sampleInvoiceView(db.InvoiceDraft)
 			return adminInvoiceData{V: v, Ref: "INV-1001", Total: "$229.50", TotalDollars: "229.50", Editable: true, CanSend: true, CanPay: true, CanVoid: true,
@@ -138,7 +149,9 @@ func TestTemplatesRender(t *testing.T) {
 		"admin-customer-new": adminCustomerNewData{Flash: flash{Err: "already on file"},
 			Form:   customerForm{Name: "Ann", Email: "ann@x", Phone: "0400 000 000", Suburb: "Donvale"},
 			Errors: map[string]string{"contact": "y", "email": "z"}},
-		"admin-customer": adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, Services: services, SoftwareHourly: softwareHourly},
+		"admin-customer": adminCustomerData{C: cust, Bookings: bookingRows([]db.Booking{booked}), Invoices: []invoiceRow{{Invoice: *inv, Ref: "INV-1001", CustName: "Ann", Issued: "20 Aug 2026"}}, Services: services, SoftwareHourly: softwareHourly,
+			ContactsReady: true, GContact: &db.CustomerGContact{Resource: "people/c123", Error: "2 Google contacts have the number"}},
+		"admin-customer-unsynced": adminCustomerData{C: cust, Services: services, SoftwareHourly: softwareHourly, ContactsReady: true},
 		"invoice-public": func() invoicePublicData {
 			v := sampleInvoiceView(db.InvoiceSent)
 			return invoicePublicData{V: v, Ref: "INV-1001", Total: "$229.50", Lines: []invoiceLine{{"Fee", "1", "$80.00", "$80.00", "$80.00"}}, Issued: "20 Aug 2026", Due: "27 Aug 2026", When: "Thu 20 Aug"}
@@ -150,7 +163,8 @@ func TestTemplatesRender(t *testing.T) {
 	}
 	// Variants (name suffix after the page) reuse the same template with different data.
 	pageOf := func(name string) string {
-		for _, p := range []string{"admin-booking-nocust", "admin-invoice-sent", "invoice-public-paid", "admin-review-card-empty", "admin-calendar-settings-off"} {
+		for _, p := range []string{"admin-booking-nocust", "admin-invoice-sent", "invoice-public-paid", "admin-review-card-empty", "admin-calendar-settings-off",
+			"admin-calendar-settings-noscope", "admin-contacts-preview-err", "admin-customer-unsynced"} {
 			if name == p {
 				return name[:strings.LastIndex(name, "-")]
 			}

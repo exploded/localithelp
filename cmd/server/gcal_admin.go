@@ -22,6 +22,11 @@ type calSettingsData struct {
 	ListErr        string
 	AdminEmail     string
 	SyncedBookings int
+
+	// Google Contacts sync, shown once the contacts scope is granted.
+	ContactsLinked  int
+	ContactsPending int
+	ContactsErrors  int
 }
 
 type calSettingsCal struct {
@@ -51,6 +56,11 @@ func handleAdminCalendarSettings(w http.ResponseWriter, r *http.Request) {
 	if conn.Connected() {
 		if n, err := db.CountBookingsWithCalendarEvent(); err == nil {
 			d.SyncedBookings = n
+		}
+		if conn.ContactsReady() {
+			d.ContactsLinked, _ = db.CountLinkedGContacts()
+			d.ContactsPending, _ = db.CountCustomersForContactSync()
+			d.ContactsErrors, _ = db.CountGContactErrors()
 		}
 		if api, err := gcalClientFor(conn); err != nil {
 			d.ListErr = err.Error()

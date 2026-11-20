@@ -53,6 +53,7 @@ type schedulerSummary struct {
 	Digest    bool
 	Backup    bool // nightly DB snapshot uploaded
 	Calendar  int  // bookings pushed to Google Calendar
+	Contacts  int  // customers pushed to Google Contacts
 }
 
 // runScheduledJobs runs every job once for the given instant. Errors are
@@ -65,11 +66,15 @@ func runScheduledJobs(now time.Time) schedulerSummary {
 	s.Digest = sendMorningDigest(now)
 	s.Backup = backupDatabase(now)
 	s.Calendar = syncCalendar(now)
+	s.Contacts = syncContacts(now)
 	if s.Reminders+s.Alerts > 0 || s.Digest {
 		slog.Info("scheduler: sent", "reminders", s.Reminders, "heads_ups", s.Alerts, "digest", s.Digest)
 	}
 	if s.Calendar > 0 {
 		slog.Info("scheduler: synced to Google Calendar", "bookings", s.Calendar)
+	}
+	if s.Contacts > 0 {
+		slog.Info("scheduler: synced to Google Contacts", "customers", s.Contacts)
 	}
 	return s
 }

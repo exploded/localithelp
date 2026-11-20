@@ -224,6 +224,60 @@ single-user app; **Disconnect** deletes the row (and forgets every event id,
 leaving the events in Google), and access can also be revoked at
 [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 
+### Google Contacts sync
+
+Customers are pushed to the admin's Google contacts, labelled **LOCAL IT HELP**,
+so they show by name when they ring the iPhone (which syncs Google Contacts).
+It uses the same connection and refresh token as the calendar: the connect flow
+asks for `https://www.googleapis.com/auth/contacts` alongside the calendar
+scope, and records whether Google granted it (`google_calendar.contacts_scope`).
+
+One-off in the Google Cloud Console, on the `localithelp` project:
+
+1. **Enable the People API** (`gcloud services enable people.googleapis.com --project localithelp`).
+2. Add the scope `https://www.googleapis.com/auth/contacts` on the OAuth consent
+   screen's **Data access** page.
+3. On `/admin/calendar/settings`, press **Reconnect with contacts access** and
+   leave the contacts box ticked.
+
+Then, on the same page:
+
+- **Preview** lists what the sync would do with every customer, without writing
+  anything.
+- **Sync to Google now** on a customer page pushes that one customer, even while
+  sync is off. Use it to test before switching on.
+- **Turn contact sync on** pushes everyone now, then every scheduler tick pushes
+  customers whose record changed. New bookings and customer edits push
+  straight away.
+
+How it behaves:
+
+- **Matching.** A customer with no linked contact is matched to an existing
+  contact by phone number, then by email. Phone numbers match in any format
+  (`+61 412 345 678`, `0412345678`, `(03) 9876 5432`, `+61 (0)3 …`, and a bare
+  8-digit number as `03`; see `contactPhoneKey`). No match creates a contact.
+- **Unclear matches are left alone.** If two contacts share the number, phone
+  and email point at different contacts, or the contact is already linked to
+  another customer, nothing is written and the customer page says why. Merge
+  them in Google Contacts, then press **Sync to Google now**.
+- **What's written.** The name is set from the customer record. The customer's
+  phone, email and a link to the customer page are added if missing, and the
+  address is filled only when the contact has none. Numbers, emails and
+  anything else added on the phone are never removed.
+- **One way, and never deletes.** Edits on the phone are not pulled back. A
+  contact deleted in Google is not recreated by the scheduler; the customer page
+  button recreates it.
+- **Dual SIM.** The iPhone's per-contact preferred line is stored on the phone,
+  not in Google, so the sync can't set it. Without one, iOS uses the line last
+  used with that number, so a caller who rang the business SIM is called back
+  on it. Contacts are only patched in place, never recreated, so a preferred
+  line the phone already holds should survive. Test one contact after any
+  change here.
+
+State lives in `customer_gcontacts` (one row per customer: linked contact,
+`synced_at`, last error, and `gone` for contacts deleted in Google). A customer
+is due for a push when `customers.updated_at` is newer than `synced_at`.
+
 ### Email (Amazon SES) setup
 
 One-time, from your machine with an admin AWS profile: `AWS_PROFILE=aws-admin

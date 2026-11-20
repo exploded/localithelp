@@ -80,7 +80,7 @@ func (f *fakeCalendar) FreeBusy(_ context.Context, ids []string, _, _ time.Time)
 // connectFake stores a connection row and points the sync at the fake API.
 func connectFake(t *testing.T, f *fakeCalendar) {
 	t.Helper()
-	if err := db.SaveGoogleCalendar("me@example.test", "refresh-token", "cal-app", calendarName); err != nil {
+	if err := db.SaveGoogleCalendar("me@example.test", "refresh-token", "cal-app", calendarName, false); err != nil {
 		t.Fatal(err)
 	}
 	prev := gcalClientFor
@@ -470,7 +470,7 @@ func TestBusyBlocksFor(t *testing.T) {
 }
 
 // TestLoginScopesUnchanged guards the split between sign-in and calendar
-// consent: signing in must never ask for calendar access.
+// consent: signing in must never ask for calendar or contacts access.
 func TestLoginScopesUnchanged(t *testing.T) {
 	site = siteConfig{BaseURL: "https://example.test"}
 	t.Setenv("GOOGLE_CLIENT_ID", "test-client")
@@ -481,16 +481,16 @@ func TestLoginScopesUnchanged(t *testing.T) {
 	if gcalOAuth == nil {
 		t.Fatal("initGCalOAuth did not build a config")
 	}
-	if len(gcalOAuth.Scopes) != 1 || gcalOAuth.Scopes[0] != calendarScope {
-		t.Errorf("calendar scopes = %v, want just the calendar scope", gcalOAuth.Scopes)
+	if len(gcalOAuth.Scopes) != 2 || gcalOAuth.Scopes[0] != calendarScope || gcalOAuth.Scopes[1] != contactsScope {
+		t.Errorf("calendar scopes = %v, want the calendar and contacts scopes", gcalOAuth.Scopes)
 	}
 	if !strings.HasSuffix(gcalOAuth.RedirectURL, "/auth/google/calendar/callback") {
 		t.Errorf("redirect = %q, want its own callback path", gcalOAuth.RedirectURL)
 	}
 	// The sign-in config is built in main(); assert the constant it uses.
 	for _, s := range []string{"openid", "email", "profile"} {
-		if s == calendarScope {
-			t.Fatal("login scope list must not contain the calendar scope")
+		if s == calendarScope || s == contactsScope {
+			t.Fatal("login scope list must not contain the calendar or contacts scope")
 		}
 	}
 }

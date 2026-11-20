@@ -200,6 +200,9 @@ func newMux(dir string) *http.ServeMux {
 	mux.HandleFunc("GET /admin/customers/{id}", requireAdmin(handleAdminCustomer))
 	mux.HandleFunc("POST /admin/customers/{id}", requireAdmin(handleAdminCustomerSave))
 	mux.HandleFunc("POST /admin/customers/{id}/bookings", requireAdmin(handleAdminCustomerBooking))
+	mux.HandleFunc("POST /admin/customers/{id}/gcontact", requireAdmin(handleAdminCustomerGContact))
+	mux.HandleFunc("GET /admin/contacts/preview", requireAdmin(handleAdminContactsPreview))
+	mux.HandleFunc("POST /admin/contacts/enabled", requireAdmin(handleAdminContactsEnabled))
 
 	// Catch-all: trailing-slash redirects + branded 404.
 	mux.HandleFunc("/", handleNotFound)

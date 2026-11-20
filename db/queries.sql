@@ -228,19 +228,29 @@ UPDATE bookings SET gcal_event_id = ?, gcal_synced_at = datetime('now') WHERE id
 UPDATE bookings SET gcal_event_id = '', gcal_synced_at = '' WHERE gcal_event_id <> '';
 
 -- name: GetGoogleCalendar :one
-SELECT account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error
+SELECT account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error,
+       contacts_scope, contacts_enabled, contacts_group
 FROM google_calendar WHERE id = 1;
 
 -- name: SaveGoogleCalendar :exec
-INSERT INTO google_calendar (id, account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error)
-VALUES (1, ?, ?, ?, ?, '', datetime('now'), '', '')
+-- A reconnect keeps the contact-sync switch and label, but records afresh
+-- whether the contacts scope was granted this time.
+INSERT INTO google_calendar (id, account_email, refresh_token, calendar_id, calendar_name, skip_calendars, connected_at, last_sync_at, last_error, contacts_scope)
+VALUES (1, ?, ?, ?, ?, '', datetime('now'), '', '', ?)
 ON CONFLICT(id) DO UPDATE SET
-    account_email = excluded.account_email,
-    refresh_token = excluded.refresh_token,
-    calendar_id   = excluded.calendar_id,
-    calendar_name = excluded.calendar_name,
-    connected_at  = datetime('now'),
-    last_error    = '';
+    account_email  = excluded.account_email,
+    refresh_token  = excluded.refresh_token,
+    calendar_id    = excluded.calendar_id,
+    calendar_name  = excluded.calendar_name,
+    connected_at   = datetime('now'),
+    last_error     = '',
+    contacts_scope = excluded.contacts_scope;
+
+-- name: SetContactsEnabled :exec
+UPDATE google_calendar SET contacts_enabled = ? WHERE id = 1;
+
+-- name: SetContactsGroup :exec
+UPDATE google_calendar SET contacts_group = ? WHERE id = 1;
 
 -- name: SetGoogleCalendarSkips :exec
 UPDATE google_calendar SET skip_calendars = ? WHERE id = 1;
@@ -316,6 +326,67 @@ UPDATE customers SET
     suburb     = CASE WHEN suburb = ''     THEN ? ELSE suburb END,
     updated_at = datetime('now')
 WHERE id = ?;
+
+-- Customer to Google Contacts
+
+-- name: ListCustomersForContactSync :many
+-- Customers whose record changed since their last push, plus any never looked
+-- at. A contact deleted in Google (gone = 1) stays out until the admin asks.
+-- Customers with neither a phone nor an email have nothing to sync.
+SELECT c.id, c.name, c.email, c.phone, c.phone_norm, c.address, c.suburb, c.notes, c.created_at, c.updated_at,
+       CAST(COALESCE(g.resource, '') AS TEXT) AS gcontact_resource
+FROM customers c
+LEFT JOIN customer_gcontacts g ON g.customer_id = c.id
+WHERE (c.phone_norm <> '' OR c.email <> '')
+  AND (g.customer_id IS NULL OR (g.gone = 0 AND (g.synced_at = '' OR c.updated_at > g.synced_at)))
+ORDER BY c.id
+LIMIT ?;
+
+-- name: CountCustomersForContactSync :one
+SELECT COUNT(*) AS n
+FROM customers c
+LEFT JOIN customer_gcontacts g ON g.customer_id = c.id
+WHERE (c.phone_norm <> '' OR c.email <> '')
+  AND (g.customer_id IS NULL OR (g.gone = 0 AND (g.synced_at = '' OR c.updated_at > g.synced_at)));
+
+-- name: GetCustomerGContact :one
+SELECT customer_id, resource, synced_at, error, gone FROM customer_gcontacts WHERE customer_id = ?;
+
+-- name: ListCustomerGContacts :many
+SELECT customer_id, resource, synced_at, error, gone FROM customer_gcontacts ORDER BY customer_id;
+
+-- name: CountLinkedGContacts :one
+SELECT COUNT(*) AS n FROM customer_gcontacts WHERE resource <> '';
+
+-- name: CountGContactErrors :one
+SELECT COUNT(*) AS n FROM customer_gcontacts WHERE error <> '';
+
+-- name: SetCustomerGContact :exec
+-- Records the outcome of a push: the linked contact (or '' when none) and any
+-- problem that needs the admin. Stamping synced_at stops the row looking dirty
+-- until the customer is edited again.
+INSERT INTO customer_gcontacts (customer_id, resource, synced_at, error, gone)
+VALUES (?, ?, datetime('now'), ?, 0)
+ON CONFLICT(customer_id) DO UPDATE SET
+    resource  = excluded.resource,
+    synced_at = excluded.synced_at,
+    error     = excluded.error,
+    gone      = 0;
+
+-- name: SetCustomerGContactError :exec
+-- A failure worth retrying (Google unreachable, quota): keep the link and
+-- leave synced_at alone so the next tick tries again.
+INSERT INTO customer_gcontacts (customer_id, error) VALUES (?, ?)
+ON CONFLICT(customer_id) DO UPDATE SET error = excluded.error;
+
+-- name: SetCustomerGContactGone :exec
+INSERT INTO customer_gcontacts (customer_id, resource, synced_at, error, gone)
+VALUES (?, '', datetime('now'), ?, 1)
+ON CONFLICT(customer_id) DO UPDATE SET
+    resource  = '',
+    synced_at = excluded.synced_at,
+    error     = excluded.error,
+    gone      = 1;
 
 -- Invoices
 
