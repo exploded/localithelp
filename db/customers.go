@@ -127,6 +127,12 @@ func UpdateCustomer(c *Customer) error {
 	})
 }
 
+// CopyCustomerContactToBookings overwrites the name, email and phone stored on
+// each of the customer's bookings with the customer record's non-blank values.
+func CopyCustomerContactToBookings(customerID int64) error {
+	return q.CopyCustomerContactToBookings(context.Background(), customerID)
+}
+
 // ListCustomers returns all customers, or those matching query (name, email,
 // phone digits or suburb) when it is non-empty.
 func ListCustomers(query string) ([]Customer, error) {

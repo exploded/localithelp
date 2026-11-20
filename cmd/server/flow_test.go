@@ -358,6 +358,17 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	if !strings.Contains(get(cpath), "1 Test St") || !strings.Contains(get("/admin/customers?q=0400"), "Zoë") {
 		t.Fatal("customer edit/search")
 	}
+	// Corrected contact details carry onto the customer's bookings, which is
+	// where confirmations and reminders are addressed from.
+	if cb, _ := db.GetBooking(b.ID); cb.Name != "Zoë O'Brien" || cb.Email != "zoe@example.test" || cb.Phone != "0400 000 001" {
+		t.Fatalf("customer edit should update the booking's contact: %q %q %q", cb.Name, cb.Email, cb.Phone)
+	}
+	// A changed email carries over; a blank field leaves the booking's value alone.
+	post(cpath, url.Values{"name": {"Zoë O'Brien"}, "email": {"zoey@example.test"}, "phone": {""}, "address": {"1 Test St"}, "suburb": {"Donvale"}, "notes": {"Lovely dog."}})
+	if cb, _ := db.GetBooking(b.ID); cb.Email != "zoey@example.test" || cb.Phone != "0400 000 001" {
+		t.Fatalf("after email fix + blank phone: email %q phone %q", cb.Email, cb.Phone)
+	}
+	post(cpath, url.Values{"name": {"Zoë O'Brien"}, "email": {"zoe@example.test"}, "phone": {"0400 000 001"}, "address": {"1 Test St"}, "suburb": {"Donvale"}, "notes": {"Lovely dog."}})
 	// New booking straight from the customer page: unscheduled, linked, uses saved details.
 	loc = post(cpath+"/bookings", url.Values{"service": {"email-outlook"}, "issue": {"Outlook won't open"}})
 	nid := lastSeg(strings.SplitN(loc, "?", 2)[0])

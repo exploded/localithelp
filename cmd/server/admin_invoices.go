@@ -886,5 +886,31 @@ func handleAdminCustomerSave(w http.ResponseWriter, r *http.Request) {
 		redirectMsg(w, r, back, "err", "Could not save — is that email already used by another customer?")
 		return
 	}
-	redirectMsg(w, r, back, "ok", "Customer saved.")
+	// Carry corrected contact details onto the bookings, which is where
+	// confirmations, reminders and the calendar event read them from.
+	before, _ := db.ListBookingsByCustomer(c.ID)
+	if err := db.CopyCustomerContactToBookings(c.ID); err != nil {
+		slog.Error("copy customer contact to bookings", "customer", c.ID, "err", err)
+		redirectMsg(w, r, back, "err", "Customer saved, but their bookings still show the old contact details.")
+		return
+	}
+	after, _ := db.ListBookingsByCustomer(c.ID)
+	old := map[int64]db.Booking{}
+	for _, b := range before {
+		old[b.ID] = b
+	}
+	updated := 0
+	for _, b := range after {
+		if o, ok := old[b.ID]; ok && (o.Name != b.Name || o.Email != b.Email || o.Phone != b.Phone) {
+			updated++
+			syncBookingSoon(b.ID)
+		}
+	}
+	msg := "Customer saved."
+	if updated == 1 {
+		msg += " Their booking now uses these contact details."
+	} else if updated > 1 {
+		msg += " Their " + strconv.Itoa(updated) + " bookings now use these contact details."
+	}
+	redirectMsg(w, r, back, "ok", msg)
 }

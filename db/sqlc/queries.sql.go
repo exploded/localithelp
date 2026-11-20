@@ -18,6 +18,24 @@ func (q *Queries) ClearBookingCalendarEventIDs(ctx context.Context) error {
 	return err
 }
 
+const copyCustomerContactToBookings = `-- name: CopyCustomerContactToBookings :exec
+UPDATE bookings SET
+    name  = COALESCE(NULLIF((SELECT c.name  FROM customers c WHERE c.id = bookings.customer_id), ''), name),
+    email = COALESCE(NULLIF((SELECT c.email FROM customers c WHERE c.id = bookings.customer_id), ''), email),
+    phone = COALESCE(NULLIF((SELECT c.phone FROM customers c WHERE c.id = bookings.customer_id), ''), phone),
+    updated_at = datetime('now')
+WHERE customer_id = ?
+`
+
+// Each booking keeps the contact details typed into the enquiry, and mail,
+// reminders and the calendar read them from there. After the customer record is
+// corrected, copy its name, email and phone over; a blank field leaves the
+// booking's own value alone.
+func (q *Queries) CopyCustomerContactToBookings(ctx context.Context, customerID int64) error {
+	_, err := q.db.ExecContext(ctx, copyCustomerContactToBookings, customerID)
+	return err
+}
+
 const countAdClicksSince = `-- name: CountAdClicksSince :one
 SELECT COUNT(*) AS n FROM ad_clicks WHERE created_at >= ?
 `
