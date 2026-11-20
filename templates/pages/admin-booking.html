@@ -218,6 +218,9 @@
          hx-swap:inherited="outerHTML">
         <h2 class="admin-card-title">Status</h2>
         <div class="admin-btn-row">
+            {{if $d.CanMarkPaid}}
+            <form method="POST" action="/admin/bookings/{{$b.ID}}/status" hx-post="/admin/bookings/{{$b.ID}}/status" hx-disable="find button">{{template "csrf" $csrf}}<input type="hidden" name="status" value="paid"><button class="btn btn--primary btn--sm" type="submit">Paid</button></form>
+            {{end}}
             {{if ne $b.Status "contacted"}}
             <form method="POST" action="/admin/bookings/{{$b.ID}}/status" hx-post="/admin/bookings/{{$b.ID}}/status" hx-disable="find button">{{template "csrf" $csrf}}<input type="hidden" name="status" value="contacted"><button class="btn btn--ghost btn--sm" type="submit">Contacted</button></form>
             {{end}}

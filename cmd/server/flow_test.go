@@ -484,11 +484,38 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	if page := get(bpath); !strings.Contains(page, `/invoice-link`) || !strings.Contains(page, `name="invoice" value="`+itoa(sinv.ID)+`"`) {
 		t.Fatal("booking page should offer the customer's unlinked invoice")
 	}
+	// Paid status can't be set by hand while no linked invoice is paid.
+	if err := db.UpdateBookingStatus(b.ID, db.BookingDone); err != nil {
+		t.Fatal(err)
+	}
+	if !hasPaidInvoice(b.ID) {
+		if rr := do("POST", bpath+"/status", url.Values{"status": {"paid"}}, true); !strings.Contains(rr.Header().Get("Location"), "err=") {
+			t.Fatalf("manual paid with no paid invoice should be refused: %d %s", rr.Code, rr.Header().Get("Location"))
+		}
+	}
 	if loc := post(bpath+"/invoice-link", url.Values{"invoice": {itoa(sinv.ID)}}); !strings.Contains(loc, "ok=") {
 		t.Fatalf("link invoice: %s", loc)
 	}
 	if sinv, _ = db.GetInvoice(sinv.ID); sinv.BookingID != b.ID {
 		t.Fatalf("invoice not linked: booking %d", sinv.BookingID)
+	}
+	// Linking a paid invoice marks the booking paid.
+	if lb, _ := db.GetBooking(b.ID); lb.Status != db.BookingPaid {
+		t.Fatalf("linking a paid invoice should mark the booking paid, got %s", lb.Status)
+	}
+	// A booking linked before that catch-up existed gets a Paid button.
+	if err := db.UpdateBookingStatus(b.ID, db.BookingDone); err != nil {
+		t.Fatal(err)
+	}
+	if page := get(bpath); !strings.Contains(page, `name="status" value="paid"`) {
+		t.Fatal("booking with a paid invoice should offer Paid")
+	}
+	post(bpath+"/status", url.Values{"status": {"paid"}})
+	if lb, _ := db.GetBooking(b.ID); lb.Status != db.BookingPaid {
+		t.Fatalf("Paid button: status %s", lb.Status)
+	}
+	if page := get(bpath); strings.Contains(page, `name="status" value="paid"`) {
+		t.Fatal("Paid button should go once the booking is paid")
 	}
 	if page := get(bpath); strings.Contains(page, `name="invoice" value="`+itoa(sinv.ID)+`"`) {
 		t.Fatal("a linked invoice should no longer be offered for linking")

@@ -175,6 +175,7 @@ type adminBookingData struct {
 	Durations    []int
 	Invoices     []db.Invoice
 	Unlinked     []db.Invoice // the customer's invoices with no booking, offered for linking
+	CanMarkPaid  bool         // a linked invoice is paid but the booking isn't marked paid
 	Parent       *db.Booking
 	Children     []bookingRow
 	Statuses     []string
@@ -229,6 +230,13 @@ func buildBookingData(r *http.Request, b *db.Booking) adminBookingData {
 	}
 	d.StartValue = start.In(db.Melbourne).Format("2006-01-02T15:04")
 	d.Invoices, _ = db.ListInvoicesByBooking(b.ID)
+	if b.Status != db.BookingPaid {
+		for _, inv := range d.Invoices {
+			if inv.Status == db.InvoicePaid {
+				d.CanMarkPaid = true
+			}
+		}
+	}
 	if b.CustomerID != 0 {
 		// Invoices raised from the customer page with no booking chosen. Offer
 		// them here so a visit billed that way can still be tied to its booking.
@@ -321,7 +329,10 @@ func handleAdminBookingStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status := r.FormValue("status")
-	if !allowedManualStatuses[status] {
+	// Paid normally follows "Mark paid" on the invoice. It's settable here only
+	// to catch up a booking whose invoice was paid before it was linked.
+	paidCatchUp := status == db.BookingPaid && hasPaidInvoice(b.ID)
+	if !allowedManualStatuses[status] && !paidCatchUp {
 		bookingCard(w, r, b, "booking-status-swap", http.StatusUnprocessableEntity, "err", "That status can't be set by hand.")
 		return
 	}
@@ -482,7 +493,38 @@ func handleAdminBookingInvoiceLink(w http.ResponseWriter, r *http.Request) {
 		redirectMsg(w, r, back, "err", "That invoice is already linked to a booking, or belongs to another customer.")
 		return
 	}
-	redirectMsg(w, r, back, "ok", "Invoice linked to this booking.")
+	msg := "Invoice linked to this booking."
+	// Catch the booking up with what already happened to the invoice, as
+	// Send and Mark paid would have done had it been linked at the time.
+	if inv, err := db.GetInvoice(invID); err == nil {
+		next := ""
+		switch {
+		case inv.Status == db.InvoicePaid && b.Status != db.BookingPaid:
+			next = db.BookingPaid
+		case inv.Status == db.InvoiceSent && b.Status != db.BookingPaid && b.Status != db.BookingInvoiced:
+			next = db.BookingInvoiced
+		}
+		if next != "" {
+			if err := db.UpdateBookingStatus(b.ID, next); err != nil {
+				slog.Error("link invoice: booking status", "booking", b.ID, "err", err)
+			} else {
+				syncBookingSoon(b.ID)
+				msg += " Booking marked " + next + "."
+			}
+		}
+	}
+	redirectMsg(w, r, back, "ok", msg)
+}
+
+// hasPaidInvoice reports whether any invoice linked to the booking is paid.
+func hasPaidInvoice(bookingID int64) bool {
+	invs, _ := db.ListInvoicesByBooking(bookingID)
+	for _, inv := range invs {
+		if inv.Status == db.InvoicePaid {
+			return true
+		}
+	}
+	return false
 }
 
 // ── Admin: new booking (phone enquiry) ──
