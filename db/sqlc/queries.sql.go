@@ -921,6 +921,28 @@ func (q *Queries) LinkAdClick(ctx context.Context, arg LinkAdClickParams) (int64
 	return result.RowsAffected()
 }
 
+const linkInvoiceToBooking = `-- name: LinkInvoiceToBooking :execrows
+UPDATE invoices SET booking_id = ?, updated_at = datetime('now')
+WHERE id = ? AND booking_id = 0 AND customer_id = ?
+`
+
+type LinkInvoiceToBookingParams struct {
+	BookingID  int64 `json:"booking_id"`
+	ID         int64 `json:"id"`
+	CustomerID int64 `json:"customer_id"`
+}
+
+// Attaches an invoice raised from the customer page to one of that customer's
+// bookings. Only an unlinked invoice moves, so this can't steal one from
+// another booking. Works on any status: the link is bookkeeping, not billing.
+func (q *Queries) LinkInvoiceToBooking(ctx context.Context, arg LinkInvoiceToBookingParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, linkInvoiceToBooking, arg.BookingID, arg.ID, arg.CustomerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listBlockingEmailEvents = `-- name: ListBlockingEmailEvents :many
 SELECT id, email, kind, bounce_type, sub_type, diagnostic, subject, message_id, feedback_id, created_at
 FROM email_events WHERE kind = 'complaint' OR bounce_type = 'Permanent' ORDER BY id

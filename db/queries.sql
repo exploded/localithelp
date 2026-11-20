@@ -398,6 +398,13 @@ WHERE id = ?;
 UPDATE invoices SET status = 'void', updated_at = datetime('now')
 WHERE id = ? AND status IN ('draft', 'sent');
 
+-- name: LinkInvoiceToBooking :execrows
+-- Attaches an invoice raised from the customer page to one of that customer's
+-- bookings. Only an unlinked invoice moves, so this can't steal one from
+-- another booking. Works on any status: the link is bookkeeping, not billing.
+UPDATE invoices SET booking_id = ?, updated_at = datetime('now')
+WHERE id = ? AND booking_id = 0 AND customer_id = ?;
+
 -- name: DeleteInvoiceItems :exec
 DELETE FROM invoice_items WHERE invoice_id = ?;
 

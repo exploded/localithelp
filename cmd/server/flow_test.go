@@ -50,6 +50,7 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	mux.HandleFunc("POST /admin/bookings/{id}/issue", requireAdmin(handleAdminBookingIssue))
 	mux.HandleFunc("POST /admin/bookings/{id}/followup", requireAdmin(handleAdminBookingFollowup))
 	mux.HandleFunc("POST /admin/bookings/{id}/address", requireAdmin(handleAdminBookingAddress))
+	mux.HandleFunc("POST /admin/bookings/{id}/invoice-link", requireAdmin(handleAdminBookingInvoiceLink))
 	mux.HandleFunc("GET /admin/calendar", requireAdmin(handleAdminCalendar))
 	mux.HandleFunc("GET /admin/invoices", requireAdmin(handleAdminInvoices))
 	mux.HandleFunc("POST /admin/invoices/new", requireAdmin(handleAdminInvoiceNew))
@@ -473,6 +474,34 @@ func TestBookingToInvoiceFlow(t *testing.T) {
 	}
 	if rr := do("GET", "/invoice/"+sinv.ViewToken+"/pdf", nil, false); rr.Code != 200 || rr.Body.Len() < 1000 {
 		t.Fatalf("standalone receipt PDF: %d %d bytes", rr.Code, rr.Body.Len())
+	}
+	// The customer page offers a booking for the next invoice.
+	if page := get(cpath); !strings.Contains(page, `name="booking"`) || !strings.Contains(page, "No booking") {
+		t.Fatal("customer page should offer a booking picker for New invoice")
+	}
+	// The booking page offers the unlinked invoice, and linking it moves it.
+	bpath = "/admin/bookings/" + itoa(b.ID)
+	if page := get(bpath); !strings.Contains(page, `/invoice-link`) || !strings.Contains(page, `name="invoice" value="`+itoa(sinv.ID)+`"`) {
+		t.Fatal("booking page should offer the customer's unlinked invoice")
+	}
+	if loc := post(bpath+"/invoice-link", url.Values{"invoice": {itoa(sinv.ID)}}); !strings.Contains(loc, "ok=") {
+		t.Fatalf("link invoice: %s", loc)
+	}
+	if sinv, _ = db.GetInvoice(sinv.ID); sinv.BookingID != b.ID {
+		t.Fatalf("invoice not linked: booking %d", sinv.BookingID)
+	}
+	if page := get(bpath); strings.Contains(page, `name="invoice" value="`+itoa(sinv.ID)+`"`) {
+		t.Fatal("a linked invoice should no longer be offered for linking")
+	}
+	// Linking again (already linked) is refused.
+	if rr := do("POST", bpath+"/invoice-link", url.Values{"invoice": {itoa(sinv.ID)}}, true); rr.Code != http.StatusSeeOther ||
+		!strings.Contains(rr.Header().Get("Location"), "err=") {
+		t.Fatalf("relink should be refused: %d %s", rr.Code, rr.Header().Get("Location"))
+	}
+	// Raising an invoice from the customer page with a booking picked links it.
+	loc = post("/admin/invoices/new", url.Values{"customer": {itoa(b.CustomerID)}, "booking": {itoa(b.ID)}, "kind": {"onsite"}})
+	if pinv, _ := db.GetInvoice(lastSeg(strings.SplitN(loc, "?", 2)[0])); pinv == nil || pinv.BookingID != b.ID {
+		t.Fatalf("customer-page invoice with booking picked: %+v", pinv)
 	}
 	// A blank draft starts with no lines at all.
 	loc = post("/admin/invoices/new", url.Values{"customer": {itoa(b.CustomerID)}, "kind": {"blank"}})

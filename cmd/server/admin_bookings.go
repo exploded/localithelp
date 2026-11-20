@@ -174,6 +174,7 @@ type adminBookingData struct {
 	StartValue   string // datetime-local value for the schedule form
 	Durations    []int
 	Invoices     []db.Invoice
+	Unlinked     []db.Invoice // the customer's invoices with no booking, offered for linking
 	Parent       *db.Booking
 	Children     []bookingRow
 	Statuses     []string
@@ -228,6 +229,17 @@ func buildBookingData(r *http.Request, b *db.Booking) adminBookingData {
 	}
 	d.StartValue = start.In(db.Melbourne).Format("2006-01-02T15:04")
 	d.Invoices, _ = db.ListInvoicesByBooking(b.ID)
+	if b.CustomerID != 0 {
+		// Invoices raised from the customer page with no booking chosen. Offer
+		// them here so a visit billed that way can still be tied to its booking.
+		if all, err := db.ListInvoicesByCustomer(b.CustomerID); err == nil {
+			for _, inv := range all {
+				if inv.BookingID == 0 && inv.Status != db.InvoiceVoid {
+					d.Unlinked = append(d.Unlinked, inv)
+				}
+			}
+		}
+	}
 	if b.ParentBookingID != 0 {
 		d.Parent, _ = db.GetBooking(b.ParentBookingID)
 	}
@@ -445,6 +457,32 @@ func handleAdminBookingFollowup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirectMsg(w, r, "/admin/bookings/"+strconv.FormatInt(id, 10), "ok", "Follow-up booking created — pick a time below.")
+}
+
+// handleAdminBookingInvoiceLink attaches one of the customer's unlinked
+// invoices (raised from the customer page) to this booking.
+func handleAdminBookingInvoiceLink(w http.ResponseWriter, r *http.Request) {
+	b := loadBooking(w, r)
+	if b == nil {
+		return
+	}
+	back := "/admin/bookings/" + strconv.FormatInt(b.ID, 10)
+	invID, _ := strconv.ParseInt(r.FormValue("invoice"), 10, 64)
+	if b.CustomerID == 0 || invID == 0 {
+		redirectMsg(w, r, back, "err", "Nothing to link.")
+		return
+	}
+	ok, err := db.LinkInvoiceToBooking(invID, b.ID, b.CustomerID)
+	if err != nil {
+		slog.Error("link invoice", "booking", b.ID, "invoice", invID, "err", err)
+		redirectMsg(w, r, back, "err", "Could not link the invoice.")
+		return
+	}
+	if !ok {
+		redirectMsg(w, r, back, "err", "That invoice is already linked to a booking, or belongs to another customer.")
+		return
+	}
+	redirectMsg(w, r, back, "ok", "Invoice linked to this booking.")
 }
 
 // ── Admin: new booking (phone enquiry) ──

@@ -306,3 +306,13 @@ func VoidInvoice(id int64) (bool, error) {
 	n, err := q.VoidInvoice(context.Background(), id)
 	return n == 1, err
 }
+
+// LinkInvoiceToBooking attaches an unlinked invoice to one of the same
+// customer's bookings. It reports false when the invoice already has a booking
+// or belongs to someone else.
+func LinkInvoiceToBooking(invoiceID, bookingID, customerID int64) (bool, error) {
+	n, err := q.LinkInvoiceToBooking(context.Background(), sqlc.LinkInvoiceToBookingParams{
+		BookingID: bookingID, ID: invoiceID, CustomerID: customerID,
+	})
+	return n == 1, err
+}

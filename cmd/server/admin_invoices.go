@@ -119,8 +119,12 @@ func handleAdminInvoices(w http.ResponseWriter, r *http.Request) {
 func handleAdminInvoiceNew(w http.ResponseWriter, r *http.Request) {
 	bookingID, _ := strconv.ParseInt(r.FormValue("booking"), 10, 64)
 	customerID, _ := strconv.ParseInt(r.FormValue("customer"), 10, 64)
+	// The customer page posts both (its booking picker may say "No booking"),
+	// so errors go back to whichever page the form was on.
 	back := "/admin/bookings"
-	if bookingID == 0 {
+	if bookingID != 0 && customerID == 0 {
+		back += "/" + strconv.FormatInt(bookingID, 10)
+	} else if bookingID == 0 || customerID != 0 {
 		back = "/admin/customers"
 		if customerID != 0 {
 			back += "/" + strconv.FormatInt(customerID, 10)
@@ -794,6 +798,10 @@ type adminCustomerData struct {
 	Invoices       []invoiceRow
 	Services       []Service
 	SoftwareHourly string // label for the New invoice "software" option
+	// InvoiceFor lists the bookings a new invoice can be raised against, and
+	// DefaultFor preselects the newest one not yet invoiced (0 = no booking).
+	InvoiceFor []bookingRow
+	DefaultFor int64
 }
 
 func handleAdminCustomer(w http.ResponseWriter, r *http.Request) {
@@ -804,8 +812,24 @@ func handleAdminCustomer(w http.ResponseWriter, r *http.Request) {
 	}
 	bs, _ := db.ListBookingsByCustomer(c.ID)
 	invs, _ := db.ListInvoicesByCustomer(c.ID)
-	render(w, r, "admin-customer", adminCustomerData{Flash: readFlash(r), C: c, Bookings: bookingRows(bs), Invoices: invoiceRows(invs),
-		Services: services, SoftwareHourly: softwareHourly})
+	d := adminCustomerData{Flash: readFlash(r), C: c, Bookings: bookingRows(bs), Invoices: invoiceRows(invs),
+		Services: services, SoftwareHourly: softwareHourly}
+	invoiced := map[int64]bool{}
+	for _, inv := range invs {
+		if inv.BookingID != 0 && inv.Status != db.InvoiceVoid {
+			invoiced[inv.BookingID] = true
+		}
+	}
+	for _, row := range d.Bookings { // newest first
+		if row.Status == db.BookingSpam || row.Status == db.BookingCancelled {
+			continue
+		}
+		d.InvoiceFor = append(d.InvoiceFor, row)
+		if d.DefaultFor == 0 && !invoiced[row.ID] {
+			d.DefaultFor = row.ID
+		}
+	}
+	render(w, r, "admin-customer", d)
 }
 
 // handleAdminCustomerBooking creates a new unscheduled booking for the

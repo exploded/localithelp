@@ -176,6 +176,7 @@ func newMux(dir string) *http.ServeMux {
 	mux.HandleFunc("POST /admin/bookings/{id}/issue", requireAdmin(handleAdminBookingIssue))
 	mux.HandleFunc("POST /admin/bookings/{id}/followup", requireAdmin(handleAdminBookingFollowup))
 	mux.HandleFunc("POST /admin/bookings/{id}/address", requireAdmin(handleAdminBookingAddress))
+	mux.HandleFunc("POST /admin/bookings/{id}/invoice-link", requireAdmin(handleAdminBookingInvoiceLink))
 	mux.HandleFunc("GET /admin/address-search", requireAdmin(handleAdminAddressSearch))
 	mux.HandleFunc("GET /admin/calendar", requireAdmin(handleAdminCalendar))
 	mux.HandleFunc("GET /admin/calendar/settings", requireAdmin(handleAdminCalendarSettings))

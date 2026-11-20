@@ -74,6 +74,14 @@
                             {{template "csrf" $csrf}}
                             <input type="hidden" name="customer" value="{{$c.ID}}">
                             <div class="admin-form-inline">
+                                {{if $d.InvoiceFor}}
+                                <div class="admin-field"><label for="for-booking">For booking</label>
+                                    <select class="admin-input" id="for-booking" name="booking">
+                                        <option value="0">No booking</option>
+                                        {{range $d.InvoiceFor}}<option value="{{.ID}}"{{if eq .ID $d.DefaultFor}} selected{{end}}>#{{.ID}} {{if .When}}{{.When}}{{else}}{{.CreatedAt.Format "2 Jan"}}{{end}}</option>{{end}}
+                                    </select>
+                                </div>
+                                {{end}}
                                 <div class="admin-field"><label for="kind">Starting lines</label>
                                     <select class="admin-input" id="kind" name="kind">
                                         <option value="blank">Blank</option>

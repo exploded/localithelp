@@ -79,6 +79,19 @@
                             {{range $d.Invoices}}<li><a href="/admin/invoices/{{.ID}}">{{.Ref}}</a> — {{money .TotalCents}} {{template "badge" .Status}}</li>{{end}}
                         </ul>
                         {{end}}
+                        {{if $d.Unlinked}}
+                        <p class="admin-muted">This customer has {{if eq (len $d.Unlinked) 1}}an invoice{{else}}invoices{{end}} not tied to any booking:</p>
+                        <ul class="admin-list">
+                            {{range $d.Unlinked}}<li>
+                                <form method="POST" action="/admin/bookings/{{$b.ID}}/invoice-link" class="admin-btn-row">
+                                    {{template "csrf" $csrf}}
+                                    <input type="hidden" name="invoice" value="{{.ID}}">
+                                    <span><a href="/admin/invoices/{{.ID}}">{{.Ref}}</a> — {{money .TotalCents}} {{template "badge" .Status}}</span>
+                                    <button class="btn btn--ghost btn--sm" type="submit">Link to this booking</button>
+                                </form>
+                            </li>{{end}}
+                        </ul>
+                        {{end}}
                         {{if $d.CanInvoice}}
                         <form method="POST" action="/admin/invoices/new" class="admin-btn-row">
                             {{template "csrf" $csrf}}
